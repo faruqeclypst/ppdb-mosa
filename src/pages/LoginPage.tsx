@@ -1,84 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { ref, set, get } from 'firebase/database';
-import { auth, db } from '../firebase/config';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth } from '../firebase/config';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import { motion } from 'framer-motion';
-import { 
-  UserIcon, 
-  EnvelopeIcon, 
-  LockClosedIcon,
-  KeyIcon 
-} from '@heroicons/react/24/outline';
+import { EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { ref, get } from 'firebase/database';
+import { db } from '../firebase/config';
 
-const RegisterPage: React.FC = () => {
+const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isFirstAdmin, setIsFirstAdmin] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Cek apakah ini adalah setup admin pertama
-  useEffect(() => {
-    const checkFirstAdmin = async () => {
-      const adminRef = ref(db, 'admins');
-      const snapshot = await get(adminRef);
-      setIsFirstAdmin(!snapshot.exists());
-    };
-
-    checkFirstAdmin();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     
-    if (formData.password !== formData.confirmPassword) {
-      setError('Password tidak cocok');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        formData.email, 
-        formData.password
-      );
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       
-      if (isFirstAdmin) {
-        // Jika ini adalah admin pertama
-        await set(ref(db, `admins/${userCredential.user.uid}`), {
-          fullName: formData.fullName,
-          email: formData.email,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        });
-        navigate('/admin');
-      } else {
-        // Jika ini adalah pendaftaran PPDB
-        await set(ref(db, `ppdb/${userCredential.user.uid}`), {
-          fullName: formData.fullName,
-          email: formData.email,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        navigate('/ppdb/form'); // Arahkan ke form pendaftaran PPDB
-      }
+      // Cek role user
+      const adminRef = ref(db, `admins/${userCredential.user.uid}`);
+      const ppdbRef = ref(db, `ppdb/${userCredential.user.uid}`);
+      
+      const adminSnapshot = await get(adminRef);
+      const ppdbSnapshot = await get(ppdbRef);
 
+      if (adminSnapshot.exists()) {
+        // Jika user adalah admin
+        navigate('/admin');
+      } else if (ppdbSnapshot.exists()) {
+        // Jika user adalah pendaftar PPDB
+        navigate('/ppdb/form');
+      } else {
+        // Jika user tidak memiliki role
+        setError('Akun tidak valid');
+        await signOut(auth);
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError('Email atau password salah');
     } finally {
       setLoading(false);
     }
@@ -108,16 +78,14 @@ const RegisterPage: React.FC = () => {
                   />
                 </motion.div>
                 <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
-                  {isFirstAdmin ? 'Setup Admin' : 'Pendaftaran PPDB'}
+                  Masuk ke Akun
                 </h2>
-                {!isFirstAdmin && (
-                  <p className="text-sm text-gray-600">
-                    Sudah punya akun?{' '}
-                    <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                      Masuk di sini
-                    </Link>
-                  </p>
-                )}
+                <p className="text-sm text-gray-600">
+                  Atau{' '}
+                  <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
+                    daftar akun baru
+                  </Link>
+                </p>
               </div>
               
               {error && (
@@ -130,19 +98,6 @@ const RegisterPage: React.FC = () => {
               )}
               
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="relative">
-                  <UserIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
-                  <Input
-                    label="Nama Lengkap"
-                    type="text"
-                    required
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    placeholder={isFirstAdmin ? "Nama Admin" : "Nama Lengkap"}
-                    className="pl-10"
-                  />
-                </div>
-
                 <div className="relative">
                   <EnvelopeIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
@@ -169,17 +124,15 @@ const RegisterPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="relative">
-                  <KeyIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
-                  <Input
-                    label="Konfirmasi Password"
-                    type="password" 
-                    required
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    placeholder="Konfirmasi password"
-                    className="pl-10"
-                  />
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">
+                    <Link 
+                      to="/forgot-password" 
+                      className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                    >
+                      Lupa password?
+                    </Link>
+                  </div>
                 </div>
 
                 <div>
@@ -191,10 +144,10 @@ const RegisterPage: React.FC = () => {
                     {loading ? (
                       <div className="flex items-center justify-center">
                         <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2" />
-                        {isFirstAdmin ? 'Membuat Admin...' : 'Mendaftar...'}
+                        Masuk...
                       </div>
                     ) : (
-                      isFirstAdmin ? 'Buat Admin' : 'Daftar PPDB'
+                      'Masuk'
                     )}
                   </Button>
                 </div>
@@ -207,4 +160,4 @@ const RegisterPage: React.FC = () => {
   );
 };
 
-export default RegisterPage; 
+export default LoginPage; 

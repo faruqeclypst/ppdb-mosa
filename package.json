@@ -11,8 +11,11 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",
+    "browser-image-compression": "^2.0.2",
     "classnames": "^2.5.1",
     "firebase": "^11.0.1",
+    "framer-motion": "^11.11.15",
+    "pdf-lib": "^1.17.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
