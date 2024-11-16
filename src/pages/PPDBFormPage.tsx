@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ref, get, update } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
+import { db, storage, auth } from '../firebase/config';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -17,6 +17,7 @@ import { compressFile } from '../utils/fileCompression';
 import { showAlert } from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { signOut } from 'firebase/auth';
 
 // Types
 type FormData = {
@@ -118,14 +119,6 @@ const INITIAL_FORM_DATA: FormData = {
   hpIbu: ''
 };
 
-const capitalizeEachWord = (str: string) => {
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
   <div className="mb-6">
     <h3 className="text-lg font-semibold text-gray-900">{children}</h3>
@@ -144,6 +137,8 @@ const PPDBFormPage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isFormChanged, setIsFormChanged] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -176,6 +171,7 @@ const PPDBFormPage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    setIsFormChanged(true);
     
     // Jika input adalah number atau select, gunakan value asli
     if (type === 'number' || e.target instanceof HTMLSelectElement) {
@@ -183,12 +179,38 @@ const PPDBFormPage: React.FC = () => {
       return;
     }
 
-    // Untuk input text, capitalize each word
-    const capitalizedValue = capitalizeEachWord(value);
-    setFormData(prev => ({ ...prev, [name]: capitalizedValue }));
+    // Cek apakah input menggunakan huruf kapital semua
+    const isAllCaps = value === value.toUpperCase();
+    
+    // Jika semua kapital, gunakan value asli
+    if (isAllCaps) {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      return;
+    }
+
+    // Jika bukan kapital semua, capitalize each word dengan mempertahankan input sebelumnya
+    const words = value.split(' ');
+    const capitalizedWords = words.map((word, index) => {
+      // Jika kata sebelumnya sudah kapital, pertahankan
+      const prevValue = formData[name as keyof typeof formData];
+      const prevWords = typeof prevValue === 'string' ? prevValue.split(' ') : [];
+      
+      if (index < prevWords.length && prevWords[index] === prevWords[index].toUpperCase()) {
+        return word.toUpperCase();
+      }
+      // Jika kata baru adalah kapital, pertahankan
+      if (word === word.toUpperCase()) {
+        return word;
+      }
+      // Jika tidak, capitalize first letter
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+
+    setFormData(prev => ({ ...prev, [name]: capitalizedWords.join(' ') }));
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
+    setIsFormChanged(true);
     if (!file) {
       setFormData(prev => ({ ...prev, [name]: null }));
       return;
@@ -239,6 +261,9 @@ const PPDBFormPage: React.FC = () => {
         
         document.getElementById(alertId)?.remove();
         
+        // Update formData dengan file yang sudah dikompresi
+        setFormData(prev => ({ ...prev, [name]: compressedFile }));
+        
         setTimeout(() => {
           showAlert(
             'success',
@@ -282,12 +307,9 @@ const PPDBFormPage: React.FC = () => {
         setError('Mohon lengkapi semua field yang wajib diisi');
         return false;
       }
-      if (formData.nik.length !== 16) {
-        setError('NIK harus 16 digit');
-        return false;
-      }
-      if (formData.nisn.length !== 10) {
-        setError('NISN harus 10 digit');
+      // Validasi NIK hanya jika bukan tanda strip
+      if (formData.nik !== '-' && formData.nik.length !== 16) {
+        setError('NIK harus 16 digit atau isi dengan "-" jika belum ada');
         return false;
       }
     }
@@ -321,10 +343,10 @@ const PPDBFormPage: React.FC = () => {
         setError('Mohon lengkapi informasi orang tua');
         return false;
       }
-      // Validasi format nomor HP
-      const phoneRegex = /^08[0-9]{8,11}$/;
+      // Validasi format nomor HP (10-14 digit)
+      const phoneRegex = /^08[0-9]{8,12}$/;
       if (!phoneRegex.test(formData.hpAyah) || !phoneRegex.test(formData.hpIbu)) {
-        setError('Format nomor HP tidak valid');
+        setError('Nomor HP harus 10-14 digit dan dimulai dengan 08');
         return false;
       }
     }
@@ -421,11 +443,21 @@ const PPDBFormPage: React.FC = () => {
       } else {
         setShowSuccessModal(true);
       }
+      setIsFormChanged(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
       setShowConfirmModal(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
@@ -455,24 +487,20 @@ const PPDBFormPage: React.FC = () => {
         />
 
         <Input
-          label="NIK (16 digit)"
+          label="NIK (isi '-' jika belum ada)"
           name="nik"
           value={formData.nik}
           onChange={handleInputChange}
-          pattern="\d{16}"
-          maxLength={16}
           required
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Input
-          label="NISN (10 digit)"
+          label="NISN"
           name="nisn"
           value={formData.nisn}
           onChange={handleInputChange}
-          pattern="\d{10}"
-          maxLength={10}
           required
         />
 
@@ -788,10 +816,30 @@ const PPDBFormPage: React.FC = () => {
             required
           />
           <Input
-            label="No. HP/WA"
+            label="No. HP/WA (10-14 digit)"
             name="hpAyah"
             value={formData.hpAyah}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              // Hanya terima input angka
+              const value = e.target.value.replace(/\D/g, '');
+              // Pastikan dimulai dengan 08
+              if (value === '0' || value.startsWith('08')) {
+                setFormData(prev => ({ ...prev, hpAyah: value }));
+              } else if (value !== '') {
+                setFormData(prev => ({ ...prev, hpAyah: `08${value}` }));
+              } else {
+                setFormData(prev => ({ ...prev, hpAyah: '' }));
+              }
+            }}
+            pattern="^08[0-9]{8,12}$"
+            minLength={10}
+            maxLength={14}
+            onKeyPress={(e) => {
+              // Mencegah input karakter non-angka
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
             required
           />
         </div>
@@ -822,10 +870,30 @@ const PPDBFormPage: React.FC = () => {
             required
           />
           <Input
-            label="No. HP/WA"
+            label="No. HP/WA (10-14 digit)"
             name="hpIbu"
             value={formData.hpIbu}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              // Hanya terima input angka
+              const value = e.target.value.replace(/\D/g, '');
+              // Pastikan dimulai dengan 08
+              if (value === '0' || value.startsWith('08')) {
+                setFormData(prev => ({ ...prev, hpIbu: value }));
+              } else if (value !== '') {
+                setFormData(prev => ({ ...prev, hpIbu: `08${value}` }));
+              } else {
+                setFormData(prev => ({ ...prev, hpIbu: '' }));
+              }
+            }}
+            pattern="^08[0-9]{8,12}$"
+            minLength={10}
+            maxLength={14}
+            onKeyPress={(e) => {
+              // Mencegah input karakter non-angka
+              if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
             required
           />
         </div>
@@ -907,16 +975,16 @@ const PPDBFormPage: React.FC = () => {
                     Formulir Pendaftaran PPDB
                   </h1>
                   <h2 className="text-lg text-gray-600 mb-2">
-                    SMAN Modal Bangsa Tahun Ajaran 2024/2025
+                    SMAN Modal Bangsa Tahun Ajaran 2025/2026
                   </h2>
                   <div className="grid grid-cols-2 mb-2">
                     <div>
                       <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
-                      <p className="font-medium text-gray-700">1 Maret - 30 April 2024</p>
+                      <p className="font-medium text-gray-700">1 Desember 2024 - 20 Januari 2025</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Pengumuman:</p>
-                      <p className="font-medium text-gray-700">15 Mei 2024</p>
+                      <p className="font-medium text-gray-700">24 Januari 2025</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm">
@@ -943,53 +1011,61 @@ const PPDBFormPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
-                <div className="relative group">
-                  <input
-                    type="file"
-                    id="photoUpload"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange('photo', e.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                  <label 
-                    htmlFor="photoUpload" 
-                    className="cursor-pointer block"
-                  >
-                    <div className="w-32 h-40 rounded-lg overflow-hidden relative">
-                      {formData.photo ? (
-                        <img 
-                          src={typeof formData.photo === 'string' ? formData.photo : URL.createObjectURL(formData.photo)}
-                          alt="Pas Foto"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 animate-pulse">
+
+                <div className="flex flex-col items-end gap-4">
+                  <div className="relative group">
+                    <input
+                      type="file"
+                      id="photoUpload"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange('photo', e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="photoUpload" 
+                      className="cursor-pointer block"
+                    >
+                      <div className="w-32 h-40 rounded-lg overflow-hidden relative">
+                        {formData.photo ? (
                           <img 
-                            src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
-                            alt="Dummy Profile"
-                            className="w-20 h-20 opacity-50 mb-2"
+                            src={formData.photo instanceof File ? URL.createObjectURL(formData.photo) : formData.photo}
+                            alt="Pas Foto"
+                            className="w-full h-full object-cover"
+                            onLoad={(e) => {
+                              // Cleanup URL object setelah gambar dimuat
+                              if (formData.photo instanceof File) {
+                                URL.revokeObjectURL((e.target as HTMLImageElement).src);
+                              }
+                            }}
                           />
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
-                            <span className="text-white text-xs">!</span>
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 animate-pulse">
+                            <img 
+                              src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
+                              alt="Dummy Profile"
+                              className="w-20 h-20 opacity-50 mb-2"
+                            />
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
+                              <span className="text-white text-xs">!</span>
+                            </div>
+                            <p className="text-xs text-gray-500 text-center px-2">
+                              Upload Foto 3x4
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500 text-center px-2">
-                            Upload Foto 3x4
-                          </p>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                        <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                          <span className="text-white text-sm font-medium block">
-                            {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
-                          </span>
-                          <span className="text-gray-300 text-xs">
-                            Klik untuk memilih
-                          </span>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+                          <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                            <span className="text-white text-sm font-medium block">
+                              {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
+                            </span>
+                            <span className="text-gray-300 text-xs">
+                              Klik untuk memilih
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </label>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1011,38 +1087,77 @@ const PPDBFormPage: React.FC = () => {
                     <Button
                       type="button"
                       onClick={handlePrevious}
-                      className="bg-gray-200 text-gray-700"
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2"
                     >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M15 19l-7-7 7-7" />
+                      </svg>
                       Sebelumnya
                     </Button>
                   )}
                   
-                  <Button
-                    type="button"
-                    onClick={(e) => handleSubmit(e, true)}
-                    className="bg-yellow-500 text-white"
-                    disabled={loading}
-                  >
-                    {loading ? 'Menyimpan...' : 'Simpan Draft'}
-                  </Button>
+                  {formStatus !== 'submitted' && (
+                    <Button
+                      type="button"
+                      onClick={(e) => handleSubmit(e, true)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center gap-2"
+                      disabled={loading}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      {loading ? 'Menyimpan...' : 'Simpan Draft'}
+                    </Button>
+                  )}
                 </div>
 
-                <div>
+                <div className="flex space-x-4">
+                  <Button
+                    onClick={() => setShowLogoutModal(true)}
+                    type="button"
+                    className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                      />
+                    </svg>
+                    Keluar
+                  </Button>
+
                   {currentStep < tabs.length - 1 ? (
                     <Button
                       type="button"
                       onClick={handleNext}
-                      className="bg-blue-600 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                     >
                       Selanjutnya
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M9 5l7 7-7 7" />
+                      </svg>
                     </Button>
                   ) : (
                     <Button
                       type="submit"
-                      className="bg-green-600 text-white"
-                      disabled={loading}
+                      className={`flex items-center gap-2 transition-all duration-300 ${
+                        !isFormChanged 
+                          ? 'bg-gray-300 cursor-not-allowed opacity-60 hover:bg-gray-300' 
+                          : 'bg-green-600 hover:bg-green-700 animate-pulse hover:animate-none transform hover:scale-105 text-white'
+                      }`}
+                      disabled={loading || !isFormChanged}
+                      title={!isFormChanged ? 'Belum ada perubahan data yang perlu dikirim' : 'Kirim perubahan data'}
                     >
-                      {loading ? 'Mengirim...' : 'Kirim Formulir'}
+                      <svg className={`w-4 h-4 ${isFormChanged ? 'animate-bounce' : ''}`} 
+                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className={isFormChanged ? 'font-semibold' : ''}>
+                        {loading ? 'Mengirim...' : 'Kirim Formulir'}
+                      </span>
                     </Button>
                   )}
                 </div>
@@ -1062,7 +1177,7 @@ const PPDBFormPage: React.FC = () => {
             </h3>
             <p className="text-gray-600 mb-6">
               Apakah Anda yakin ingin mengirim formulir pendaftaran ini? 
-              Pastikan semua data yang diisi sudah benar karena tidak dapat diubah setelah dikirim.
+              Pastikan semua data yang diisi sudah benar!
             </p>
             <div className="flex justify-end space-x-4">
               <Button
@@ -1098,15 +1213,65 @@ const PPDBFormPage: React.FC = () => {
               Terima kasih telah mendaftar di SMAN Modal Bangsa. 
               Pengumuman hasil seleksi akan diinformasikan pada tanggal 15 Mei 2024.
             </p>
-            <Button
-              onClick={() => {
-                setShowSuccessModal(false);
-                navigate('/');
-              }}
-              className="bg-green-600 text-white hover:bg-green-700"
-            >
-              Kembali ke Beranda
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setIsFormChanged(false);
+                }}
+                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Tetap di Halaman Ini
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate('/');
+                }}
+                className="bg-green-600 text-white hover:bg-green-700"
+              >
+                Kembali ke Beranda
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Tambahkan Modal Konfirmasi Logout */}
+        <Modal 
+          isOpen={showLogoutModal} 
+          onClose={() => setShowLogoutModal(false)}
+        >
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Konfirmasi Keluar
+              </h3>
+              <p className="text-sm text-gray-600">
+                Apakah Anda yakin ingin keluar dari sistem?
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleLogout}
+                className="flex-1 bg-red-600 text-white hover:bg-red-700"
+              >
+                Ya, Keluar
+              </Button>
+            </div>
           </div>
         </Modal>
       </div>

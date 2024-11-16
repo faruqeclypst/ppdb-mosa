@@ -34,14 +34,14 @@ const FEATURES: Feature[] = [
   },
   {
     icon: <BuildingLibraryIcon className="w-8 h-8" />,
-    title: "Fasilitas Lengkap",
-    description: "Dilengkapi dengan fasilitas modern untuk mendukung kegiatan belajar mengajar",
+    title: "Keasramaan",
+    description: "Sistem pendidikan berasrama yang mengutamakan pembentukan karakter dan kemandirian",
     color: "purple"
   },
   {
     icon: <BeakerIcon className="w-8 h-8" />,
-    title: "Laboratorium Modern",
-    description: "Laboratorium sains dan teknologi dengan peralatan standar internasional",
+    title: "Ekstrakurikuler",
+    description: "Berbagai kegiatan pengembangan minat dan bakat siswa yang beragam",
     color: "yellow"
   },
   {
@@ -81,17 +81,19 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true }}
-      className="relative group"
+      className="relative group h-full"
     >
       <div className="absolute -inset-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg blur opacity-0 group-hover:opacity-10 transition duration-500" />
-      <div className="relative p-6 bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div className={`inline-flex p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
-          {icon}
+      <div className="relative p-6 bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col">
+        <div className="flex items-center space-x-4 mb-4">
+          <div className={`inline-flex p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
+            {icon}
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900">
+            {title}
+          </h3>
         </div>
-        <h3 className="mt-4 text-xl font-semibold text-gray-900">
-          {title}
-        </h3>
-        <p className="mt-2 text-gray-600">
+        <p className="text-gray-600 ml-[3.25rem] flex-grow">
           {description}
         </p>
       </div>
@@ -102,9 +104,9 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
 // Main Component
 const FeaturesSection: React.FC = () => {
   return (
-    <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
+    <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
       <Container>
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-12">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

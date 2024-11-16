@@ -1,16 +1,24 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Header from './components/landingpage/layout/Header';
-import Footer from './components/landingpage/layout/Footer';
+import Header from './components/landingpage/Header';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PPDBFormPage from './pages/PPDBFormPage';
+import InfoPPDBPage from './pages/InfoPPDBPage';
 import { AuthProvider } from './contexts/AuthContext';
+import Footer from './components/landingpage/Footer';
 
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const isAuthPage = ['/login', '/register'].includes(location.pathname);
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -50,6 +58,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/info-ppdb" element={<InfoPPDBPage />} />
         <Route path="/ppdb" element={<PPDBFormPage />} />
         <Route path="/admin/*" element={<AdminDashboard />} />
       </Routes>

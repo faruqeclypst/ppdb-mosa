@@ -13,7 +13,8 @@ import {
   UserIcon, 
   EnvelopeIcon, 
   LockClosedIcon,
-  KeyIcon 
+  KeyIcon,
+  ArrowRightIcon 
 } from '@heroicons/react/24/outline';
 
 const RegisterPage: React.FC = () => {
@@ -28,7 +29,6 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Cek apakah ini adalah setup admin pertama
   useEffect(() => {
     const checkFirstAdmin = async () => {
       const adminRef = ref(db, 'admins');
@@ -57,24 +57,24 @@ const RegisterPage: React.FC = () => {
         formData.password
       );
       
+      const userData = {
+        fullName: formData.fullName,
+        email: formData.email,
+        createdAt: new Date().toISOString()
+      };
+
       if (isFirstAdmin) {
-        // Jika ini adalah admin pertama
         await set(ref(db, `admins/${userCredential.user.uid}`), {
-          fullName: formData.fullName,
-          email: formData.email,
-          role: 'admin',
-          createdAt: new Date().toISOString()
+          ...userData,
+          role: 'admin'
         });
         navigate('/admin');
       } else {
-        // Jika ini adalah pendaftaran PPDB
         await set(ref(db, `ppdb/${userCredential.user.uid}`), {
-          fullName: formData.fullName,
-          email: formData.email,
-          status: 'pending',
-          createdAt: new Date().toISOString()
+          ...userData,
+          status: 'pending'
         });
-        navigate('/ppdb/form'); // Arahkan ke form pendaftaran PPDB
+        navigate('/ppdb/form');
       }
 
     } catch (err: any) {
@@ -84,42 +84,97 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const features = [
+    {
+      icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
+      title: "Sistem pendaftaran yang mudah",
+      description: "Proses pendaftaran online yang sederhana dan cepat"
+    },
+    {
+      icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
+      title: "Upload dokumen secara online",
+      description: "Upload semua dokumen persyaratan secara digital"
+    },
+    {
+      icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
+      title: "Pantau status pendaftaran",
+      description: "Cek status pendaftaran kapan saja secara real-time"
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <Container>
-        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-16">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <Container className="max-w-6xl w-full">
+        <div className="grid md:grid-cols-2 gap-8 items-center">
+          {/* Left Column - Info */}
+          <div className="hidden md:block text-center md:text-left space-y-8">
+            <div className="space-y-4">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Selamat Datang di PPDB Online
+              </h1>
+              <p className="text-lg text-gray-600">
+                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2024/2025
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="space-y-6">
+              {features.map((feature, index) => (
+                <div 
+                  key={index} 
+                  className="flex items-start space-x-4 p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-300"
+                >
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    {feature.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900">{feature.title}</h3>
+                    <p className="text-sm text-gray-600">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Additional Info */}
+            <div className="space-y-4 bg-blue-50 p-6 rounded-xl">
+              <h3 className="font-medium text-blue-900">Periode Pendaftaran</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Dibuka</span>
+                  <span className="text-blue-700 font-medium">1 Maret 2024</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Ditutup</span>
+                  <span className="text-blue-700 font-medium">30 April 2024</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Pengumuman</span>
+                  <span className="text-blue-700 font-medium">15 Mei 2024</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="max-w-md w-full"
           >
             <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm">
+              {/* Header */}
               <div className="text-center mb-8">
-                <motion.div
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <img
-                    src="/src/assets/mosa.png"
-                    alt="Logo"
-                    className="h-20 mx-auto mb-4"
-                  />
-                </motion.div>
-                <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
-                  {isFirstAdmin ? 'Setup Admin' : 'Pendaftaran PPDB'}
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {isFirstAdmin ? 'Setup Admin' : 'Daftar Akun PPDB'}
                 </h2>
-                {!isFirstAdmin && (
-                  <p className="text-sm text-gray-600">
-                    Sudah punya akun?{' '}
-                    <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                      Masuk di sini
-                    </Link>
-                  </p>
-                )}
+                <p className="text-sm text-gray-600">
+                  {isFirstAdmin 
+                    ? 'Buat akun admin pertama untuk mengelola sistem'
+                    : 'Lengkapi data berikut untuk membuat akun PPDB'}
+                </p>
               </div>
-              
+
+              {/* Error Alert */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -128,8 +183,9 @@ const RegisterPage: React.FC = () => {
                   <Alert type="error" message={error} className="mb-6" />
                 </motion.div>
               )}
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Register Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="relative">
                   <UserIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
@@ -155,7 +211,7 @@ const RegisterPage: React.FC = () => {
                     className="pl-10"
                   />
                 </div>
-                
+
                 <div className="relative">
                   <LockClosedIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
@@ -173,7 +229,7 @@ const RegisterPage: React.FC = () => {
                   <KeyIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Konfirmasi Password"
-                    type="password" 
+                    type="password"
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
@@ -182,10 +238,12 @@ const RegisterPage: React.FC = () => {
                   />
                 </div>
 
-                <div>
+                <div className="space-y-4">
                   <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 py-3 rounded-lg transition-all duration-300 transform hover:-translate-y-0.5"
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
+                              hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 
+                              py-3 rounded-lg transition-all duration-300"
                     disabled={loading}
                   >
                     {loading ? (
@@ -197,6 +255,26 @@ const RegisterPage: React.FC = () => {
                       isFirstAdmin ? 'Buat Admin' : 'Daftar PPDB'
                     )}
                   </Button>
+
+                  <div className="text-center space-y-4">
+                    <p className="text-sm text-gray-500">
+                      Sudah punya akun?{' '}
+                      <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                        Masuk di sini
+                      </Link>
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Dengan mendaftar, Anda menyetujui{' '}
+                      <Link to="/terms" className="text-blue-600 hover:text-blue-700">
+                        Syarat & Ketentuan
+                      </Link>
+                      {' '}dan{' '}
+                      <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
+                        Kebijakan Privasi
+                      </Link>
+                    </p>
+                  </div>
                 </div>
               </form>
             </Card>
