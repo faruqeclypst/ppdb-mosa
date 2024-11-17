@@ -34,7 +34,6 @@ type FormData = {
   alamat: string;
   kecamatan: string;
   kabupaten: string;
-  kodeKab: string;
   asalSekolah: string;
   kabupatenAsalSekolah: string;
 
@@ -42,18 +41,23 @@ type FormData = {
   nilaiAgama2: string;
   nilaiAgama3: string;
   nilaiAgama4: string;
+  nilaiAgama5: string;
   nilaiBindo2: string;
   nilaiBindo3: string;
   nilaiBindo4: string;
+  nilaiBindo5: string;
   nilaiBing2: string;
   nilaiBing3: string;
   nilaiBing4: string;
+  nilaiBing5: string;
   nilaiMtk2: string;
   nilaiMtk3: string;
   nilaiMtk4: string;
+  nilaiMtk5: string;
   nilaiIpa2: string;
   nilaiIpa3: string;
   nilaiIpa4: string;
+  nilaiIpa5: string;
 
   // Informasi Orang Tua
   namaAyah: string;
@@ -87,7 +91,6 @@ const INITIAL_FORM_DATA: FormData = {
   alamat: '',
   kecamatan: '',
   kabupaten: '',
-  kodeKab: '',
   asalSekolah: '',
   kabupatenAsalSekolah: '',
 
@@ -95,18 +98,23 @@ const INITIAL_FORM_DATA: FormData = {
   nilaiAgama2: '',
   nilaiAgama3: '',
   nilaiAgama4: '',
+  nilaiAgama5: '',
   nilaiBindo2: '',
   nilaiBindo3: '',
   nilaiBindo4: '',
+  nilaiBindo5: '',
   nilaiBing2: '',
   nilaiBing3: '',
   nilaiBing4: '',
+  nilaiBing5: '',
   nilaiMtk2: '',
   nilaiMtk3: '',
   nilaiMtk4: '',
+  nilaiMtk5: '',
   nilaiIpa2: '',
   nilaiIpa3: '',
   nilaiIpa4: '',
+  nilaiIpa5: '',
 
   // Informasi Orang Tua
   namaAyah: '',
@@ -170,43 +178,48 @@ const PPDBFormPage: React.FC = () => {
   }, [user, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
+    
+    // Jika yang berubah adalah jalur pendaftaran
+    if (name === 'jalur') {
+      // Reset nilai akademik dan dokumen
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        // Reset nilai akademik
+        nilaiAgama2: '',
+        nilaiAgama3: '',
+        nilaiAgama4: '',
+        nilaiAgama5: '',
+        nilaiBindo2: '',
+        nilaiBindo3: '',
+        nilaiBindo4: '',
+        nilaiBindo5: '',
+        nilaiBing2: '',
+        nilaiBing3: '',
+        nilaiBing4: '',
+        nilaiBing5: '',
+        nilaiMtk2: '',
+        nilaiMtk3: '',
+        nilaiMtk4: '',
+        nilaiMtk5: '',
+        nilaiIpa2: '',
+        nilaiIpa3: '',
+        nilaiIpa4: '',
+        nilaiIpa5: '',
+        // Reset dokumen
+        rekomendasi: undefined,
+        raport2: undefined,
+        raport3: undefined,
+        raport4: undefined,
+        photo: undefined
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+
+    // Set isFormChanged ke true untuk mengaktifkan tombol kirim
     setIsFormChanged(true);
-    
-    // Jika input adalah number atau select, gunakan value asli
-    if (type === 'number' || e.target instanceof HTMLSelectElement) {
-      setFormData(prev => ({ ...prev, [name]: value }));
-      return;
-    }
-
-    // Cek apakah input menggunakan huruf kapital semua
-    const isAllCaps = value === value.toUpperCase();
-    
-    // Jika semua kapital, gunakan value asli
-    if (isAllCaps) {
-      setFormData(prev => ({ ...prev, [name]: value }));
-      return;
-    }
-
-    // Jika bukan kapital semua, capitalize each word dengan mempertahankan input sebelumnya
-    const words = value.split(' ');
-    const capitalizedWords = words.map((word, index) => {
-      // Jika kata sebelumnya sudah kapital, pertahankan
-      const prevValue = formData[name as keyof typeof formData];
-      const prevWords = typeof prevValue === 'string' ? prevValue.split(' ') : [];
-      
-      if (index < prevWords.length && prevWords[index] === prevWords[index].toUpperCase()) {
-        return word.toUpperCase();
-      }
-      // Jika kata baru adalah kapital, pertahankan
-      if (word === word.toUpperCase()) {
-        return word;
-      }
-      // Jika tidak, capitalize first letter
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    });
-
-    setFormData(prev => ({ ...prev, [name]: capitalizedWords.join(' ') }));
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
@@ -462,99 +475,151 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const renderInformasiSiswa = () => (
-    <div className="space-y-8">
-      <SectionTitle>Data Pribadi</SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Select
-          label="Jalur Pendaftaran"
-          name="jalur"
-          value={formData.jalur}
-          onChange={handleInputChange}
-          options={[
-            { value: 'prestasi', label: 'Jalur Prestasi' },
-            { value: 'zonasi', label: 'Jalur Zonasi' },
-            { value: 'afirmasi', label: 'Jalur Afirmasi' }
-          ]}
-          required
-        />
+    <div className="space-y-10">
+      <div>
+        <SectionTitle>Data Pribadi</SectionTitle>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Select
+              label="Jalur Pendaftaran"
+              name="jalur"
+              value={formData.jalur}
+              onChange={(e) => {
+                handleInputChange(e);
+                // Reset nilai akademik saat ganti jalur
+                setFormData(prev => ({
+                  ...prev,
+                  nilaiAgama2: '',
+                  nilaiAgama3: '',
+                  nilaiAgama4: '',
+                  nilaiAgama5: '',
+                  nilaiBindo2: '',
+                  nilaiBindo3: '',
+                  nilaiBindo4: '',
+                  nilaiBindo5: '',
+                  nilaiBing2: '',
+                  nilaiBing3: '',
+                  nilaiBing4: '',
+                  nilaiBing5: '',
+                  nilaiMtk2: '',
+                  nilaiMtk3: '',
+                  nilaiMtk4: '',
+                  nilaiMtk5: '',
+                  nilaiIpa2: '',
+                  nilaiIpa3: '',
+                  nilaiIpa4: '',
+                  nilaiIpa5: '',
+                }));
+              }}
+              options={[
+                { value: 'prestasi', label: 'Jalur Prestasi' },
+                { value: 'reguler', label: 'Jalur Reguler' },
+                { value: 'undangan', label: 'Jalur Undangan' }
+              ]}
+              required
+            />
 
-        <Input
-          label="Nama Calon Siswa"
-          name="namaSiswa"
-          value={formData.namaSiswa}
-          onChange={handleInputChange}
-          required
-        />
+            <Input
+              label="Nama Calon Siswa"
+              name="namaSiswa"
+              value={formData.namaSiswa}
+              onChange={handleInputChange}
+              required
+            />
 
-        <Input
-          label="NIK (isi '-' jika belum ada)"
-          name="nik"
-          value={formData.nik}
-          onChange={handleInputChange}
-          required
-        />
+            <Input
+              label="NIK (isi '-' jika belum ada)"
+              name="nik"
+              value={formData.nik}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Jika input adalah tanda strip, terima
+                if (value === '-') {
+                  setFormData(prev => ({ ...prev, nik: value }));
+                  return;
+                }
+                // Jika input adalah angka dan panjangnya <= 16
+                if (/^\d*$/.test(value) && value.length <= 16) {
+                  setFormData(prev => ({ ...prev, nik: value }));
+                }
+              }}
+              onKeyPress={(e) => {
+                // Mencegah input karakter non-angka kecuali tanda strip
+                if (!/[\d-]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Input
+              label="Tempat Lahir"
+              name="tempatLahir"
+              value={formData.tempatLahir}
+              onChange={handleInputChange}
+              required
+            />
+
+            <DatePicker
+              label="Tanggal Lahir"
+              value={formData.tanggalLahir}
+              onChange={(date) => {
+                setFormData(prev => ({ ...prev, tanggalLahir: date }));
+                setIsFormChanged(true); // Aktifkan tombol kirim saat tanggal berubah
+              }}
+              required
+            />
+
+            <Input
+              label="NISN (isi '-' jika belum ada)"
+              name="nisn"
+              value={formData.nisn}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Select
+              label="Jenis Kelamin"
+              name="jenisKelamin"
+              value={formData.jenisKelamin}
+              onChange={handleInputChange}
+              options={[
+                { value: 'L', label: 'Laki-laki' },
+                { value: 'P', label: 'Perempuan' }
+              ]}
+              required
+            />
+
+            <Input
+              label="Anak Ke"
+              name="anakKe"
+              type="number"
+              min="1"
+              value={formData.anakKe}
+              onChange={handleInputChange}
+              required
+            />
+
+            <Input
+              label="Jumlah Saudara"
+              name="jumlahSaudara"
+              type="number"
+              min="0"
+              value={formData.jumlahSaudara}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Input
-          label="NISN"
-          name="nisn"
-          value={formData.nisn}
-          onChange={handleInputChange}
-          required
-        />
-
-        <Select
-          label="Jenis Kelamin"
-          name="jenisKelamin"
-          value={formData.jenisKelamin}
-          onChange={handleInputChange}
-          options={[
-            { value: 'L', label: 'Laki-laki' },
-            { value: 'P', label: 'Perempuan' }
-          ]}
-          required
-        />
-
-        <Input
-          label="Tempat Lahir"
-          name="tempatLahir"
-          value={formData.tempatLahir}
-          onChange={handleInputChange}
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <DatePicker
-          label="Tanggal Lahir"
-          value={formData.tanggalLahir}
-          onChange={(date) => setFormData(prev => ({ ...prev, tanggalLahir: date }))}
-          required
-        />
-
-        <Input
-          label="Anak ke-"
-          name="anakKe"
-          type="number"
-          value={formData.anakKe}
-          onChange={handleInputChange}
-          required
-        />
-
-        <Input
-          label="Jumlah Saudara Kandung"
-          name="jumlahSaudara"
-          type="number"
-          value={formData.jumlahSaudara}
-          onChange={handleInputChange}
-          required
-        />
-      </div>
-
-      <SectionTitle>Alamat</SectionTitle>
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-6">
+      <div>
+        <SectionTitle>Alamat</SectionTitle>
+        <div className="space-y-6">
           <Input
             label="Alamat Lengkap"
             name="alamat"
@@ -562,225 +627,44 @@ const PPDBFormPage: React.FC = () => {
             onChange={handleInputChange}
             required
           />
-        </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label="Kecamatan"
+              name="kecamatan"
+              value={formData.kecamatan}
+              onChange={handleInputChange}
+              required
+            />
+
+            <Input
+              label="Kabupaten"
+              name="kabupaten"
+              value={formData.kabupaten}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle>Asal Sekolah</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Input
-            label="Kecamatan"
-            name="kecamatan"
-            value={formData.kecamatan}
-            onChange={handleInputChange}
-            required
-          />
+          <div className="md:col-span-2">
+            <Input
+              label="Nama Sekolah"
+              name="asalSekolah"
+              value={formData.asalSekolah}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
 
           <Input
-            label="Kabupaten"
-            name="kabupaten"
-            value={formData.kabupaten}
-            onChange={handleInputChange}
-            required
-          />
-
-          <Input
-            label="Kode Kab."
-            name="kodeKab"
-            value={formData.kodeKab}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-      </div>
-
-      <SectionTitle>Asal Sekolah</SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <Input
-            label="Nama Sekolah"
-            name="asalSekolah"
-            value={formData.asalSekolah}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-
-        <Input
-          label="Kabupaten Sekolah"
-          name="kabupatenAsalSekolah"
-          value={formData.kabupatenAsalSekolah}
-          onChange={handleInputChange}
-          required
-        />
-      </div>
-    </div>
-  );
-
-  const renderAkademik = () => (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-      {/* Semester 2 */}
-      <div className="space-y-6">
-        <SectionTitle>Semester 2</SectionTitle>
-        <div className="space-y-6">
-          <Input
-            label="Pendidikan Agama"
-            name="nilaiAgama2"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiAgama2}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Indonesia"
-            name="nilaiBindo2"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBindo2}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Inggris"
-            name="nilaiBing2"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBing2}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Matematika"
-            name="nilaiMtk2"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiMtk2}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="IPA"
-            name="nilaiIpa2"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiIpa2}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-      </div>
-
-      {/* Semester 3 */}
-      <div className="space-y-6">
-        <SectionTitle>Semester 3</SectionTitle>
-        <div className="space-y-6">
-          <Input
-            label="Pendidikan Agama"
-            name="nilaiAgama3"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiAgama3}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Indonesia"
-            name="nilaiBindo3"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBindo3}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Inggris"
-            name="nilaiBing3"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBing3}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Matematika"
-            name="nilaiMtk3"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiMtk3}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="IPA"
-            name="nilaiIpa3"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiIpa3}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-      </div>
-
-      {/* Semester 4 */}
-      <div className="space-y-6">
-        <SectionTitle>Semester 4</SectionTitle>
-        <div className="space-y-6">
-          <Input
-            label="Pendidikan Agama"
-            name="nilaiAgama4"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiAgama4}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Indonesia"
-            name="nilaiBindo4"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBindo4}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Bahasa Inggris"
-            name="nilaiBing4"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiBing4}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="Matematika"
-            name="nilaiMtk4"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiMtk4}
-            onChange={handleInputChange}
-            required
-          />
-          <Input
-            label="IPA"
-            name="nilaiIpa4"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.nilaiIpa4}
+            label="Kabupaten Sekolah"
+            name="kabupatenAsalSekolah"
+            value={formData.kabupatenAsalSekolah}
             onChange={handleInputChange}
             required
           />
@@ -788,10 +672,128 @@ const PPDBFormPage: React.FC = () => {
       </div>
     </div>
   );
+
+  const renderAkademik = () => {
+    const semesters = formData.jalur === 'reguler' 
+      ? ['3', '4', '5']  // Jalur Reguler
+      : ['2', '3', '4']; // Jalur Prestasi & Undangan
+
+    return (
+      <div className="grid grid-cols-3 gap-6">
+        {semesters.map((semester) => (
+          <div key={semester} className="space-y-6">
+            <SectionTitle>Semester {semester}</SectionTitle>
+            <div className="space-y-4">
+              <Input
+                label="Pendidikan Agama"
+                name={`nilaiAgama${semester}`}
+                type="number"
+                min="0"
+                max="100"
+                value={String(formData[`nilaiAgama${semester}` as keyof typeof formData] || '')}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 100) {
+                    handleInputChange(e);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+              <Input
+                label="Bahasa Indonesia"
+                name={`nilaiBindo${semester}`}
+                type="number"
+                min="0"
+                max="100"
+                value={String(formData[`nilaiBindo${semester}` as keyof typeof formData] || '')}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 100) {
+                    handleInputChange(e);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+              <Input
+                label="Bahasa Inggris"
+                name={`nilaiBing${semester}`}
+                type="number"
+                min="0"
+                max="100"
+                value={String(formData[`nilaiBing${semester}` as keyof typeof formData] || '')}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 100) {
+                    handleInputChange(e);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+              <Input
+                label="Matematika"
+                name={`nilaiMtk${semester}`}
+                type="number"
+                min="0"
+                max="100"
+                value={String(formData[`nilaiMtk${semester}` as keyof typeof formData] || '')}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 100) {
+                    handleInputChange(e);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+              <Input
+                label="IPA"
+                name={`nilaiIpa${semester}`}
+                type="number"
+                min="0"
+                max="100"
+                value={String(formData[`nilaiIpa${semester}` as keyof typeof formData] || '')}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  if (!isNaN(value) && value >= 0 && value <= 100) {
+                    handleInputChange(e);
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const renderInformasiOrangTua = () => (
-    <div className="space-y-8">
-      <div className="space-y-6">
+    <div className="space-y-10">
+      <div>
         <SectionTitle>Data Ayah</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
@@ -845,7 +847,7 @@ const PPDBFormPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div>
         <SectionTitle>Data Ibu</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
@@ -901,52 +903,114 @@ const PPDBFormPage: React.FC = () => {
     </div>
   );
 
-  const renderDokumen = () => (
-    <div className="space-y-8">
-      <SectionTitle>Dokumen Persyaratan</SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <FileUpload
-          label="Scan PDF Surat Rekomendasi / Sertifikat"
-          name="rekomendasi"
-          accept=".pdf"
-          onChange={(file) => handleFileChange('rekomendasi', file)}
-          maxSize={4}
-          required
-          value={formData.rekomendasi}
-        />
+  const renderDokumen = () => {
+    const semesters = formData.jalur === 'reguler' 
+      ? ['3', '4', '5']  // Jalur Reguler
+      : ['2', '3', '4']; // Jalur Prestasi & Undangan
 
-        <FileUpload
-          label="Scan PDF Raport Semester 2"
-          name="raport2"
-          accept=".pdf"
-          onChange={(file) => handleFileChange('raport2', file)}
-          maxSize={4}
-          required
-          value={formData.raport2}
-        />
+    // Debug: Log nilai field yang dicek
+    console.log('Checking fields:', {
+      jalur: formData.jalur,
+      namaSiswa: formData.namaSiswa,
+      nik: formData.nik,
+      nisn: formData.nisn,
+      jenisKelamin: formData.jenisKelamin,
+      tempatLahir: formData.tempatLahir,
+      tanggalLahir: formData.tanggalLahir,
+      anakKe: formData.anakKe,
+      jumlahSaudara: formData.jumlahSaudara,
+      alamat: formData.alamat,
+      kecamatan: formData.kecamatan,
+      kabupaten: formData.kabupaten,
+      asalSekolah: formData.asalSekolah,
+      kabupatenAsalSekolah: formData.kabupatenAsalSekolah
+    });
 
-        <FileUpload
-          label="Scan PDF Raport Semester 3"
-          name="raport3"
-          accept=".pdf"
-          onChange={(file) => handleFileChange('raport3', file)}
-          maxSize={4}
-          required
-          value={formData.raport3}
-        />
+    // Cek apakah informasi siswa sudah lengkap
+    const isStudentInfoComplete = 
+      formData.jalur !== '' &&
+      formData.namaSiswa.trim() !== '' &&
+      formData.nik.trim() !== '' &&
+      formData.nisn.trim() !== '' &&
+      formData.jenisKelamin !== '' &&
+      formData.tempatLahir.trim() !== '' &&
+      formData.tanggalLahir !== '' &&
+      formData.anakKe !== '' &&
+      formData.jumlahSaudara !== '' &&
+      formData.alamat.trim() !== '' &&
+      formData.kecamatan.trim() !== '' &&
+      formData.kabupaten.trim() !== '' &&
+      formData.asalSekolah.trim() !== '' &&
+      formData.kabupatenAsalSekolah.trim() !== '';
 
-        <FileUpload
-          label="Scan PDF Raport Semester 4"
-          name="raport4"
-          accept=".pdf"
-          onChange={(file) => handleFileChange('raport4', file)}
-          maxSize={4}
-          required
-          value={formData.raport4}
-        />
+    // Debug: Log hasil pengecekan
+    console.log('Is student info complete:', isStudentInfoComplete);
+
+    if (!isStudentInfoComplete) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 bg-yellow-50 rounded-lg border border-yellow-200">
+          <svg 
+            className="w-16 h-16 text-yellow-400 mb-4" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+            />
+          </svg>
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+            Lengkapi Informasi Siswa Terlebih Dahulu
+          </h3>
+          <p className="text-yellow-600 text-center max-w-md">
+            Untuk mengunggah dokumen, Anda harus melengkapi semua informasi siswa di tab pertama.
+            Silakan kembali ke tab "Informasi Siswa" dan lengkapi semua field yang diperlukan.
+          </p>
+          <Button
+            onClick={() => setCurrentStep(0)}
+            className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white"
+          >
+            Kembali ke Informasi Siswa
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-10">
+        <div>
+          <SectionTitle>Dokumen Persyaratan</SectionTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FileUpload
+              label="Scan PDF Surat Rekomendasi / Sertifikat"
+              name="rekomendasi"
+              accept=".pdf"
+              onChange={(file) => handleFileChange('rekomendasi', file)}
+              maxSize={4}
+              required
+              value={formData.rekomendasi}
+            />
+
+            {semesters.map((semester) => (
+              <FileUpload
+                key={semester}
+                label={`Scan PDF Raport Semester ${semester}`}
+                name={`raport${semester}`}
+                accept=".pdf"
+                onChange={(file) => handleFileChange(`raport${semester}`, file)}
+                maxSize={4}
+                required
+                value={formData[`raport${semester}` as keyof typeof formData]}
+              />
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const tabs = [
     { label: 'Informasi Siswa', content: renderInformasiSiswa() },

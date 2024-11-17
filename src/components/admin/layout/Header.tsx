@@ -109,7 +109,7 @@ const Header: React.FC = () => {
       <Modal 
         isOpen={showProfileModal} 
         onClose={() => setShowProfileModal(false)}
-        size="sm"
+        className="z-[70]"
       >
         <div className="p-6">
           <div className="text-center mb-6">
@@ -155,6 +155,7 @@ const Header: React.FC = () => {
       <Modal 
         isOpen={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)}
+        className="z-[70]"
       >
         <div className="p-6">
           <div className="text-center mb-6">

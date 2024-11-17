@@ -2,20 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { ref, get, update } from 'firebase/database';
 import { db } from '../../firebase/config';
 import Table from '../ui/Table';
-import Modal from '../ui/Modal';
+import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { Switch } from '@headlessui/react';
+import Modal from '../ui/Modal';
+import Badge from '../ui/Badge';
 import { showAlert } from '../ui/Alert';
+import { 
+  CheckCircleIcon, 
+  EyeIcon,
+  DocumentArrowDownIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 type PPDBData = {
   uid: string;
   // Informasi Siswa
-  jalur: string;
+  jalur: 'prestasi' | 'reguler' | 'undangan';
   namaSiswa: string;
   nik: string;
   nisn: string;
-  email: string;
   jenisKelamin: string;
   tempatLahir: string;
   tanggalLahir: string;
@@ -24,7 +34,6 @@ type PPDBData = {
   alamat: string;
   kecamatan: string;
   kabupaten: string;
-  kodeKab: string;
   asalSekolah: string;
   kabupatenAsalSekolah: string;
 
@@ -55,753 +64,399 @@ type PPDBData = {
   instansiIbu: string;
   hpIbu: string;
 
+  // Status dan Metadata
+  status: 'pending' | 'diterima' | 'ditolak';
+  createdAt: string;
+  lastUpdated?: string;
+  submittedAt?: string;
+
   // Files
   rekomendasi?: string;
   raport2?: string;
   raport3?: string;
   raport4?: string;
   photo?: string;
-
-  // Metadata
-  status: 'draft' | 'submitted';
-  submittedAt: string;
-  lastUpdated: string;
 };
 
-interface FirebaseAuthResponse {
-  email: string;
-  requestType: string;
-  response: { email: string };
-}
-
-const handleResetPassword = async (email: string) => {
-  try {
-    const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
-    const response = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requestType: 'PASSWORD_RESET',
-          email: email,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to send reset password email');
-    }
-
-    const data: FirebaseAuthResponse = await response.json();
-    alert(`Email reset password telah dikirim ke ${data.email}`);
-  } catch (error) {
-    console.error('Error sending reset password:', error);
-    alert('Gagal mengirim email reset password');
-  }
-};
-
-type DocumentStatus = {
-  rekomendasi: boolean;
-  raport2: boolean;
-  raport3: boolean;
-  raport4: boolean;
-  photo: boolean;
-};
-
-// Pindahkan StatusBadge ke atas sebelum komponen utama
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const getStatusColor = () => {
-    switch (status) {
-      case 'Diterima':
-        return 'bg-green-100 text-green-800';
-      case 'Ditolak':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-yellow-100 text-yellow-800';
-    }
+const getJalurLabel = (jalur: PPDBData['jalur']) => {
+  const labels = {
+    prestasi: 'Prestasi',
+    reguler: 'Reguler', 
+    undangan: 'Undangan'
   };
-
-  return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
-      {status}
-    </span>
-  );
+  return labels[jalur];
 };
+
+const customScrollbarStyles = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #666;
+  }
+`;
 
 const DataPendaftar: React.FC = () => {
-  const headers = ['No', 'NISN', 'Nama Siswa', 'Jenis Kelamin', 'Tanggal Daftar', 'Status', 'Aksi'];
-  
   const [pendaftar, setPendaftar] = useState<PPDBData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedData, setSelectedData] = useState<PPDBData | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [documentStatus, setDocumentStatus] = useState<Record<string, DocumentStatus>>({});
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'diterima' | 'ditolak'>('all');
+  const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
+  const [modalLoading, setModalLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const ppdbRef = ref(db, 'ppdb');
-        const snapshot = await get(ppdbRef);
-        if (snapshot.exists()) {
-          const data = Object.entries(snapshot.val()).map(([uid, value]) => ({
-            uid,
-            ...value as Omit<PPDBData, 'uid'>
-          }));
-          setPendaftar(data);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadData();
   }, []);
 
   useEffect(() => {
-    const loadDocumentStatus = async () => {
-      try {
-        const ppdbRef = ref(db, 'ppdb');
-        const snapshot = await get(ppdbRef);
-        
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const status: Record<string, DocumentStatus> = {};
-          
-          Object.keys(data).forEach(uid => {
-            status[uid] = {
-              rekomendasi: data[uid].dokumenValid?.rekomendasi || false,
-              raport2: data[uid].dokumenValid?.raport2 || false,
-              raport3: data[uid].dokumenValid?.raport3 || false,
-              raport4: data[uid].dokumenValid?.raport4 || false,
-              photo: data[uid].dokumenValid?.photo || false,
-            };
-          });
-          
-          setDocumentStatus(status);
-        }
-      } catch (error) {
-        console.error('Error loading document status:', error);
-      }
-    };
+    const styleElement = document.createElement('style');
+    styleElement.textContent = customScrollbarStyles;
+    document.head.appendChild(styleElement);
 
-    loadDocumentStatus();
+    return () => {
+      document.head.removeChild(styleElement);
+    };
   }, []);
 
-  // Fungsi untuk mengecek apakah dokumen sudah dicek
-  const isDocumentChecked = (uid: string, documentStatus: Record<string, DocumentStatus>) => {
-    const status = documentStatus[uid];
-    if (!status) return false;
-    return Object.values(status).some(value => value === true || value === false);
-  };
-
-  // Fungsi untuk mengecek status dokumen
-  const checkDocumentStatus = (uid: string, documentStatus: Record<string, DocumentStatus>) => {
-    const status = documentStatus[uid];
-    if (!status) return 'Belum dicek';
-    if (!isDocumentChecked(uid, documentStatus)) return 'Belum dicek';
-
-    const isAllValid = Object.values(status).every(value => value === true);
-    const isAnyInvalid = Object.values(status).some(value => value === false);
-
-    if (isAllValid) return 'Diterima';
-    if (isAnyInvalid) return 'Ditolak';
-    return 'Belum dicek';
-  };
-
-  // Filter data berdasarkan status
-  const filterDataByStatus = (status: string) => {
-    if (status === 'Semua') return pendaftar;
-    return pendaftar.filter(p => {
-      const currentStatus = checkDocumentStatus(p.uid, documentStatus);
-      return currentStatus === status;
-    });
-  };
-
-  // Render tabel untuk setiap status
-  const renderTable = (data: PPDBData[]) => {
-    const tableData = data.map((p, index) => [
-      index + 1,
-      p.nisn,
-      p.namaSiswa, 
-      p.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
-      new Date(p.submittedAt).toLocaleDateString('id-ID'),
-      <StatusBadge key={`status-${p.uid}`} status={checkDocumentStatus(p.uid, documentStatus)} />,
-      <Button
-        key={p.nisn}
-        onClick={() => {
-          setSelectedData(p);
-          setShowDetailModal(true);
-        }}
-        className="bg-blue-500 text-white text-sm"
-      >
-        Detail
-      </Button>
-    ]);
-
-    return <Table headers={headers} data={tableData} />;
-  };
-
-  const tabs = [
-    {
-      label: `Semua (${pendaftar.length})`,
-      content: renderTable(pendaftar)
-    },
-    {
-      label: `Belum Dicek (${filterDataByStatus('Belum dicek').length})`,
-      content: renderTable(filterDataByStatus('Belum dicek'))
-    },
-    {
-      label: `Diterima (${filterDataByStatus('Diterima').length})`,
-      content: renderTable(filterDataByStatus('Diterima'))
-    },
-    {
-      label: `Ditolak (${filterDataByStatus('Ditolak').length})`,
-      content: renderTable(filterDataByStatus('Ditolak'))
-    }
-  ];
-
-  // Update handleDocumentStatusChange untuk memperbarui status pendaftar
-  const handleDocumentStatusChange = async (
-    uid: string, 
-    document: keyof DocumentStatus, 
-    value: boolean
-  ) => {
+  const loadData = async () => {
     try {
-      await update(ref(db, `ppdb/${uid}/dokumenValid`), {
-        [document]: value
+      const ppdbRef = ref(db, 'ppdb');
+      const snapshot = await get(ppdbRef);
+      
+      if (snapshot.exists()) {
+        const data = Object.entries(snapshot.val()).map(([uid, value]) => ({
+          uid,
+          ...(value as Omit<PPDBData, 'uid'>)
+        }));
+        setPendaftar(data);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showAlert('error', 'Gagal memuat data pendaftar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (status: 'diterima' | 'ditolak') => {
+    if (!selectedData || modalLoading) return;
+
+    setModalLoading(true);
+    try {
+      await update(ref(db, `ppdb/${selectedData.uid}`), {
+        status,
+        updatedAt: new Date().toISOString()
       });
 
-      // Update document status
-      setDocumentStatus(prev => ({
-        ...prev,
-        [uid]: {
-          ...prev[uid],
-          [document]: value
+      showAlert('success', `Status pendaftar berhasil diubah menjadi ${status}`);
+      setShowStatusModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      showAlert('error', 'Gagal mengubah status pendaftar');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleDownloadFile = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getFilteredData = () => {
+    let filtered = [...pendaftar];
+
+    // Filter berdasarkan search query
+    if (searchQuery) {
+      filtered = filtered.filter(item => 
+        item.namaSiswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.nisn.includes(searchQuery) ||
+        item.asalSekolah.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter berdasarkan status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => item.status === statusFilter);
+    }
+
+    // Filter berdasarkan jalur
+    if (jalurFilter !== 'all') {
+      filtered = filtered.filter(item => item.jalur === jalurFilter);
+    }
+
+    // Sort berdasarkan tanggal
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  };
+
+  const headers = ['No', 'Nama', 'NISN', 'Jalur', 'Asal Sekolah', 'Status', 'Tanggal Daftar', 'Aksi'];
+
+  // Tambahkan fungsi export Excel
+  const exportToExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Data Pendaftar PPDB');
+
+      // Styling untuk header
+      const headerStyle = {
+        font: { bold: true, color: { argb: 'FFFFFF' } },
+        fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '4B5563' } },
+        alignment: { 
+          horizontal: 'center' as const,
+          vertical: 'middle' as const 
+        },
+        border: {
+          top: { style: 'thin' as const },
+          left: { style: 'thin' as const },
+          bottom: { style: 'thin' as const },
+          right: { style: 'thin' as const }
         }
+      };
+
+      // Definisi kolom dengan width yang sesuai
+      worksheet.columns = [
+        { header: 'No', key: 'no', width: 5 },
+        { header: 'NISN', key: 'nisn', width: 15 },
+        { header: 'Nama Lengkap', key: 'namaSiswa', width: 30 },
+        { header: 'Jalur', key: 'jalur', width: 15 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'NIK', key: 'nik', width: 20 },
+        { header: 'Jenis Kelamin', key: 'jenisKelamin', width: 15 },
+        { header: 'Tempat Lahir', key: 'tempatLahir', width: 20 },
+        { header: 'Tanggal Lahir', key: 'tanggalLahir', width: 15 },
+        { header: 'Anak Ke', key: 'anakKe', width: 10 },
+        { header: 'Jumlah Saudara', key: 'jumlahSaudara', width: 15 },
+        { header: 'Alamat', key: 'alamat', width: 40 },
+        { header: 'Kecamatan', key: 'kecamatan', width: 20 },
+        { header: 'Kabupaten', key: 'kabupaten', width: 20 },
+        { header: 'Asal Sekolah', key: 'asalSekolah', width: 30 },
+        { header: 'Kabupaten Sekolah', key: 'kabupatenAsalSekolah', width: 20 },
+        // Nilai Akademik
+        { header: 'Agama Sem 2', key: 'nilaiAgama2', width: 12 },
+        { header: 'Agama Sem 3', key: 'nilaiAgama3', width: 12 },
+        { header: 'Agama Sem 4', key: 'nilaiAgama4', width: 12 },
+        { header: 'B.Indo Sem 2', key: 'nilaiBindo2', width: 12 },
+        { header: 'B.Indo Sem 3', key: 'nilaiBindo3', width: 12 },
+        { header: 'B.Indo Sem 4', key: 'nilaiBindo4', width: 12 },
+        { header: 'B.Ing Sem 2', key: 'nilaiBing2', width: 12 },
+        { header: 'B.Ing Sem 3', key: 'nilaiBing3', width: 12 },
+        { header: 'B.Ing Sem 4', key: 'nilaiBing4', width: 12 },
+        { header: 'MTK Sem 2', key: 'nilaiMtk2', width: 12 },
+        { header: 'MTK Sem 3', key: 'nilaiMtk3', width: 12 },
+        { header: 'MTK Sem 4', key: 'nilaiMtk4', width: 12 },
+        { header: 'IPA Sem 2', key: 'nilaiIpa2', width: 12 },
+        { header: 'IPA Sem 3', key: 'nilaiIpa3', width: 12 },
+        { header: 'IPA Sem 4', key: 'nilaiIpa4', width: 12 },
+        // Data Orang Tua - Ayah
+        { header: 'Nama Ayah', key: 'namaAyah', width: 30 },
+        { header: 'Pekerjaan Ayah', key: 'pekerjaanAyah', width: 20 },
+        { header: 'Instansi Ayah', key: 'instansiAyah', width: 30 },
+        { header: 'No HP Ayah', key: 'hpAyah', width: 20 },
+        
+        // Data Orang Tua - Ibu
+        { header: 'Nama Ibu', key: 'namaIbu', width: 30 },
+        { header: 'Pekerjaan Ibu', key: 'pekerjaanIbu', width: 20 },
+        { header: 'Instansi Ibu', key: 'instansiIbu', width: 30 },
+        { header: 'No HP Ibu', key: 'hpIbu', width: 20 },
+
+        // Dokumen (ubah dari link menjadi status ketersediaan)
+        { header: 'Surat Rekomendasi', key: 'rekomendasi', width: 20 },
+        { header: 'Raport Sem 2', key: 'raport2', width: 20 },
+        { header: 'Raport Sem 3', key: 'raport3', width: 20 },
+        { header: 'Raport Sem 4', key: 'raport4', width: 20 },
+        { header: 'Pas Foto', key: 'photo', width: 20 },
+
+        // Metadata
+        { header: 'Tanggal Daftar', key: 'createdAt', width: 20 },
+        { header: 'Terakhir Diupdate', key: 'lastUpdated', width: 20 }
+      ];
+
+      // Apply header styling
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.style = headerStyle;
+      });
+
+      // Freeze panes
+      worksheet.views = [
+        { 
+          state: 'frozen', 
+          xSplit: 5, // Freeze sampai kolom status (5 kolom pertama)
+          ySplit: 1, 
+          activeCell: 'A2' 
+        }
+      ];
+
+      // Add data
+      const data = getFilteredData().map((item, index) => ({
+        no: index + 1,
+        nisn: item.nisn,
+        namaSiswa: item.namaSiswa,
+        jalur: getJalurLabel(item.jalur),
+        status: item.status.toUpperCase(),
+        nik: item.nik,
+        jenisKelamin: item.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+        tempatLahir: item.tempatLahir,
+        tanggalLahir: new Date(item.tanggalLahir).toLocaleDateString('id-ID'),
+        anakKe: item.anakKe,
+        jumlahSaudara: item.jumlahSaudara,
+        alamat: item.alamat,
+        kecamatan: item.kecamatan,
+        kabupaten: item.kabupaten,
+        asalSekolah: item.asalSekolah,
+        kabupatenAsalSekolah: item.kabupatenAsalSekolah,
+        // Nilai Akademik
+        nilaiAgama2: item.nilaiAgama2,
+        nilaiAgama3: item.nilaiAgama3,
+        nilaiAgama4: item.nilaiAgama4,
+        nilaiBindo2: item.nilaiBindo2,
+        nilaiBindo3: item.nilaiBindo3,
+        nilaiBindo4: item.nilaiBindo4,
+        nilaiBing2: item.nilaiBing2,
+        nilaiBing3: item.nilaiBing3,
+        nilaiBing4: item.nilaiBing4,
+        nilaiMtk2: item.nilaiMtk2,
+        nilaiMtk3: item.nilaiMtk3,
+        nilaiMtk4: item.nilaiMtk4,
+        nilaiIpa2: item.nilaiIpa2,
+        nilaiIpa3: item.nilaiIpa3,
+        nilaiIpa4: item.nilaiIpa4,
+        // Data Orang Tua - Ayah
+        namaAyah: item.namaAyah,
+        pekerjaanAyah: item.pekerjaanAyah,
+        instansiAyah: item.instansiAyah,
+        hpAyah: item.hpAyah,
+        
+        // Data Orang Tua - Ibu
+        namaIbu: item.namaIbu,
+        pekerjaanIbu: item.pekerjaanIbu,
+        instansiIbu: item.instansiIbu,
+        hpIbu: item.hpIbu,
+
+        // Dokumen (ubah dari link menjadi status)
+        rekomendasi: item.rekomendasi ? '✓ Ada' : '✗ Tidak Ada',
+        raport2: item.raport2 ? '✓ Ada' : '✗ Tidak Ada',
+        raport3: item.raport3 ? '✓ Ada' : '✗ Tidak Ada',
+        raport4: item.raport4 ? '✓ Ada' : '✗ Tidak Ada',
+        photo: item.photo ? '✓ Ada' : '✗ Tidak Ada',
+
+        // Metadata
+        createdAt: new Date(item.createdAt).toLocaleString('id-ID'),
+        lastUpdated: item.lastUpdated ? new Date(item.lastUpdated).toLocaleString('id-ID') : '-'
       }));
 
-      // Update status pendaftar berdasarkan validasi dokumen
-      const newStatus = {
-        ...documentStatus[uid],
-        [document]: value
-      };
-      
-      const isAllValid = Object.values(newStatus).every(v => v === true);
-      const isAnyInvalid = Object.values(newStatus).some(v => v === false);
+      worksheet.addRows(data);
 
-      let pendaftarStatus = 'pending';
-      if (isAllValid) pendaftarStatus = 'diterima';
-      if (isAnyInvalid) pendaftarStatus = 'ditolak';
+      // Definisikan posisi kolom dokumen di luar loop
+      const docColumnStart = 44; // Posisi awal kolom dokumen
+      const docColumnEnd = 48;   // Posisi akhir kolom dokumen
 
-      await update(ref(db, `ppdb/${uid}`), {
-        status: pendaftarStatus,
-        lastUpdated: new Date().toISOString()
+      // Style untuk seluruh cell
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' as const },
+            left: { style: 'thin' as const },
+            bottom: { style: 'thin' as const },
+            right: { style: 'thin' as const }
+          };
+          cell.alignment = { vertical: 'middle' as const };
+          
+          // Styling untuk status
+          if (colNumber === 5 && rowNumber > 1) {
+            const status = cell.value as string;
+            if (status === 'DITERIMA') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'C6E0B4' } 
+              };
+            } else if (status === 'DITOLAK') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'FFB6C1' } 
+              };
+            } else if (status === 'PENDING') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'FFE699' } 
+              };
+            }
+          }
+
+          // Styling untuk kolom dokumen
+          if (rowNumber > 1 && colNumber >= docColumnStart && colNumber <= docColumnEnd) {
+            const value = cell.value as string;
+            if (value.includes('✓')) {
+              cell.font = { color: { argb: '008000' } }; // Hijau untuk Ada
+            } else if (value.includes('✗')) {
+              cell.font = { color: { argb: 'FF0000' } }; // Merah untuk Tidak Ada
+            }
+            cell.alignment = { 
+              vertical: 'middle' as const,
+              horizontal: 'center' as const
+            };
+          }
+        });
       });
 
-      showAlert('success', 'Status dokumen berhasil diperbarui');
+      // Tambahkan keterangan di bawah tabel
+      const lastRow = worksheet.lastRow!.number + 2;
+      worksheet.addRow([]);
+      worksheet.addRow(['Keterangan:']);
+      worksheet.addRow(['1. Status dokumen:']);
+      worksheet.addRow(['   - ✓ Ada: Dokumen telah diupload']);
+      worksheet.addRow(['   - ✗ Tidak Ada: Dokumen belum diupload']);
+      worksheet.addRow(['2. Status pendaftaran ditandai dengan warna:']);
+      worksheet.addRow(['   - Hijau: Diterima']);
+      worksheet.addRow(['   - Kuning: Pending']);
+      worksheet.addRow(['   - Merah: Ditolak']);
+
+      // Style keterangan
+      for (let i = lastRow; i < lastRow + 7; i++) {
+        const row = worksheet.getRow(i);
+        row.font = { size: 10 };
+        if (i === lastRow + 1) { // Judul keterangan
+          row.font = { bold: true, size: 10 };
+        }
+      }
+
+      // Generate Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Data_Pendaftar_PPDB_${new Date().toLocaleDateString('id-ID')}.xlsx`);
+
+      showAlert('success', 'Data berhasil diexport ke Excel');
     } catch (error) {
-      showAlert('error', 'Gagal memperbarui status dokumen');
+      console.error('Error exporting to Excel:', error);
+      showAlert('error', 'Gagal mengexport data ke Excel');
     }
-  };
-
-  const renderDetailModal = () => {
-    if (!selectedData) return null;
-
-    const DetailCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800">{title}</h3>
-        </div>
-        <div className="p-5">{children}</div>
-      </div>
-    );
-
-    const DetailItem = ({ label, value }: { label: string; value: string | number }) => (
-      <div>
-        <dt className="text-sm font-medium text-gray-500">{label}</dt>
-        <dd className="mt-1 text-sm text-gray-900">{value || '-'}</dd>
-      </div>
-    );
-
-    // Helper untuk menghitung rata-rata nilai per semester
-    const calculateAverage = (semester: string) => {
-      const values = [
-        selectedData[`nilaiAgama${semester}` as keyof typeof selectedData],
-        selectedData[`nilaiBindo${semester}` as keyof typeof selectedData],
-        selectedData[`nilaiBing${semester}` as keyof typeof selectedData], 
-        selectedData[`nilaiMtk${semester}` as keyof typeof selectedData],
-        selectedData[`nilaiIpa${semester}` as keyof typeof selectedData]
-      ].map(v => parseFloat(v as string));
-      
-      const validValues = values.filter(v => !isNaN(v));
-      return validValues.length ? 
-        (validValues.reduce((a, b) => a + b, 0) / validValues.length).toFixed(2) : 
-        '-';
-    };
-
-    // Komponen untuk menampilkan nilai per semester
-    const SemesterGrades = ({ semester }: { semester: string }) => (
-      <div className="bg-white p-4 rounded-lg border border-gray-100">
-        <div className="flex justify-between items-center mb-3">
-          <h4 className="font-medium text-gray-800">Semester {semester}</h4>
-          <span className="text-sm font-medium px-3 py-1 bg-blue-50 text-blue-600 rounded-full">
-            Rata-rata: {calculateAverage(semester)}
-          </span>
-        </div>
-        <div className="grid grid-cols-5 gap-3">
-          {[
-            { label: 'Agama', key: `nilaiAgama${semester}` },
-            { label: 'B.Indo', key: `nilaiBindo${semester}` },
-            { label: 'B.Ing', key: `nilaiBing${semester}` },
-            { label: 'MTK', key: `nilaiMtk${semester}` },
-            { label: 'IPA', key: `nilaiIpa${semester}` }
-          ].map(({ label, key }) => (
-            <div key={key} className="text-center p-2 bg-gray-50 rounded">
-              <div className="text-xs text-gray-500 mb-1">{label}</div>
-              <div className="font-medium text-gray-800">
-                {selectedData[key as keyof typeof selectedData] || '-'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-
-    // Update bagian nilai akademik
-    const academicSection = (
-      <DetailCard title="Nilai Akademik">
-        <div className="space-y-4">
-          <SemesterGrades semester="4" />
-          <SemesterGrades semester="3" />
-          <SemesterGrades semester="2" />
-          
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-blue-700">Rata-rata Keseluruhan</span>
-              <span className="text-lg font-semibold text-blue-700">
-                {((
-                  parseFloat(calculateAverage('2')) + 
-                  parseFloat(calculateAverage('3')) + 
-                  parseFloat(calculateAverage('4'))
-                ) / 3).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </DetailCard>
-    );
-
-    const DocumentToggle = ({ 
-      document, 
-      url, 
-      label 
-    }: { 
-      document: keyof DocumentStatus; 
-      url?: string; 
-      label: string;
-    }) => (
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-        <div className="flex-1">
-          <p className="font-medium text-gray-700">{label}</p>
-          {url && (
-            <a 
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              Lihat Dokumen
-            </a>
-          )}
-        </div>
-        <Switch
-          checked={documentStatus[selectedData.uid]?.[document] || false}
-          onChange={(checked) => handleDocumentStatusChange(selectedData.uid, document, checked)}
-          className={`${
-            documentStatus[selectedData.uid]?.[document] ? 'bg-green-600' : 'bg-gray-300'
-          } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none`}
-        >
-          <span className="sr-only">Validasi dokumen</span>
-          <span
-            className={`${
-              documentStatus[selectedData.uid]?.[document] ? 'translate-x-6' : 'translate-x-1'
-            } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
-          />
-        </Switch>
-      </div>
-    );
-
-    // Update bagian dokumen di modal detail
-    const documentSection = (
-      <DetailCard title="Dokumen">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-4">
-            {/* Kolom 1 */}
-            {selectedData.rekomendasi && (
-              <DocumentToggle
-                document="rekomendasi"
-                url={selectedData.rekomendasi}
-                label="Surat Rekomendasi"
-              />
-            )}
-            {selectedData.raport2 && (
-              <DocumentToggle
-                document="raport2"
-                url={selectedData.raport2}
-                label="Raport Semester 2"
-              />
-            )}
-            {selectedData.raport3 && (
-              <DocumentToggle
-                document="raport3"
-                url={selectedData.raport3}
-                label="Raport Semester 3"
-              />
-            )}
-          </div>
-          
-          <div className="space-y-4">
-            {/* Kolom 2 */}
-            {selectedData.raport4 && (
-              <DocumentToggle
-                document="raport4"
-                url={selectedData.raport4}
-                label="Raport Semester 4"
-              />
-            )}
-            {selectedData.photo && (
-              <DocumentToggle
-                document="photo"
-                url={selectedData.photo}
-                label="Pas Foto"
-              />
-            )}
-          </div>
-        </div>
-      </DetailCard>
-    );
-
-    return (
-      <Modal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        size="full"
-      >
-        <div className="max-h-[85vh] overflow-y-auto">
-          {/* Header */}
-          <div className="px-6 py-4 bg-gray-50 border-b sticky top-0 z-10">
-            <div className="flex justify-between">
-              {/* Kolom Kiri - Info Utama */}
-              <div className="flex-1">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-xl font-bold text-gray-900">
-                        {selectedData.namaSiswa}
-                      </h2>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Jalur {selectedData.jalur}
-                      </span>
-                    </div>
-                    
-                    {/* Grid Info */}
-                    <div className="mt-4 grid grid-cols-3 gap-4">
-                      {/* Kolom 1 */}
-                      <div className="space-y-3">
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">NIK:</span>
-                            <div className="font-medium text-gray-900">{selectedData.nik}</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">NISN:</span>
-                            <div className="font-medium text-gray-900">{selectedData.nisn}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Kolom 2 */}
-                      <div className="space-y-3">
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">TTL:</span>
-                            <div className="font-medium text-gray-900">
-                              {selectedData.tempatLahir}, {new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID')}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">Asal Sekolah:</span>
-                            <div className="font-medium text-gray-900">
-                              {selectedData.asalSekolah}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Kolom 3 */}
-                      <div className="space-y-3">
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">Terdaftar:</span>
-                            <div className="font-medium text-gray-900">
-                              {new Date(selectedData.submittedAt).toLocaleString('id-ID')}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center text-gray-600 text-sm">
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <div>
-                            <span className="text-gray-500">Status:</span>
-                            <div className="font-medium text-green-600">
-                              {selectedData.status}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Rata-rata Nilai dan Reset Password */}
-                    <div className="mt-4 flex items-center gap-4">
-                      <div className="px-3 py-1.5 bg-blue-50 rounded-lg">
-                        <span className="text-xs text-blue-600 font-medium">Rata-rata Keseluruhan:</span>
-                        <span className="ml-2 text-sm text-blue-700 font-bold">
-                          {((
-                            parseFloat(calculateAverage('2')) + 
-                            parseFloat(calculateAverage('3')) + 
-                            parseFloat(calculateAverage('4'))
-                          ) / 3).toFixed(2)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (selectedData.email) {
-                            if (confirm('Kirim email reset password?')) {
-                              handleResetPassword(selectedData.email);
-                            }
-                          } else {
-                            alert('Email tidak tersedia');
-                          }
-                        }}
-                        className="px-3 py-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg 
-                                  transition-colors flex items-center gap-2 text-xs font-medium"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        Reset Password
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Kolom Kanan - Foto */}
-              <div className="ml-6">
-                <div className="relative">
-                  {selectedData.photo ? (
-                    <img 
-                      src={selectedData.photo} 
-                      alt="Pas Foto" 
-                      className="w-32 h-40 object-cover rounded-lg shadow-sm border-2 border-white"
-                    />
-                  ) : (
-                    <div className="w-32 h-40 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="absolute -bottom-2 left-0 right-0 text-center">
-                    <span className="px-2 py-1 bg-white text-xs font-medium text-gray-600 rounded-full shadow-sm border">
-                      ID: {selectedData.nisn}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            <div className="grid grid-cols-3 gap-6">
-              {/* Kolom 1: Informasi Utama */}
-              <div className="space-y-6">
-                <DetailCard title="Data Pribadi">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="NIK" value={selectedData.nik} />
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="NISN" value={selectedData.nisn} />
-                      </div>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem 
-                        label="Jenis Kelamin" 
-                        value={selectedData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} 
-                      />
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem 
-                        label="Tempat, Tanggal Lahir" 
-                        value={`${selectedData.tempatLahir}, ${new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID')}`} 
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="Anak ke-" value={selectedData.anakKe} />
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="Jumlah Saudara" value={selectedData.jumlahSaudara} />
-                      </div>
-                    </div>
-                  </div>
-                </DetailCard>
-
-                <DetailCard title="Asal Sekolah">
-                  <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem label="Nama Sekolah" value={selectedData.asalSekolah} />
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem label="Kabupaten" value={selectedData.kabupatenAsalSekolah} />
-                    </div>
-                  </div>
-                </DetailCard>
-
-                <DetailCard title="Status Pendaftaran">
-                  <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem 
-                        label="Tanggal Daftar" 
-                        value={new Date(selectedData.submittedAt).toLocaleString('id-ID')} 
-                      />
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem 
-                        label="Terakhir Diperbarui" 
-                        value={new Date(selectedData.lastUpdated).toLocaleString('id-ID')} 
-                      />
-                    </div>
-                  </div>
-                </DetailCard>
-              </div>
-
-              {/* Kolom 2: Nilai & Dokumen */}
-              <div className="space-y-6">
-                {academicSection}
-
-                {documentSection}
-              </div>
-
-              {/* Kolom 3: Alamat & Orang Tua */}
-              <div className="space-y-6">
-                <DetailCard title="Alamat">
-                  <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <DetailItem label="Alamat Lengkap" value={selectedData.alamat} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="Kecamatan" value={selectedData.kecamatan} />
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <DetailItem label="Kabupaten" value={selectedData.kabupaten} />
-                      </div>
-                    </div>
-                  </div>
-                </DetailCard>
-
-                <DetailCard title="Data Orang Tua">
-                  <div className="space-y-6">
-                    {/* Data Ayah */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-800">Data Ayah</h4>
-                      <div className="grid gap-4">
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <DetailItem label="Nama Lengkap" value={selectedData.namaAyah} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <DetailItem label="Pekerjaan" value={selectedData.pekerjaanAyah} />
-                          </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <DetailItem label="Instansi" value={selectedData.instansiAyah} />
-                          </div>
-                        </div>
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <DetailItem label="No. HP" value={selectedData.hpAyah} />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Data Ibu */}
-                    <div className="space-y-4">
-                      <h4 className="font-medium text-gray-800">Data Ibu</h4>
-                      <div className="grid gap-4">
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <DetailItem label="Nama Lengkap" value={selectedData.namaIbu} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <DetailItem label="Pekerjaan" value={selectedData.pekerjaanIbu} />
-                          </div>
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <DetailItem label="Instansi" value={selectedData.instansiIbu} />
-                          </div>
-                        </div>
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <DetailItem label="No. HP" value={selectedData.hpIbu} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </DetailCard>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-end sticky bottom-0">
-            <Button
-              onClick={() => setShowDetailModal(false)}
-              className="bg-white text-gray-700 border shadow-sm hover:bg-gray-50"
-            >
-              Tutup
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
   };
 
   if (loading) {
@@ -815,25 +470,501 @@ const DataPendaftar: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Data Pendaftar</h1>
-          <div className="flex items-center space-x-4">
-            {/* Tambahkan fitur filter/search di sini */}
+        <h1 className="text-2xl font-bold text-gray-900">Data Pendaftar PPDB</h1>
+        <p className="text-gray-600">Kelola data pendaftar PPDB</p>
+      </div>
+
+      {/* Filter dan Search */}
+      <Card className="mb-6">
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari nama, NISN, atau sekolah..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Filter Status */}
+            <div className="relative">
+              <FunnelIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              >
+                <option value="all">Semua Status</option>
+                <option value="pending">Pending</option>
+                <option value="diterima">Diterima</option>
+                <option value="ditolak">Ditolak</option>
+              </select>
+            </div>
+
+            {/* Filter Jalur */}
+            <div className="relative">
+              <FunnelIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <select
+                value={jalurFilter}
+                onChange={(e) => setJalurFilter(e.target.value as any)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              >
+                <option value="all">Semua Jalur</option>
+                <option value="prestasi">Jalur Prestasi</option>
+                <option value="reguler">Jalur Reguler</option>
+                <option value="undangan">Jalur Undangan</option>
+              </select>
+            </div>
+
+            {/* Sort */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+              >
+                <option value="newest">Terbaru</option>
+                <option value="oldest">Terlama</option>
+              </select>
+            </div>
+
+            {/* Export to Excel */}
+            <div className="flex justify-between items-center mb-4">
+              <Button
+                onClick={exportToExcel}
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+              >
+                <DocumentArrowDownIcon className="w-5 h-5" />
+                Export to Excel
+              </Button>
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="mt-4 flex flex-wrap gap-4">
+            <div className="text-sm text-gray-600">
+              Total: <span className="font-semibold">{getFilteredData().length}</span> pendaftar
+            </div>
+            <div className="text-sm text-yellow-600">
+              Pending: <span className="font-semibold">
+                {getFilteredData().filter(item => item.status === 'pending').length}
+              </span>
+            </div>
+            <div className="text-sm text-green-600">
+              Diterima: <span className="font-semibold">
+                {getFilteredData().filter(item => item.status === 'diterima').length}
+              </span>
+            </div>
+            <div className="text-sm text-red-600">
+              Ditolak: <span className="font-semibold">
+                {getFilteredData().filter(item => item.status === 'ditolak').length}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <Tabs 
-          tabs={tabs} 
-          activeTab={activeTab}
-          onChange={setActiveTab}
-        />
-      </div>
+      {/* Table */}
+      <Card>
+        {getFilteredData().length > 0 ? (
+          <Table headers={headers} data={getFilteredData().map((item, index) => [
+            <span className="text-gray-600">{index + 1}</span>,
+            item.namaSiswa,
+            item.nisn,
+            getJalurLabel(item.jalur),
+            item.asalSekolah,
+            <Badge key={item.uid} status={item.status} />,
+            new Date(item.createdAt).toLocaleDateString('id-ID'),
+            <div key={item.uid} className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setSelectedData(item);
+                  setShowDetailModal(true);
+                }}
+                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+                title="Lihat Detail"
+              >
+                <EyeIcon className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedData(item);
+                  setShowStatusModal(true);
+                }}
+                className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
+                title="Ubah Status"
+              >
+                <CheckCircleIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          ])} />
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            Tidak ada data yang sesuai dengan filter
+          </div>
+        )}
+      </Card>
 
-      {renderDetailModal()}
+      {/* Modal Detail */}
+      <Modal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        size="xl"
+        className="z-[60]"
+      >
+        <div className="p-6 w-full min-h-[600px]">
+          {/* Header Modal */}
+          <div className="flex justify-between items-start mb-6 pb-4 border-b">
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-gray-900">
+                  {selectedData?.namaSiswa}
+                </h3>
+                <Badge status={selectedData?.status || 'pending'} />
+              </div>
+              <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">NISN:</span>
+                  <span>{selectedData?.nisn}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Jalur:</span>
+                  <span>{getJalurLabel(selectedData?.jalur || 'reguler')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Terdaftar:</span>
+                  <span>{new Date(selectedData?.createdAt || '').toLocaleDateString('id-ID')}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowDetailModal(false);
+                  setShowStatusModal(true);
+                }}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                Ubah Status
+              </Button>
+              <Button
+                onClick={() => setShowDetailModal(false)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+
+          {/* Content */}
+          {selectedData && (
+            <div className="h-[calc(100vh-280px)] overflow-y-auto custom-scrollbar">
+              <Tabs
+                tabs={[
+                  {
+                    label: "Biodata",
+                    content: (
+                      <div className="p-4 space-y-6 min-h-[400px]">
+                        {/* Foto dan Info Utama */}
+                        <div className="flex gap-6">
+                          {/* Pas Foto */}
+                          <div className="flex-shrink-0">
+                            {selectedData.photo ? (
+                              <div className="relative group">
+                                <div 
+                                  className="w-32 h-40 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
+                                  onClick={() => setShowPhotoModal(true)}
+                                >
+                                  <img 
+                                    src={selectedData.photo}
+                                    alt="Pas Foto"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => setShowPhotoModal(true)}
+                                      className="bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full"
+                                      title="Lihat Foto"
+                                    >
+                                      <EyeIcon className="w-5 h-5" />
+                                    </Button>
+                                    <Button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownloadFile(selectedData.photo!, 'photo.jpg');
+                                      }}
+                                      className="bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full"
+                                      title="Download Foto"
+                                    >
+                                      <DocumentArrowDownIcon className="w-5 h-5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-32 h-40 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                                <p className="text-sm text-gray-500 text-center px-2">
+                                  Foto belum diupload
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info Utama */}
+                          <div className="flex-1">
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                              <InfoItem label="NIK" value={selectedData.nik} />
+                              <InfoItem label="Jenis Kelamin" value={selectedData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
+                              <InfoItem 
+                                label="Tempat, Tanggal Lahir" 
+                                value={`${selectedData.tempatLahir}, ${new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                })}`}
+                              />
+                              <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData.anakKe} dari ${selectedData.jumlahSaudara}`} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Alamat */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-gray-900 mb-3">Alamat</h4>
+                          <div className="space-y-2">
+                            <InfoItem label="Alamat Lengkap" value={selectedData.alamat} />
+                            <div className="grid grid-cols-2 gap-4">
+                              <InfoItem label="Kecamatan" value={selectedData.kecamatan} />
+                              <InfoItem label="Kabupaten" value={selectedData.kabupaten} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Asal Sekolah */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-gray-900 mb-3">Asal Sekolah</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <InfoItem label="Nama Sekolah" value={selectedData.asalSekolah} />
+                            <InfoItem label="Kabupaten" value={selectedData.kabupatenAsalSekolah} />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    label: "Nilai Akademik",
+                    content: (
+                      <div className="p-4 min-h-[400px]">
+                        {/* Semester */}
+                        <div className="grid grid-cols-3 gap-4">
+                          {['2', '3', '4'].map((semester) => (
+                            <div key={semester} className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="font-medium text-gray-900 mb-3">Semester {semester}</h4>
+                              <div className="space-y-2">
+                                {[
+                                  { label: 'Pendidikan Agama', key: `nilaiAgama${semester}` },
+                                  { label: 'Bahasa Indonesia', key: `nilaiBindo${semester}` },
+                                  { label: 'Bahasa Inggris', key: `nilaiBing${semester}` },
+                                  { label: 'Matematika', key: `nilaiMtk${semester}` },
+                                  { label: 'IPA', key: `nilaiIpa${semester}` }
+                                ].map(({ label, key }) => (
+                                  <div key={key} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
+                                    <span className="text-sm text-gray-600">{label}</span>
+                                    <span className="font-medium text-gray-900">{selectedData[key as keyof PPDBData]}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Dokumen */}
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-3 pb-2 border-b">Dokumen Akademik</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            {[
+                              { key: 'raport2', label: 'Raport Semester 2' },
+                              { key: 'raport3', label: 'Raport Semester 3' },
+                              { key: 'raport4', label: 'Raport Semester 4' },
+                              { key: 'rekomendasi', label: 'Surat Rekomendasi' }
+                            ].map(({ key, label }) => (
+                              selectedData[key as keyof PPDBData] && (
+                                <Button
+                                  key={key}
+                                  onClick={() => handleDownloadFile(selectedData[key as keyof PPDBData] as string, `${key}.pdf`)}
+                                  className="bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center gap-3 p-4 rounded-lg"
+                                >
+                                  <DocumentArrowDownIcon className="w-5 h-5 text-blue-500" />
+                                  <span>{label}</span>
+                                </Button>
+                              )
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    label: "Data Orang Tua",
+                    content: (
+                      <div className="p-4 min-h-[400px]">
+                        <div className="grid grid-cols-2 gap-6">
+                          {[
+                            { title: 'Data Ayah', prefix: 'Ayah' },
+                            { title: 'Data Ibu', prefix: 'Ibu' }
+                          ].map(({ title, prefix }) => (
+                            <div key={title} className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="font-medium text-gray-900 mb-3">{title}</h4>
+                              <div className="space-y-3">
+                                <InfoItem 
+                                  label="Nama Lengkap" 
+                                  value={selectedData[`nama${prefix}` as keyof PPDBData] as string} 
+                                />
+                                <InfoItem 
+                                  label="Pekerjaan" 
+                                  value={selectedData[`pekerjaan${prefix}` as keyof PPDBData] as string} 
+                                />
+                                <InfoItem 
+                                  label="Instansi" 
+                                  value={selectedData[`instansi${prefix}` as keyof PPDBData] as string} 
+                                />
+                                <InfoItem 
+                                  label="No. HP/WA" 
+                                  value={selectedData[`hp${prefix}` as keyof PPDBData] as string} 
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+              />
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Modal Update Status */}
+      <Modal
+        isOpen={showStatusModal}
+        onClose={() => setShowStatusModal(false)}
+        className="z-[60]"
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center">
+              <CheckCircleIcon className="w-8 h-8 text-yellow-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Ubah Status Pendaftar
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Pendaftar: <span className="font-medium">{selectedData?.namaSiswa}</span>
+              <br />
+              NISN: <span className="font-medium">{selectedData?.nisn}</span>
+            </p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div 
+              onClick={() => !modalLoading && handleUpdateStatus('diterima')}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                modalLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-50'
+              } ${selectedData?.status === 'diterima' ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}
+            >
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded-full mr-3 ${
+                  selectedData?.status === 'diterima' ? 'bg-green-500' : 'border-2 border-gray-400'
+                }`} />
+                <div>
+                  <p className="font-medium text-gray-900">Terima</p>
+                  <p className="text-sm text-gray-500">Pendaftar dinyatakan diterima</p>
+                </div>
+              </div>
+            </div>
+
+            <div 
+              onClick={() => !modalLoading && handleUpdateStatus('ditolak')}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                modalLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-50'
+              } ${selectedData?.status === 'ditolak' ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}
+            >
+              <div className="flex items-center">
+                <div className={`w-4 h-4 rounded-full mr-3 ${
+                  selectedData?.status === 'ditolak' ? 'bg-red-500' : 'border-2 border-gray-400'
+                }`} />
+                <div>
+                  <p className="font-medium text-gray-900">Tolak</p>
+                  <p className="text-sm text-gray-500">Pendaftar dinyatakan tidak diterima</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setShowStatusModal(false)}
+              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              disabled={modalLoading}
+            >
+              Batal
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal untuk menampilkan foto besar */}
+      <Modal
+        isOpen={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
+        size="sm"
+        className="z-[70]"
+      >
+        <div className="relative bg-black">
+          {/* Tombol close di pojok kanan atas */}
+          <button
+            onClick={() => setShowPhotoModal(false)}
+            className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+          
+          {/* Foto */}
+          <div className="flex items-center justify-center">
+            <img
+              src={selectedData?.photo}
+              alt="Pas Foto"
+              className="w-full h-auto"
+            />
+          </div>
+          
+          {/* Footer dengan nama siswa */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+            <p className="text-white text-center font-medium">
+              Pas Foto: {selectedData?.namaSiswa}
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-export default DataPendaftar; 
+const InfoItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div>
+    <p className="text-sm text-gray-500 mb-1">{label}</p>
+    <p className="font-medium text-gray-900">{value}</p>
+  </div>
+);
+
+export default DataPendaftar
