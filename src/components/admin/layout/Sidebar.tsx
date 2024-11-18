@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   HomeIcon,
   UserGroupIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar: React.FC = () => {
@@ -24,6 +25,11 @@ const Sidebar: React.FC = () => {
       name: 'Manajemen Admin',
       icon: Cog6ToothIcon,
       path: '/admin/users'
+    },
+    {
+      name: 'Pengaturan PPDB',
+      icon: AdjustmentsHorizontalIcon,
+      path: '/admin/settings'
     }
   ];
 

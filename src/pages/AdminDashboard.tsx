@@ -7,6 +7,7 @@ import Footer from '../components/admin/layout/Footer';
 import DataPendaftar from '../components/admin/DataPendaftar';
 import DashboardPage from '../components/admin/DashboardPage';
 import UserManagement from '../components/admin/UserManagement';
+import PPDBSettings from '../components/admin/PPDBSettings';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ const AdminDashboard: React.FC = () => {
             <Route index element={<DashboardPage />} />
             <Route path="pendaftar" element={<DataPendaftar />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="settings" element={<PPDBSettings />} />
           </Routes>
         </main>
 

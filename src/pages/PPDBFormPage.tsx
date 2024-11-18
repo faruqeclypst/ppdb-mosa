@@ -20,6 +20,22 @@ import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { signOut } from 'firebase/auth';
 
 // Types
+export type JalurPeriod = {
+  start: string;    // Format: YYYY-MM-DD
+  end: string;      // Format: YYYY-MM-DD
+  isActive: boolean;
+};
+
+export type PPDBSettings = {
+  academicYear: string;
+  jalurPrestasi: JalurPeriod;
+  jalurReguler: JalurPeriod;
+  jalurUndangan: JalurPeriod;
+  announcementDate: string;   // Format: YYYY-MM-DD
+  isActive: boolean;
+};
+
+// Tambahkan di bagian atas file, setelah imports
 type FormData = {
   // Informasi Siswa
   jalur: string;
@@ -70,15 +86,15 @@ type FormData = {
   hpIbu: string;
 
   // Files
-  rekomendasi?: File;
-  raport2?: File;
-  raport3?: File;
-  raport4?: File;
-  photo?: File;
+  rekomendasi?: File | string;
+  raport2?: File | string;
+  raport3?: File | string;
+  raport4?: File | string;
+  photo?: File | string;
 };
 
+// Tambahkan INITIAL_FORM_DATA
 const INITIAL_FORM_DATA: FormData = {
-  // Informasi Siswa
   jalur: '',
   namaSiswa: '',
   nik: '',
@@ -93,7 +109,7 @@ const INITIAL_FORM_DATA: FormData = {
   kabupaten: '',
   asalSekolah: '',
   kabupatenAsalSekolah: '',
-
+  
   // Akademik
   nilaiAgama2: '',
   nilaiAgama3: '',
@@ -115,7 +131,7 @@ const INITIAL_FORM_DATA: FormData = {
   nilaiIpa3: '',
   nilaiIpa4: '',
   nilaiIpa5: '',
-
+  
   // Informasi Orang Tua
   namaAyah: '',
   pekerjaanAyah: '',
@@ -127,17 +143,32 @@ const INITIAL_FORM_DATA: FormData = {
   hpIbu: ''
 };
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <div className="mb-6">
-    <h3 className="text-lg font-semibold text-gray-900">{children}</h3>
-    <div className="mt-1 h-0.5 bg-gray-100"></div>
-  </div>
+// Tambahkan komponen SectionTitle
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3 className="text-lg font-semibold text-gray-900 mb-4">{children}</h3>
 );
 
+// Fungsi helper di luar komponen
+const getAcademicYear = () => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-11
+
+  // Jika sudah lewat bulan Juli (index 6), gunakan tahun berikutnya
+  const startYear = currentMonth >= 6 ? currentYear + 1 : currentYear;
+  const endYear = startYear + 1;
+
+  return `${startYear}/${endYear}`;
+};
+
 const PPDBFormPage: React.FC = () => {
+  // Pindahkan hooks ke dalam komponen
+  const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<FormData>({
+    ...INITIAL_FORM_DATA
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -147,6 +178,8 @@ const PPDBFormPage: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isFormChanged, setIsFormChanged] = useState(false);
+  const [showChangeJalurModal, setShowChangeJalurModal] = useState(false);
+  const [newJalurValue, setNewJalurValue] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -162,7 +195,10 @@ const PPDBFormPage: React.FC = () => {
         const snapshot = await get(ppdbRef);
         if (snapshot.exists()) {
           const data = snapshot.val();
-          setFormData(data);
+          setFormData({
+            ...INITIAL_FORM_DATA,
+            ...data
+          });
           setFormStatus(data.status || 'draft');
           setLastUpdated(data.lastUpdated || '');
         }
@@ -182,43 +218,38 @@ const PPDBFormPage: React.FC = () => {
     
     // Jika yang berubah adalah jalur pendaftaran
     if (name === 'jalur') {
-      // Reset nilai akademik dan dokumen
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        // Reset nilai akademik
-        nilaiAgama2: '',
-        nilaiAgama3: '',
-        nilaiAgama4: '',
-        nilaiAgama5: '',
-        nilaiBindo2: '',
-        nilaiBindo3: '',
-        nilaiBindo4: '',
-        nilaiBindo5: '',
-        nilaiBing2: '',
-        nilaiBing3: '',
-        nilaiBing4: '',
-        nilaiBing5: '',
-        nilaiMtk2: '',
-        nilaiMtk3: '',
-        nilaiMtk4: '',
-        nilaiMtk5: '',
-        nilaiIpa2: '',
-        nilaiIpa3: '',
-        nilaiIpa4: '',
-        nilaiIpa5: '',
-        // Reset dokumen
-        rekomendasi: undefined,
-        raport2: undefined,
-        raport3: undefined,
-        raport4: undefined,
-        photo: undefined
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      // Cek apakah ada nilai akademik atau dokumen yang sudah terisi
+      const hasAcademicData = Object.entries(formData)
+        .some(([key, value]) => {
+          // Cek nilai akademik
+          if (key.startsWith('nilai') && value !== '') {
+            return true;
+          }
+          // Cek dokumen raport
+          if (key.startsWith('raport') && value) {
+            return true;
+          }
+          return false;
+        });
+
+      if (hasAcademicData) {
+        // Jika ada data, tampilkan konfirmasi
+        setNewJalurValue(value);
+        setShowChangeJalurModal(true);
+        return; // Jangan update form dulu
+      } else {
+        // Jika belum ada data, langsung update
+        setFormData(prev => ({
+          ...prev,
+          jalur: value
+        }));
+        setIsFormChanged(true);
+      }
+      return;
     }
 
-    // Set isFormChanged ke true untuk mengaktifkan tombol kirim
+    // Untuk input lainnya
+    setFormData(prev => ({ ...prev, [name]: value }));
     setIsFormChanged(true);
   };
 
@@ -401,6 +432,15 @@ const PPDBFormPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
 
+    // Validasi form dokumen jika bukan draft
+    if (!isDraft) {
+      const dokumenForm = document.getElementById('dokumenForm') as HTMLFormElement;
+      if (dokumenForm && !dokumenForm.checkValidity()) {
+        dokumenForm.reportValidity();
+        return;
+      }
+    }
+
     // Jika ini adalah draft, langsung proses
     if (isDraft) {
       await submitForm(isDraft);
@@ -474,204 +514,266 @@ const PPDBFormPage: React.FC = () => {
     }
   };
 
-  const renderInformasiSiswa = () => (
-    <div className="space-y-10">
-      <div>
-        <SectionTitle>Data Pribadi</SectionTitle>
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Select
-              label="Jalur Pendaftaran"
-              name="jalur"
-              value={formData.jalur}
-              onChange={(e) => {
-                handleInputChange(e);
-                // Reset nilai akademik saat ganti jalur
-                setFormData(prev => ({
-                  ...prev,
-                  nilaiAgama2: '',
-                  nilaiAgama3: '',
-                  nilaiAgama4: '',
-                  nilaiAgama5: '',
-                  nilaiBindo2: '',
-                  nilaiBindo3: '',
-                  nilaiBindo4: '',
-                  nilaiBindo5: '',
-                  nilaiBing2: '',
-                  nilaiBing3: '',
-                  nilaiBing4: '',
-                  nilaiBing5: '',
-                  nilaiMtk2: '',
-                  nilaiMtk3: '',
-                  nilaiMtk4: '',
-                  nilaiMtk5: '',
-                  nilaiIpa2: '',
-                  nilaiIpa3: '',
-                  nilaiIpa4: '',
-                  nilaiIpa5: '',
-                }));
-              }}
-              options={[
-                { value: 'prestasi', label: 'Jalur Prestasi' },
-                { value: 'reguler', label: 'Jalur Reguler' },
-                { value: 'undangan', label: 'Jalur Undangan' }
-              ]}
-              required
-            />
+  const handleJalurChange = () => {
+    // Tentukan semester yang perlu direset berdasarkan jalur baru
+    const oldSemesters = formData.jalur === 'reguler' ? ['3', '4', '5'] : ['2', '3', '4'];
+    const newSemesters = newJalurValue === 'reguler' ? ['3', '4', '5'] : ['2', '3', '4'];
+    
+    // Buat object untuk reset nilai dan dokumen
+    const resetData: Partial<FormData> = {
+      jalur: newJalurValue,
+      // Reset semua nilai akademik
+      nilaiAgama2: '',
+      nilaiAgama3: '',
+      nilaiAgama4: '',
+      nilaiAgama5: '',
+      nilaiBindo2: '',
+      nilaiBindo3: '',
+      nilaiBindo4: '',
+      nilaiBindo5: '',
+      nilaiBing2: '',
+      nilaiBing3: '',
+      nilaiBing4: '',
+      nilaiBing5: '',
+      nilaiMtk2: '',
+      nilaiMtk3: '',
+      nilaiMtk4: '',
+      nilaiMtk5: '',
+      nilaiIpa2: '',
+      nilaiIpa3: '',
+      nilaiIpa4: '',
+      nilaiIpa5: '',
+    };
 
-            <Input
-              label="Nama Calon Siswa"
-              name="namaSiswa"
-              value={formData.namaSiswa}
-              onChange={handleInputChange}
-              required
-            />
+    // Reset hanya dokumen raport yang berbeda antara jalur lama dan baru
+    const differentSemesters = newSemesters.filter(sem => !oldSemesters.includes(sem));
+    differentSemesters.forEach(semester => {
+      resetData[`raport${semester}` as keyof FormData] = undefined;
+    });
 
-            <Input
-              label="NIK (isi '-' jika belum ada)"
-              name="nik"
-              value={formData.nik}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Jika input adalah tanda strip, terima
-                if (value === '-') {
-                  setFormData(prev => ({ ...prev, nik: value }));
-                  return;
-                }
-                // Jika input adalah angka dan panjangnya <= 16
-                if (/^\d*$/.test(value) && value.length <= 16) {
-                  setFormData(prev => ({ ...prev, nik: value }));
-                }
-              }}
-              onKeyPress={(e) => {
-                // Mencegah input karakter non-angka kecuali tanda strip
-                if (!/[\d-]/.test(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-              required
-            />
+    // Jangan reset surat rekomendasi
+    setFormData(prev => ({
+      ...prev,
+      ...resetData
+    }));
+
+    showAlert('info', `Jalur berhasil diubah ke ${newJalurValue}. Nilai akademik dan dokumen raport telah direset sesuai jalur yang dipilih.`);
+    setShowChangeJalurModal(false);
+    setIsFormChanged(true);
+  };
+
+  const renderInformasiSiswa = () => {
+    const getAvailableJalur = () => {
+      if (!ppdbSettings) {
+        return [
+          { value: '', label: '-- Pilih Jalur --' }
+        ];
+      }
+
+      const now = new Date();
+      const options = [];
+
+      // Helper untuk cek apakah jalur aktif
+      const isJalurActive = (jalur: JalurPeriod | undefined) => {
+        if (!jalur || !jalur.isActive) return false;
+        
+        try {
+          const start = new Date(jalur.start);
+          const end = new Date(jalur.end);
+          return now >= start && now <= end;
+        } catch (error) {
+          console.error('Error checking jalur period:', error);
+          return false;
+        }
+      };
+
+      // Cek setiap jalur dengan null check
+      if (ppdbSettings.jalurPrestasi && isJalurActive(ppdbSettings.jalurPrestasi)) {
+        options.push({ value: 'prestasi', label: 'Prestasi' });
+      }
+      if (ppdbSettings.jalurReguler && isJalurActive(ppdbSettings.jalurReguler)) {
+        options.push({ value: 'reguler', label: 'Reguler' });
+      }
+      if (ppdbSettings.jalurUndangan && isJalurActive(ppdbSettings.jalurUndangan)) {
+        options.push({ value: 'undangan', label: 'Undangan' });
+      }
+
+      return [
+        { value: '', label: '-- Pilih Jalur --' },
+        ...options
+      ];
+    };
+
+    return (
+      <div className="space-y-10">
+        <div>
+          <SectionTitle>Data Pribadi</SectionTitle>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Select
+                label="Pilih Jalur"
+                name="jalur"
+                value={formData.jalur}
+                onChange={handleInputChange}
+                options={getAvailableJalur()}
+                required
+              />
+
+              <Input
+                label="Nama Calon Siswa"
+                name="namaSiswa"
+                value={formData.namaSiswa}
+                onChange={handleInputChange}
+                required
+              />
+
+              <Input
+                label="NIK (isi '-' jika belum ada)"
+                name="nik"
+                value={formData.nik}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Jika input adalah tanda strip, terima
+                  if (value === '-') {
+                    setFormData(prev => ({ ...prev, nik: value }));
+                    return;
+                  }
+                  // Jika input adalah angka dan panjangnya <= 16
+                  if (/^\d*$/.test(value) && value.length <= 16) {
+                    setFormData(prev => ({ ...prev, nik: value }));
+                  }
+                }}
+                onKeyPress={(e) => {
+                  // Mencegah input karakter non-angka kecuali tanda strip
+                  if (!/[\d-]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Input
+                label="Tempat Lahir"
+                name="tempatLahir"
+                value={formData.tempatLahir}
+                onChange={handleInputChange}
+                required
+              />
+
+              <DatePicker
+                label="Tanggal Lahir"
+                value={formData.tanggalLahir}
+                onChange={(date) => {
+                  setFormData(prev => ({ ...prev, tanggalLahir: date }));
+                  setIsFormChanged(true); // Aktifkan tombol kirim saat tanggal berubah
+                }}
+                required
+              />
+
+              <Input
+                label="NISN (isi '-' jika belum ada)"
+                name="nisn"
+                value={formData.nisn}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Select
+                label="Jenis Kelamin"
+                name="jenisKelamin"
+                value={formData.jenisKelamin}
+                onChange={handleInputChange}
+                options={[
+                  { value: '', label: '-- Pilih Jenis Kelamin --' },
+                  { value: 'L', label: 'Laki-laki' },
+                  { value: 'P', label: 'Perempuan' }
+                ]}
+                required
+              />
+
+              <Input
+                label="Anak Ke"
+                name="anakKe"
+                type="number"
+                min="1"
+                value={formData.anakKe}
+                onChange={handleInputChange}
+                required
+              />
+
+              <Input
+                label="Jumlah Saudara"
+                name="jumlahSaudara"
+                type="number"
+                min="0"
+                value={formData.jumlahSaudara}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <SectionTitle>Alamat</SectionTitle>
+          <div className="space-y-6">
             <Input
-              label="Tempat Lahir"
-              name="tempatLahir"
-              value={formData.tempatLahir}
+              label="Alamat Lengkap"
+              name="alamat"
+              value={formData.alamat}
               onChange={handleInputChange}
               required
             />
 
-            <DatePicker
-              label="Tanggal Lahir"
-              value={formData.tanggalLahir}
-              onChange={(date) => {
-                setFormData(prev => ({ ...prev, tanggalLahir: date }));
-                setIsFormChanged(true); // Aktifkan tombol kirim saat tanggal berubah
-              }}
-              required
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Kecamatan"
+                name="kecamatan"
+                value={formData.kecamatan}
+                onChange={handleInputChange}
+                required
+              />
 
-            <Input
-              label="NISN (isi '-' jika belum ada)"
-              name="nisn"
-              value={formData.nisn}
-              onChange={handleInputChange}
-              required
-            />
+              <Input
+                label="Kabupaten"
+                name="kabupaten"
+                value={formData.kabupaten}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
           </div>
+        </div>
 
+        <div>
+          <SectionTitle>Asal Sekolah</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Select
-              label="Jenis Kelamin"
-              name="jenisKelamin"
-              value={formData.jenisKelamin}
-              onChange={handleInputChange}
-              options={[
-                { value: 'L', label: 'Laki-laki' },
-                { value: 'P', label: 'Perempuan' }
-              ]}
-              required
-            />
+            <div className="md:col-span-2">
+              <Input
+                label="Nama Sekolah"
+                name="asalSekolah"
+                value={formData.asalSekolah}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
 
             <Input
-              label="Anak Ke"
-              name="anakKe"
-              type="number"
-              min="1"
-              value={formData.anakKe}
-              onChange={handleInputChange}
-              required
-            />
-
-            <Input
-              label="Jumlah Saudara"
-              name="jumlahSaudara"
-              type="number"
-              min="0"
-              value={formData.jumlahSaudara}
+              label="Kabupaten Sekolah"
+              name="kabupatenAsalSekolah"
+              value={formData.kabupatenAsalSekolah}
               onChange={handleInputChange}
               required
             />
           </div>
         </div>
       </div>
-
-      <div>
-        <SectionTitle>Alamat</SectionTitle>
-        <div className="space-y-6">
-          <Input
-            label="Alamat Lengkap"
-            name="alamat"
-            value={formData.alamat}
-            onChange={handleInputChange}
-            required
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Kecamatan"
-              name="kecamatan"
-              value={formData.kecamatan}
-              onChange={handleInputChange}
-              required
-            />
-
-            <Input
-              label="Kabupaten"
-              name="kabupaten"
-              value={formData.kabupaten}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <SectionTitle>Asal Sekolah</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <Input
-              label="Nama Sekolah"
-              name="asalSekolah"
-              value={formData.asalSekolah}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <Input
-            label="Kabupaten Sekolah"
-            name="kabupatenAsalSekolah"
-            value={formData.kabupatenAsalSekolah}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderAkademik = () => {
     const semesters = formData.jalur === 'reguler' 
@@ -908,8 +1010,8 @@ const PPDBFormPage: React.FC = () => {
       ? ['3', '4', '5']  // Jalur Reguler
       : ['2', '3', '4']; // Jalur Prestasi & Undangan
 
-    // Debug: Log nilai field yang dicek
-    console.log('Checking fields:', {
+    // Cek setiap field dan tampilkan nilainya untuk debug
+    const fieldsToCheck = {
       jalur: formData.jalur,
       namaSiswa: formData.namaSiswa,
       nik: formData.nik,
@@ -924,29 +1026,22 @@ const PPDBFormPage: React.FC = () => {
       kabupaten: formData.kabupaten,
       asalSekolah: formData.asalSekolah,
       kabupatenAsalSekolah: formData.kabupatenAsalSekolah
-    });
+    };
 
     // Cek apakah informasi siswa sudah lengkap
-    const isStudentInfoComplete = 
-      formData.jalur !== '' &&
-      formData.namaSiswa.trim() !== '' &&
-      formData.nik.trim() !== '' &&
-      formData.nisn.trim() !== '' &&
-      formData.jenisKelamin !== '' &&
-      formData.tempatLahir.trim() !== '' &&
-      formData.tanggalLahir !== '' &&
-      formData.anakKe !== '' &&
-      formData.jumlahSaudara !== '' &&
-      formData.alamat.trim() !== '' &&
-      formData.kecamatan.trim() !== '' &&
-      formData.kabupaten.trim() !== '' &&
-      formData.asalSekolah.trim() !== '' &&
-      formData.kabupatenAsalSekolah.trim() !== '';
-
-    // Debug: Log hasil pengecekan
-    console.log('Is student info complete:', isStudentInfoComplete);
+    const isStudentInfoComplete = Object.values(fieldsToCheck).every(value => 
+      value !== undefined && 
+      value !== null && 
+      value !== '' || 
+      (typeof value === 'string' && value.trim() === '-')
+    );
 
     if (!isStudentInfoComplete) {
+      // Tampilkan field mana yang masih kosong
+      const emptyFields = Object.entries(fieldsToCheck)
+        .filter(([_, value]) => !value && value !== '-')
+        .map(([key]) => key);
+
       return (
         <div className="flex flex-col items-center justify-center p-8 bg-yellow-50 rounded-lg border border-yellow-200">
           <svg 
@@ -969,6 +1064,11 @@ const PPDBFormPage: React.FC = () => {
             Untuk mengunggah dokumen, Anda harus melengkapi semua informasi siswa di tab pertama.
             Silakan kembali ke tab "Informasi Siswa" dan lengkapi semua field yang diperlukan.
           </p>
+          {emptyFields.length > 0 && (
+            <p className="text-sm text-red-600 mt-2">
+              Field yang masih kosong: {emptyFields.join(', ')}
+            </p>
+          )}
           <Button
             onClick={() => setCurrentStep(0)}
             className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white"
@@ -990,8 +1090,9 @@ const PPDBFormPage: React.FC = () => {
               accept=".pdf"
               onChange={(file) => handleFileChange('rekomendasi', file)}
               maxSize={4}
-              required
+              required={true}
               value={formData.rekomendasi}
+              id="rekomendasi"
             />
 
             {semesters.map((semester) => (
@@ -1002,8 +1103,9 @@ const PPDBFormPage: React.FC = () => {
                 accept=".pdf"
                 onChange={(file) => handleFileChange(`raport${semester}`, file)}
                 maxSize={4}
-                required
+                required={true}
                 value={formData[`raport${semester}` as keyof typeof formData]}
+                id={`raport${semester}`}
               />
             ))}
           </div>
@@ -1018,6 +1120,87 @@ const PPDBFormPage: React.FC = () => {
     { label: 'Informasi Orang Tua', content: renderInformasiOrangTua() },
     { label: 'Dokumen', content: renderDokumen() }
   ];
+
+  // Tambahkan fungsi getRegistrationPeriod di dalam komponen
+  const getRegistrationPeriod = () => {
+    if (!ppdbSettings || !formData.jalur) {
+      return {
+        start: '-',
+        end: '-',
+        announcement: '-'
+      };
+    }
+
+    const formatDate = (dateStr: string) => {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    };
+
+    try {
+      // Ambil periode sesuai jalur yang dipilih
+      let selectedJalur;
+      switch (formData.jalur) {
+        case 'prestasi':
+          selectedJalur = ppdbSettings.jalurPrestasi;
+          break;
+        case 'reguler':
+          selectedJalur = ppdbSettings.jalurReguler;
+          break;
+        case 'undangan':
+          selectedJalur = ppdbSettings.jalurUndangan;
+          break;
+        default:
+          return {
+            start: '-',
+            end: '-',
+            announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-'
+          };
+      }
+
+      if (!selectedJalur || !selectedJalur.isActive) {
+        return {
+          start: '-',
+          end: '-',
+          announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-'
+        };
+      }
+
+      return {
+        start: formatDate(selectedJalur.start),
+        end: formatDate(selectedJalur.end),
+        announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-'
+      };
+    } catch (error) {
+      console.error('Error in getRegistrationPeriod:', error);
+      return {
+        start: '-',
+        end: '-',
+        announcement: '-'
+      };
+    }
+  };
+
+  // Tambahkan useEffect untuk memuat pengaturan PPDB
+  useEffect(() => {
+    const loadPPDBSettings = async () => {
+      try {
+        const settingsRef = ref(db, 'settings/ppdb');
+        const snapshot = await get(settingsRef);
+        
+        if (snapshot.exists()) {
+          setPPDBSettings(snapshot.val());
+        }
+      } catch (error) {
+        console.error('Error loading PPDB settings:', error);
+      }
+    };
+
+    loadPPDBSettings();
+  }, []);
 
   if (loading) {
     return (
@@ -1039,25 +1222,45 @@ const PPDBFormPage: React.FC = () => {
                     Formulir Pendaftaran PPDB
                   </h1>
                   <h2 className="text-lg text-gray-600 mb-2">
-                    SMAN Modal Bangsa Tahun Ajaran 2025/2026
+                    SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}
                   </h2>
                   <div className="grid grid-cols-2 mb-2">
                     <div>
                       <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
-                      <p className="font-medium text-gray-700">1 Desember 2024 - 20 Januari 2025</p>
+                      <p className="font-medium text-gray-700">
+                        {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Pengumuman:</p>
-                      <p className="font-medium text-gray-700">24 Januari 2025</p>
+                      <p className="font-medium text-gray-700">
+                        {getRegistrationPeriod().announcement}
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-4 text-sm">
+                    {formData.jalur && (
+                      <div className="bg-blue-100 px-3 py-1 rounded-full">
+                        <span className="text-gray-500">Jalur: </span>
+                        <span className="font-medium text-blue-700">
+                          {formData.jalur === 'prestasi' ? 'Prestasi' :
+                           formData.jalur === 'reguler' ? 'Reguler' :
+                           formData.jalur === 'undangan' ? 'Undangan' : '-'}
+                        </span>
+                      </div>
+                    )}
                     <div className="bg-gray-100 px-3 py-1 rounded-full">
                       <span className="text-gray-500">Status: </span>
                       <span className={`font-medium ${
                         formStatus === 'submitted' ? 'text-green-600' : 'text-yellow-600'
                       }`}>
                         {formStatus === 'submitted' ? 'Terkirim' : 'Draft'}
+                      </span>
+                    </div>
+                    <div className="bg-gray-100 px-3 py-1 rounded-full">
+                      <span className="text-gray-500">Email: </span>
+                      <span className="font-medium text-gray-700">
+                        {user?.email}
                       </span>
                     </div>
                     {lastUpdated && (
@@ -1068,11 +1271,11 @@ const PPDBFormPage: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    <div className="bg-blue-50 px-3 py-1 rounded-full">
+                    {/* <div className="bg-blue-50 px-3 py-1 rounded-full">
                       <span className="text-blue-600 font-medium">
                         Harap isi data dengan benar
                       </span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
 
@@ -1334,6 +1537,50 @@ const PPDBFormPage: React.FC = () => {
                 className="flex-1 bg-red-600 text-white hover:bg-red-700"
               >
                 Ya, Keluar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Modal Konfirmasi Ganti Jalur */}
+        <Modal
+          isOpen={showChangeJalurModal}
+          onClose={() => {
+            setShowChangeJalurModal(false);
+            // Reset pilihan jalur ke nilai sebelumnya
+            setFormData(prev => ({ ...prev, jalur: prev.jalur }));
+          }}
+        >
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Konfirmasi Perubahan Jalur
+            </h3>
+            <p className="text-gray-600 mb-2">
+              Mengubah jalur pendaftaran akan mereset:
+            </p>
+            <ul className="list-disc ml-6 mb-6 text-gray-600">
+              <li>Semua nilai akademik</li>
+              <li>Dokumen raport sesuai semester yang diperlukan</li>
+            </ul>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin melanjutkan?
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                onClick={() => {
+                  setShowChangeJalurModal(false);
+                  // Reset pilihan jalur ke nilai sebelumnya
+                  setFormData(prev => ({ ...prev, jalur: prev.jalur }));
+                }}
+                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleJalurChange}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Ya, Ubah Jalur
               </Button>
             </div>
           </div>

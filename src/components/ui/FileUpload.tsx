@@ -12,6 +12,7 @@ type FileUploadProps = {
   required?: boolean;
   showPreview?: boolean;
   value?: File | string | null;
+  id?: string;
 };
 
 const FileUpload: React.FC<FileUploadProps> = ({ 
@@ -23,7 +24,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
   maxSize = 4,
   required,
   showPreview = false,
-  value
+  value,
+  id
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,10 +115,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
           ref={inputRef}
           type="file"
           name={name}
+          id={id || name}
           onChange={handleFileChange}
           accept={accept}
           className="hidden"
           required={required && !value}
+          aria-label={label}
         />
 
         {value && (
