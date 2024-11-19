@@ -18,6 +18,7 @@ import { showAlert } from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { signOut } from 'firebase/auth';
+import { getPPDBStatus } from '../utils/ppdbStatus';
 
 // Types
 export type JalurPeriod = {
@@ -212,6 +213,18 @@ const PPDBFormPage: React.FC = () => {
 
     loadData();
   }, [user, navigate]);
+
+  useEffect(() => {
+    const checkPPDBStatus = async () => {
+      const isPPDBActive = await getPPDBStatus();
+      if (!isPPDBActive) {
+        showAlert('error', 'PPDB belum dimulai');
+        navigate('/');
+      }
+    };
+
+    checkPPDBStatus();
+  }, [navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

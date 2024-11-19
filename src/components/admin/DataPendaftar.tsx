@@ -471,7 +471,6 @@ const DataPendaftar: React.FC = () => {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Data Pendaftar PPDB</h1>
-        <p className="text-gray-600">Kelola data pendaftar PPDB</p>
       </div>
 
       {/* Filter dan Search */}

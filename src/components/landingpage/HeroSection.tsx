@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Container from '../ui/Container';
 import Button from '../ui/Button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { getPPDBStatus } from '../../utils/ppdbStatus';
+import Modal from '../ui/Modal';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 const HeroSection: React.FC = () => {
+  const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
+  const navigate = useNavigate();
+
+  const handleRegisterClick = async () => {
+    const isPPDBActive = await getPPDBStatus();
+    if (!isPPDBActive) {
+      setShowPPDBClosedModal(true);
+      return;
+    }
+    navigate('/register');
+  };
+
   return (
     <section className="relative min-h-screen w-full flex items-center overflow-hidden">
       {/* Background Image & Overlay */}
@@ -52,7 +67,10 @@ const HeroSection: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button className="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group">
+                  <Button 
+                    onClick={handleRegisterClick}
+                    className="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group"
+                  >
                     Daftar Sekarang
                     <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
@@ -85,6 +103,34 @@ const HeroSection: React.FC = () => {
           </motion.div>
         </div>
       </Container>
+
+      {/* Modal PPDB Closed */}
+      <Modal
+        isOpen={showPPDBClosedModal}
+        onClose={() => setShowPPDBClosedModal(false)}
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <XMarkIcon className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              PPDB Belum Dimulai
+            </h3>
+            <p className="text-sm text-gray-600">
+              Mohon maaf, pendaftaran PPDB belum dibuka. Silakan cek kembali nanti.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Button
+              onClick={() => setShowPPDBClosedModal(false)}
+              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 };

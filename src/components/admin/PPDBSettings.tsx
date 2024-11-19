@@ -12,12 +12,14 @@ const initialSettings: PPDBSettingsType = {
   jalurPrestasi: {
     start: '',
     end: '',
-    isActive: true
+    isActive: true,
+    testDate: ''
   },
   jalurReguler: {
     start: '',
     end: '',
-    isActive: true
+    isActive: true,
+    testDate: ''
   },
   jalurUndangan: {
     start: '',
@@ -25,7 +27,21 @@ const initialSettings: PPDBSettingsType = {
     isActive: true
   },
   announcementDate: '',
-  isActive: true
+  isActive: true,
+  contactWhatsapp: {
+    admin1: {
+      name: '',
+      whatsapp: ''
+    },
+    admin2: {
+      name: '',
+      whatsapp: ''
+    },
+    admin3: {
+      name: '',
+      whatsapp: ''
+    }
+  }
 };
 
 const PPDBSettings: React.FC = () => {
@@ -43,9 +59,14 @@ const PPDBSettings: React.FC = () => {
       const snapshot = await get(settingsRef);
       
       if (snapshot.exists()) {
+        const dbSettings = snapshot.val();
         setSettings({
           ...initialSettings,
-          ...snapshot.val()
+          ...dbSettings,
+          contactWhatsapp: {
+            ...initialSettings.contactWhatsapp,
+            ...dbSettings.contactWhatsapp
+          }
         });
       }
     } catch (error) {
@@ -80,15 +101,43 @@ const PPDBSettings: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Pengaturan PPDB</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pengaturan PPDB</h1>
         <p className="text-gray-600">Kelola periode pendaftaran dan pengumuman PPDB</p>
       </div>
 
-      <Card className="max-w-2xl">
-        <div className="p-6 space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Pengaturan Umum</h3>
-            <div className="grid grid-cols-2 gap-6">
+      <Card className="max-w-4xl">
+        <div className="p-6">
+          {/* Status PPDB */}
+          <div className="mb-8 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900">Status PPDB</h3>
+                <p className="text-sm text-blue-700">
+                  {settings.isActive ? 'PPDB sedang berlangsung' : 'PPDB belum dimulai'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  settings.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {settings.isActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={settings.isActive}
+                    onChange={(e) => setSettings(prev => ({ ...prev, isActive: e.target.checked }))}
+                    className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tahun Ajaran dan Kontak */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pengaturan Umum</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 label="Tahun Ajaran"
                 value={settings.academicYear}
@@ -96,21 +145,47 @@ const PPDBSettings: React.FC = () => {
                 placeholder="Contoh: 2025/2026"
                 required
               />
-              <div className="flex items-center space-x-2 pt-8">
-                <input
-                  type="checkbox"
-                  checked={settings.isActive}
-                  onChange={(e) => setSettings(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="rounded text-blue-600"
-                />
-                <label className="text-sm text-gray-700">PPDB Aktif</label>
-              </div>
+              <Input
+                label="Nomor WhatsApp Admin"
+                value={settings.contactWhatsapp.admin1.whatsapp}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  contactWhatsapp: {
+                    ...prev.contactWhatsapp,
+                    admin1: {
+                      ...prev.contactWhatsapp.admin1,
+                      whatsapp: e.target.value
+                    }
+                  }
+                }))}
+                placeholder="Contoh: +628116700050"
+                required
+              />
             </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Jalur Prestasi</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Jalur Prestasi */}
+          <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Jalur Prestasi</h3>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  settings.jalurPrestasi.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {settings.jalurPrestasi.isActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.jalurPrestasi.isActive}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    jalurPrestasi: { ...prev.jalurPrestasi, isActive: e.target.checked }
+                  }))}
+                  className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
                 label="Tanggal Mulai"
                 type="date"
@@ -131,24 +206,41 @@ const PPDBSettings: React.FC = () => {
                 }))}
                 required
               />
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.jalurPrestasi.isActive}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    jalurPrestasi: { ...prev.jalurPrestasi, isActive: e.target.checked }
-                  }))}
-                  className="rounded text-blue-600"
-                />
-                <label className="text-sm text-gray-700">Jalur Prestasi Aktif</label>
-              </div>
+              <Input
+                label="Tanggal Tes"
+                type="date"
+                value={settings.jalurPrestasi.testDate}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  jalurPrestasi: { ...prev.jalurPrestasi, testDate: e.target.value }
+                }))}
+                required
+              />
             </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Jalur Reguler</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Jalur Reguler */}
+          <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Jalur Reguler</h3>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  settings.jalurReguler.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {settings.jalurReguler.isActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.jalurReguler.isActive}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    jalurReguler: { ...prev.jalurReguler, isActive: e.target.checked }
+                  }))}
+                  className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
                 label="Tanggal Mulai"
                 type="date"
@@ -169,24 +261,41 @@ const PPDBSettings: React.FC = () => {
                 }))}
                 required
               />
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.jalurReguler.isActive}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    jalurReguler: { ...prev.jalurReguler, isActive: e.target.checked }
-                  }))}
-                  className="rounded text-blue-600"
-                />
-                <label className="text-sm text-gray-700">Jalur Reguler Aktif</label>
-              </div>
+              <Input
+                label="Tanggal Tes"
+                type="date"
+                value={settings.jalurReguler.testDate}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  jalurReguler: { ...prev.jalurReguler, testDate: e.target.value }
+                }))}
+                required
+              />
             </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Jalur Undangan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Jalur Undangan */}
+          <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Jalur Undangan</h3>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  settings.jalurUndangan.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {settings.jalurUndangan.isActive ? 'Aktif' : 'Nonaktif'}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.jalurUndangan.isActive}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    jalurUndangan: { ...prev.jalurUndangan, isActive: e.target.checked }
+                  }))}
+                  className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
                 label="Tanggal Mulai"
                 type="date"
@@ -207,23 +316,12 @@ const PPDBSettings: React.FC = () => {
                 }))}
                 required
               />
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.jalurUndangan.isActive}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    jalurUndangan: { ...prev.jalurUndangan, isActive: e.target.checked }
-                  }))}
-                  className="rounded text-blue-600"
-                />
-                <label className="text-sm text-gray-700">Jalur Undangan Aktif</label>
-              </div>
             </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Pengumuman</h3>
+          {/* Pengumuman */}
+          <div className="border rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Pengumuman</h3>
             <Input
               label="Tanggal Pengumuman"
               type="date"
@@ -233,13 +331,135 @@ const PPDBSettings: React.FC = () => {
             />
           </div>
 
+          {/* Kontak Admin */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Kontak Admin</h3>
+            <div className="space-y-6">
+              {/* Admin 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Nama Admin 1"
+                  value={settings.contactWhatsapp.admin1.name}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin1: {
+                        ...prev.contactWhatsapp.admin1,
+                        name: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: Pak Ahmad"
+                  required
+                />
+                <Input
+                  label="WhatsApp Admin 1"
+                  value={settings.contactWhatsapp.admin1.whatsapp}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin1: {
+                        ...prev.contactWhatsapp.admin1,
+                        whatsapp: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: +628116700050"
+                  required
+                />
+              </div>
+
+              {/* Admin 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Nama Admin 2"
+                  value={settings.contactWhatsapp.admin2.name}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin2: {
+                        ...prev.contactWhatsapp.admin2,
+                        name: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: Bu Siti"
+                  required
+                />
+                <Input
+                  label="WhatsApp Admin 2"
+                  value={settings.contactWhatsapp.admin2.whatsapp}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin2: {
+                        ...prev.contactWhatsapp.admin2,
+                        whatsapp: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: +628116700050"
+                  required
+                />
+              </div>
+
+              {/* Admin 3 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Nama Admin 3"
+                  value={settings.contactWhatsapp.admin3.name}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin3: {
+                        ...prev.contactWhatsapp.admin3,
+                        name: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: Pak Budi"
+                  required
+                />
+                <Input
+                  label="WhatsApp Admin 3"
+                  value={settings.contactWhatsapp.admin3.whatsapp}
+                  onChange={(e) => setSettings(prev => ({
+                    ...prev,
+                    contactWhatsapp: {
+                      ...prev.contactWhatsapp,
+                      admin3: {
+                        ...prev.contactWhatsapp.admin3,
+                        whatsapp: e.target.value
+                      }
+                    }
+                  }))}
+                  placeholder="Contoh: +628116700050"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Tombol Simpan */}
           <div className="flex justify-end">
             <Button
               onClick={handleSave}
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-blue-600 text-white hover:bg-blue-700 px-6"
               disabled={saving}
             >
-              {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+              {saving ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Menyimpan...</span>
+                </div>
+              ) : (
+                'Simpan Pengaturan'
+              )}
             </Button>
           </div>
         </div>

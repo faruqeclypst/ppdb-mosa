@@ -14,8 +14,11 @@ import {
   EnvelopeIcon, 
   LockClosedIcon,
   KeyIcon,
-  ArrowRightIcon 
+  ArrowRightIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import { getPPDBStatus } from '../utils/ppdbStatus';
+import Modal from '../components/ui/Modal';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,6 +31,7 @@ const RegisterPage: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
 
   useEffect(() => {
     const checkFirstAdmin = async () => {
@@ -38,6 +42,17 @@ const RegisterPage: React.FC = () => {
 
     checkFirstAdmin();
   }, []);
+
+  useEffect(() => {
+    const checkPPDBStatus = async () => {
+      const isPPDBActive = await getPPDBStatus();
+      if (!isPPDBActive && !isFirstAdmin) {
+        setShowPPDBClosedModal(true);
+      }
+    };
+
+    checkPPDBStatus();
+  }, [isFirstAdmin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,6 +296,40 @@ const RegisterPage: React.FC = () => {
           </motion.div>
         </div>
       </Container>
+
+      {/* Modal PPDB Closed */}
+      <Modal
+        isOpen={showPPDBClosedModal}
+        onClose={() => {
+          setShowPPDBClosedModal(false);
+          navigate('/'); // Redirect ke halaman utama saat modal ditutup
+        }}
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <XMarkIcon className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              PPDB Belum Dimulai
+            </h3>
+            <p className="text-sm text-gray-600">
+              Mohon maaf, pendaftaran PPDB belum dibuka. Silakan cek kembali nanti.
+            </p>
+          </div>
+          <div className="flex justify-center gap-3">
+            <Button
+              onClick={() => {
+                setShowPPDBClosedModal(false);
+                navigate('/'); // Redirect ke halaman utama
+              }}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Kembali ke Beranda
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
