@@ -9,8 +9,8 @@ import {
   XCircleIcon,
   AcademicCapIcon,
   ChartBarIcon,
-  MapPinIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -22,10 +22,13 @@ type DashboardStats = {
   jalurPrestasi: number;
   jalurReguler: number;
   jalurUndangan: number;
-  pendaftarLengkap: number;
-  pendaftarBelumLengkap: number;
-  sekolahTerbanyak: { nama: string; jumlah: number }[];
-  kabupatenTerbanyak: { nama: string; jumlah: number }[];
+  recentPendaftar: Array<{
+    namaSiswa: string;
+    asalSekolah: string;
+    jalur: string;
+    status: string;
+    createdAt: string;
+  }>;
 };
 
 const DashboardPage: React.FC = () => {
@@ -37,10 +40,7 @@ const DashboardPage: React.FC = () => {
     jalurPrestasi: 0,
     jalurReguler: 0,
     jalurUndangan: 0,
-    pendaftarLengkap: 0,
-    pendaftarBelumLengkap: 0,
-    sekolahTerbanyak: [],
-    kabupatenTerbanyak: []
+    recentPendaftar: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -53,36 +53,27 @@ const DashboardPage: React.FC = () => {
         if (snapshot.exists()) {
           const data = Object.values(snapshot.val()) as any[];
           
-          const sekolahCount: { [key: string]: number } = {};
-          const kabupatenCount: { [key: string]: number } = {};
-          
-          data.forEach(item => {
-            sekolahCount[item.asalSekolah] = (sekolahCount[item.asalSekolah] || 0) + 1;
-            kabupatenCount[item.kabupaten] = (kabupatenCount[item.kabupaten] || 0) + 1;
-          });
-
-          const getTop5 = (obj: { [key: string]: number }) => 
-            Object.entries(obj)
-              .map(([nama, jumlah]) => ({ nama, jumlah }))
-              .sort((a, b) => b.jumlah - a.jumlah)
-              .slice(0, 5);
+          // Get recent pendaftar
+          const recentPendaftar = data
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 5)
+            .map(item => ({
+              namaSiswa: item.namaSiswa,
+              asalSekolah: item.asalSekolah,
+              jalur: item.jalur,
+              status: item.status,
+              createdAt: item.createdAt
+            }));
 
           setStats({
             totalPendaftar: data.length,
-            pendaftarBaru: data.filter(item => item.status === 'submitted').length,
+            pendaftarBaru: data.filter(item => item.status === 'pending').length,
             pendaftarDiterima: data.filter(item => item.status === 'diterima').length,
             pendaftarDitolak: data.filter(item => item.status === 'ditolak').length,
             jalurPrestasi: data.filter(item => item.jalur === 'prestasi').length,
             jalurReguler: data.filter(item => item.jalur === 'reguler').length,
             jalurUndangan: data.filter(item => item.jalur === 'undangan').length,
-            pendaftarLengkap: data.filter(item => 
-              item.rekomendasi && item.raport2 && item.raport3 && item.raport4 && item.photo
-            ).length,
-            pendaftarBelumLengkap: data.filter(item => 
-              !item.rekomendasi || !item.raport2 || !item.raport3 || !item.raport4 || !item.photo
-            ).length,
-            sekolahTerbanyak: getTop5(sekolahCount),
-            kabupatenTerbanyak: getTop5(kabupatenCount)
+            recentPendaftar
           });
         }
       } catch (error) {
@@ -126,41 +117,21 @@ const DashboardPage: React.FC = () => {
     }
   ];
 
-  const additionalStats = [
-    {
-      title: 'Jalur Pendaftaran',
-      icon: <AcademicCapIcon className="w-5 h-5" />,
-      items: [
-        { label: 'Prestasi', value: stats.jalurPrestasi },
-        { label: 'Reguler', value: stats.jalurReguler },
-        { label: 'Undangan', value: stats.jalurUndangan }
-      ]
-    },
-    {
-      title: 'Status Dokumen',
-      icon: <DocumentTextIcon className="w-5 h-5" />,
-      items: [
-        { label: 'Lengkap', value: stats.pendaftarLengkap },
-        { label: 'Belum Lengkap', value: stats.pendaftarBelumLengkap }
-      ]
-    },
-    {
-      title: 'Asal Sekolah Terbanyak',
-      icon: <ChartBarIcon className="w-5 h-5" />,
-      items: stats.sekolahTerbanyak.map(item => ({
-        label: item.nama,
-        value: item.jumlah
-      }))
-    },
-    {
-      title: 'Kabupaten Terbanyak',
-      icon: <MapPinIcon className="w-5 h-5" />,
-      items: stats.kabupatenTerbanyak.map(item => ({
-        label: item.nama,
-        value: item.jumlah
-      }))
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'diterima': return 'text-green-600 bg-green-50';
+      case 'ditolak': return 'text-red-600 bg-red-50';
+      default: return 'text-yellow-600 bg-yellow-50';
     }
-  ];
+  };
+
+  const getJalurIcon = (jalur: string) => {
+    switch (jalur) {
+      case 'prestasi': return <AcademicCapIcon className="w-5 h-5 text-blue-500" />;
+      case 'reguler': return <UserGroupIcon className="w-5 h-5 text-green-500" />;
+      default: return <DocumentTextIcon className="w-5 h-5 text-purple-500" />;
+    }
+  };
 
   if (loading) {
     return (
@@ -176,6 +147,7 @@ const DashboardPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
       </div>
 
+      {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {mainStats.map((stat, index) => (
           <Card 
@@ -200,43 +172,69 @@ const DashboardPage: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {additionalStats.map((section, index) => (
-          <Card key={index} className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                {section.icon}
-              </div>
-              <h3 className="font-semibold text-gray-900">{section.title}</h3>
-            </div>
-            <div className="space-y-3">
-              {section.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 truncate">{item.label}</span>
-                  <span className="font-semibold text-gray-900">{item.value}</span>
+      {/* Secondary Stats & Recent Pendaftar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Jalur Stats */}
+        <Card className="lg:col-span-1 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <ChartBarIcon className="w-5 h-5 text-blue-500" />
+            <h3 className="font-semibold text-gray-900">Statistik Jalur</h3>
+          </div>
+          <div className="space-y-4">
+            {[
+              { label: 'Prestasi', value: stats.jalurPrestasi, icon: <AcademicCapIcon className="w-5 h-5" />, color: 'blue' },
+              { label: 'Reguler', value: stats.jalurReguler, icon: <UserGroupIcon className="w-5 h-5" />, color: 'green' },
+              { label: 'Undangan', value: stats.jalurUndangan, icon: <DocumentTextIcon className="w-5 h-5" />, color: 'purple' }
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 bg-${item.color}-100 rounded-lg text-${item.color}-600`}>
+                    {item.icon}
+                  </div>
+                  <span className="font-medium text-gray-700">Jalur {item.label}</span>
                 </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>
+                <span className="font-semibold text-gray-900">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
 
-      <div className="mt-8">
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
-          <div className="flex gap-4">
+        {/* Recent Pendaftar */}
+        <Card className="lg:col-span-2 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <ArrowTrendingUpIcon className="w-5 h-5 text-blue-500" />
+              <h3 className="font-semibold text-gray-900">Pendaftar Terbaru</h3>
+            </div>
             <Link 
               to="/admin/pendaftar"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              Lihat Data Pendaftar
+              Lihat Semua
             </Link>
-            <Link 
-              to="/admin/users"
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Kelola Admin
-            </Link>
+          </div>
+          <div className="space-y-4">
+            {stats.recentPendaftar.map((pendaftar, idx) => (
+              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-white rounded-lg">
+                    {getJalurIcon(pendaftar.jalur)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{pendaftar.namaSiswa}</p>
+                    <p className="text-sm text-gray-600">{pendaftar.asalSekolah}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(pendaftar.status)}`}>
+                    {pendaftar.status}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {new Date(pendaftar.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       </div>

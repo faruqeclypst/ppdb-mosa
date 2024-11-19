@@ -95,7 +95,7 @@ const HeroSection: React.FC = () => {
             <div className="relative">
               <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
               <img 
-                src="/src/assets/hero-illustration.webp" 
+                src="/src/assets/mosa.png" 
                 alt="Education Illustration"
                 className="relative w-full h-auto max-w-lg mx-auto drop-shadow-2xl rounded-2xl"
               />

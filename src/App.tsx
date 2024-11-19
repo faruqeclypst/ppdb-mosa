@@ -9,6 +9,7 @@ import PPDBFormPage from './pages/PPDBFormPage';
 import InfoPPDBPage from './pages/InfoPPDBPage';
 import { AuthProvider } from './contexts/AuthContext';
 import Footer from './components/landingpage/Footer';
+import ScrollToTop from './components/utils/ScrollToTop';
 
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -70,6 +71,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <AppRoutes />
       </Router>
     </AuthProvider>

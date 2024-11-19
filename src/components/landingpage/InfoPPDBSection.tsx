@@ -10,7 +10,8 @@ import {
   UserGroupIcon,
   PhoneIcon,
   ClockIcon,
-  CheckCircleIcon} from '@heroicons/react/24/outline';
+  ArrowLongRightIcon,
+} from '@heroicons/react/24/outline';
 
 type InfoPPDBSectionProps = {
   settings: PPDBSettings | null;
@@ -78,297 +79,240 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
     return jalur;
   };
 
-  // Memoize hasil getActiveJalur
   const activeJalur = React.useMemo(() => getActiveJalur(), [settings]);
 
   return (
-    <section className="py-24 bg-gradient-to-b from-gray-50 via-white to-blue-50">
+    <section className="py-24 bg-gradient-to-br from-gray-50 to-blue-50/30">
       <Container>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-20"
+          className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Informasi PPDB{' '}
+            Jalur PPDB{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
               {settings?.academicYear || '2025/2026'}
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Penerimaan Peserta Didik Baru SMAN Modal Bangsa
+            Pilih jalur pendaftaran sesuai dengan kriteria dan prestasi Anda
           </p>
         </motion.div>
 
-        {/* Jalur Pendaftaran */}
-        <div className="mb-24">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto">
+          {/* Jalur Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {activeJalur.map((jalur, index) => (
               <motion.div
                 key={jalur.name}
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: {
-                      duration: 0.5,
-                      delay: index * 0.1,
-                      ease: "easeOut"
-                    }
-                  }
-                }}
-                className="group relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
-                layoutId={`jalur-${jalur.name}`}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="h-full"
               >
-                {/* Header */}
-                <div className={`${jalur.bgColor} p-6 rounded-t-2xl`}>
-                  <div className="flex items-center justify-between text-white">
-                    <div>
-                      <h4 className="text-2xl font-bold mb-2">Jalur {jalur.name}</h4>
-                      <p className="text-white/80 text-sm">{jalur.description}</p>
+                {/* Main Card */}
+                <div className={`${jalur.bgColor} rounded-2xl shadow-lg overflow-hidden 
+                                transform transition-all duration-300 hover:scale-[1.02] 
+                                hover:shadow-xl h-full flex flex-col`}>
+                  {/* Card Header - Fixed height */}
+                  <div className="p-8 text-white">
+                    <div className="flex items-center justify-between mb-6">
+                      <jalur.icon className="w-12 h-12" />
+                      <span className="px-4 py-1.5 bg-white/20 rounded-full text-sm font-medium">
+                        Jalur {jalur.name}
+                      </span>
                     </div>
-                    <jalur.icon className="w-12 h-12 opacity-90" />
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-6">
-                  {/* Periode */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <CalendarIcon className="w-5 h-5 text-gray-400" />
-                      <h5 className="font-semibold text-gray-900">Periode Pendaftaran</h5>
-                    </div>
-                    <p className="text-gray-600 ml-7">{jalur.period}</p>
+                    <p className="text-white/90 text-lg line-clamp-3"> {/* Batasi tinggi deskripsi */}
+                      {jalur.description}
+                    </p>
                   </div>
 
-                  {/* Tanggal Tes */}
-                  {jalur.testDate && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <ClockIcon className="w-5 h-5 text-gray-400" />
-                        <h5 className="font-semibold text-gray-900">Tanggal Tes</h5>
+                  {/* Info Box - Flex grow untuk mengisi sisa ruang */}
+                  <div className="bg-white p-6 flex-1 flex flex-col">
+                    {/* Content wrapper */}
+                    <div className="flex-1 flex flex-col">
+                      {/* Period - Fixed height */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CalendarIcon className="w-5 h-5 text-blue-500" />
+                          <h4 className="font-medium text-gray-900">Periode Pendaftaran</h4>
+                        </div>
+                        <p className="text-gray-600 ml-7">{jalur.period}</p>
                       </div>
-                      <p className="text-gray-600 ml-7">{formatDate(jalur.testDate)}</p>
-                    </div>
-                  )}
 
-                  {/* Persyaratan */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <DocumentCheckIcon className="w-5 h-5 text-gray-400" />
-                      <h5 className="font-semibold text-gray-900">Persyaratan Utama</h5>
+                      {/* Test Date - Fixed height if exists */}
+                      {jalur.testDate && (
+                        <div className="mb-6">
+                          <div className="flex items-center gap-2 mb-2">
+                            <ClockIcon className="w-5 h-5 text-green-500" />
+                            <h4 className="font-medium text-gray-900">Tanggal Tes</h4>
+                          </div>
+                          <p className="text-gray-600 ml-7">{formatDate(jalur.testDate)}</p>
+                        </div>
+                      )}
+
+                      {/* Requirements - Flex grow untuk mengisi sisa ruang */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-3">
+                          <DocumentCheckIcon className="w-5 h-5 text-purple-500" />
+                          <h4 className="font-medium text-gray-900">Persyaratan</h4>
+                        </div>
+                        <ul className="space-y-2 ml-7">
+                          {jalur.requirements.map((req, i) => (
+                            <li key={i} className="text-gray-600 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
+                              {req}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                    <ul className="space-y-2 ml-7">
-                      {jalur.requirements.map((req, i) => (
-                        <li key={i} className="flex items-center gap-2 text-gray-600">
-                          <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>{req}</span>
-                        </li>
-                      ))}
-                    </ul>
+
+                    {/* Action Button - Fixed height */}
+                    <button className={`w-full mt-6 ${jalur.bgColor} text-white py-3 px-4 
+                                     rounded-xl flex items-center justify-center gap-2 
+                                     transition-all duration-300 hover:opacity-90`}>
+                      <span>Daftar Sekarang</span>
+                      <ArrowLongRightIcon className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </motion.div>
             ))}
           </div>
-        </div>
 
-        {/* Timeline */}
-        <div className="mb-24">
-          <motion.h3
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-3xl font-bold text-center mb-16"
-          >
-            <span className="border-b-4 border-blue-500 pb-2">Timeline PPDB</span>
-          </motion.h3>
-          <div className="max-w-5xl mx-auto">
-            <div className="relative">
-              <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-blue-500 to-green-500 rounded-full"></div>
-              {activeJalur.map((jalur, index) => (
-                <motion.div
-                  key={jalur.name}
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    hidden: { opacity: 0, x: index % 2 === 0 ? -50 : 50 },
-                    visible: {
-                      opacity: 1,
-                      x: 0,
-                      transition: {
-                        duration: 0.5,
-                        delay: index * 0.2,
-                        ease: "easeOut"
-                      }
-                    }
-                  }}
-                  className={`relative flex items-center mb-16 ${
-                    index % 2 === 0 ? 'justify-start' : 'justify-end'
-                  }`}
-                  layoutId={`timeline-${jalur.name}`}
-                >
-                  <div className="w-full md:w-5/12">
-                    <div className={`${jalur.bgColor} p-6 rounded-2xl text-white`}>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="p-2 bg-white/20 rounded-lg">
-                          <jalur.icon className="w-6 h-6 text-white" />
-                        </div>
-                        <h4 className="text-xl font-bold">Jalur {jalur.name}</h4>
-                      </div>
-                      <div className="space-y-3">
+          {/* Announcement & Contact - Compact Version */}
+          <div className="mt-16 grid md:grid-cols-2 gap-8">
+            {/* Announcement */}
+            {settings?.announcementDate && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                viewport={{ once: true }}
+                className="h-full"
+              >
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 
+                              text-white h-full flex flex-col">
+                  <div className="flex items-center gap-3 mb-4">
+                    <DocumentCheckIcon className="w-8 h-8" />
+                    <h3 className="text-xl font-bold">Pengumuman Kelulusan</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Tanggal & Waktu */}
+                    <div className="bg-white/10 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CalendarIcon className="w-5 h-5" />
                         <div>
-                          <p className="text-white/80 text-sm">Periode Pendaftaran</p>
-                          <p className="font-medium">{jalur.period}</p>
+                          <p className="font-medium">{formatDate(settings.announcementDate)}</p>
+                          <p className="text-sm text-white/80">Pukul 10.00 WIB</p>
                         </div>
-                        {jalur.testDate && (
-                          <div>
-                            <p className="text-white/80 text-sm">Tanggal Tes</p>
-                            <p className="font-medium">{formatDate(jalur.testDate)}</p>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="absolute left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white rounded-full border-4 border-blue-500 shadow"></div>
-                </motion.div>
-              ))}
-              {settings?.announcementDate && (
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: { duration: 0.5, ease: "easeOut" }
-                    }
-                  }}
-                  className="relative flex justify-center"
-                  layoutId="announcement"
-                >
-                  <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-2xl text-white max-w-md">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="p-2 bg-white/20 rounded-lg">
-                        <DocumentCheckIcon className="w-6 h-6 text-white" />
+
+                    {/* Quick Info */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="font-medium mb-1">Daftar Ulang</p>
+                        <p className="text-white/80">Maksimal 3 hari setelah pengumuman</p>
                       </div>
-                      <h4 className="text-xl font-bold">Pengumuman</h4>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <p className="font-medium mb-1">Lokasi</p>
+                        <p className="text-white/80">Website & Papan Pengumuman</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-white/80 text-sm">Tanggal Pengumuman</p>
-                      <p className="font-medium">{formatDate(settings.announcementDate)}</p>
+
+                    {/* Persyaratan Compact */}
+                    <div className="bg-white/10 rounded-xl p-3">
+                      <p className="font-medium mb-2">Persyaratan Daftar Ulang:</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm text-white/80">
+                        <p>• Surat Pernyataan</p>
+                        <p>• Kartu Keluarga</p>
+                        <p>• Akta Kelahiran</p>
+                        <p>• Pas Foto 3x4</p>
+                      </div>
+                    </div>
+
+                    {/* Note */}
+                    <div className="text-xs text-white/90 bg-white/10 rounded-xl p-3">
+                      <p className="font-medium">Catatan:</p>
+                      <p>Keputusan panitia PPDB bersifat final. Peserta yang tidak melakukan daftar ulang dianggap mengundurkan diri.</p>
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Contact - Compact Version */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="h-full"
+            >
+              <div className="bg-white rounded-2xl p-6 shadow-lg h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <PhoneIcon className="w-8 h-8 text-blue-500" />
+                  <h3 className="text-xl font-bold text-gray-900">Kontak Admin</h3>
+                </div>
+
+                <div className="grid gap-3 flex-1">
+                  {settings?.contactWhatsapp && (
+                    <>
+                      {[
+                        settings.contactWhatsapp.admin1,
+                        settings.contactWhatsapp.admin2,
+                        settings.contactWhatsapp.admin3
+                      ]
+                        .filter(admin => admin?.name && admin?.whatsapp)
+                        .map((admin, index) => (
+                          <a
+                            key={index}
+                            href={`https://wa.me/${admin?.whatsapp?.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 
+                                   rounded-xl transition-all duration-300 group"
+                          >
+                            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center 
+                                          justify-center group-hover:scale-110 transition-transform">
+                              <PhoneIcon className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{admin?.name}</p>
+                              <p className="text-sm text-gray-600">{admin?.whatsapp}</p>
+                            </div>
+                          </a>
+                        ))}
+                    </>
+                  )}
+
+                  {/* Additional Info */}
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="bg-blue-50 rounded-xl p-3">
+                      <p className="text-sm font-medium text-blue-900">Jam Layanan</p>
+                      <p className="text-xs text-blue-700">08.00 - 15.00 WIB</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-xl p-3">
+                      <p className="text-sm font-medium text-blue-900">Hari Kerja</p>
+                      <p className="text-xs text-blue-700">Senin - Jumat</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
-
-        {/* Kontak */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0, y: 20 },
-            visible: {
-              opacity: 1,
-              y: 0,
-              transition: { duration: 0.5, ease: "easeOut" }
-            }
-          }}
-          className="bg-gradient-to-br from-blue-50 via-blue-50 to-indigo-50 p-8 rounded-2xl shadow-lg"
-          layoutId="contact-section"
-        >
-          <div className="max-w-3xl mx-auto text-center">
-            <h4 className="text-3xl font-bold text-gray-900 mb-4">
-              Butuh Bantuan?
-            </h4>
-            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
-              Tim support kami siap membantu menjawab pertanyaan seputar PPDB SMAN Modal Bangsa. 
-              Silakan hubungi admin kami melalui WhatsApp.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {settings?.contactWhatsapp && (
-                <>
-                  {settings.contactWhatsapp.admin1?.name && settings.contactWhatsapp.admin1?.whatsapp && (
-                    <motion.a 
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      href={`https://wa.me/${settings.contactWhatsapp.admin1.whatsapp?.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                        <PhoneIcon className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 text-lg mb-1">
-                          {settings.contactWhatsapp.admin1.name}
-                        </p>
-                        <p className="text-sm text-gray-500">Admin PPDB</p>
-                      </div>
-                    </motion.a>
-                  )}
-
-                  {settings.contactWhatsapp.admin2?.name && settings.contactWhatsapp.admin2?.whatsapp && (
-                    <motion.a 
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      href={`https://wa.me/${settings.contactWhatsapp.admin2.whatsapp?.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                        <PhoneIcon className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 text-lg mb-1">
-                          {settings.contactWhatsapp.admin2.name}
-                        </p>
-                        <p className="text-sm text-gray-500">Admin PPDB</p>
-                      </div>
-                    </motion.a>
-                  )}
-
-                  {settings.contactWhatsapp.admin3?.name && settings.contactWhatsapp.admin3?.whatsapp && (
-                    <motion.a 
-                      whileHover={{ scale: 1.02, y: -2 }}
-                      whileTap={{ scale: 0.98 }}
-                      href={`https://wa.me/${settings.contactWhatsapp.admin3.whatsapp?.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex flex-col items-center gap-4 p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                        <PhoneIcon className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-gray-900 text-lg mb-1">
-                          {settings.contactWhatsapp.admin3.name}
-                        </p>
-                        <p className="text-sm text-gray-500">Admin PPDB</p>
-                      </div>
-                    </motion.a>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </motion.div>
       </Container>
     </section>
   );
 };
 
-// Wrap komponen dengan React.memo untuk mencegah render ulang yang tidak perlu
-export default React.memo(InfoPPDBSection); 
+export default InfoPPDBSection; 
