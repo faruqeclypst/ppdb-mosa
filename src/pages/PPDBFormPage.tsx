@@ -178,7 +178,6 @@ const PPDBFormPage: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isFormChanged, setIsFormChanged] = useState(false);
   const [showChangeJalurModal, setShowChangeJalurModal] = useState(false);
   const [newJalurValue, setNewJalurValue] = useState('');
 
@@ -229,7 +228,6 @@ const PPDBFormPage: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Jika yang berubah adalah jalur pendaftaran
     if (name === 'jalur') {
       // Cek apakah ada nilai akademik atau dokumen yang sudah terisi
       const hasAcademicData = Object.entries(formData)
@@ -256,18 +254,14 @@ const PPDBFormPage: React.FC = () => {
           ...prev,
           jalur: value
         }));
-        setIsFormChanged(true);
       }
       return;
     }
 
-    // Untuk input lainnya
     setFormData(prev => ({ ...prev, [name]: value }));
-    setIsFormChanged(true);
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
-    setIsFormChanged(true);
     if (!file) {
       setFormData(prev => ({ ...prev, [name]: null }));
       return;
@@ -373,47 +367,76 @@ const PPDBFormPage: React.FC = () => {
 
     // Validasi Akademik
     if (currentStep === 1) {
-      const nilaiFields = [
-        'nilaiAgama2', 'nilaiAgama3', 'nilaiAgama4',
-        'nilaiBindo2', 'nilaiBindo3', 'nilaiBindo4',
-        'nilaiBing2', 'nilaiBing3', 'nilaiBing4',
-        'nilaiMtk2', 'nilaiMtk3', 'nilaiMtk4',
-        'nilaiIpa2', 'nilaiIpa3', 'nilaiIpa4'
-      ];
+      // Tentukan semester berdasarkan jalur
+      const semesters = formData.jalur === 'reguler' 
+        ? ['3', '4', '5']  // Jalur Reguler
+        : ['2', '3', '4']; // Jalur Prestasi & Undangan
 
+      // Buat array field nilai yang perlu divalidasi berdasarkan semester
+      const nilaiFields = [];
+      for (const semester of semesters) {
+        nilaiFields.push(
+          `nilaiAgama${semester}`,
+          `nilaiBindo${semester}`,
+          `nilaiBing${semester}`,
+          `nilaiMtk${semester}`,
+          `nilaiIpa${semester}`
+        );
+      }
+
+      // Validasi setiap nilai
       for (const field of nilaiFields) {
-        const nilai = Number(formData[field as keyof FormData]);
-        if (isNaN(nilai) || nilai < 0 || nilai > 100) {
-          setError('Nilai harus diisi dengan angka antara 0-100');
-          return false;
-        }
-        if (nilai < 85) {
-          setError('Nilai minimal yang dibutuhkan adalah 85');
-          return false;
-        }
-      }
-    }
+        const nilaiStr = formData[field as keyof FormData];
 
-    // Validasi Informasi Orang Tua
-    if (currentStep === 2) {
-      if (!formData.namaAyah || !formData.namaIbu || !formData.hpAyah || !formData.hpIbu) {
-        setError('Mohon lengkapi informasi orang tua');
-        return false;
-      }
-      // Validasi format nomor HP (10-14 digit)
-      const phoneRegex = /^08[0-9]{8,12}$/;
-      if (!phoneRegex.test(formData.hpAyah) || !phoneRegex.test(formData.hpIbu)) {
-        setError('Nomor HP harus 10-14 digit dan dimulai dengan 08');
-        return false;
+        if (!nilaiStr && nilaiStr !== '0') {
+          setError('Semua nilai harus diisi');
+          return false;
+        }
+
+        const nilai = parseFloat(nilaiStr as string);
+
+        if (isNaN(nilai)) {
+          setError(`Nilai ${field} tidak valid`);
+          return false;
+        }
+
+        if (nilai < 0 || nilai > 100) {
+          setError('Nilai harus antara 0-100');
+          return false;
+        }
+
+        // Sesuaikan nilai minimal berdasarkan jalur
+        const minNilai = formData.jalur === 'prestasi' ? 85 : 80;
+        if (nilai < minNilai) {
+          setError(`Nilai minimal untuk jalur ${formData.jalur} adalah ${minNilai}`);
+          return false;
+        }
       }
     }
 
     // Validasi Dokumen
     if (currentStep === 3) {
-      const requiredFiles = ['rekomendasi', 'raport2', 'raport3', 'raport4', 'photo'];
-      for (const file of requiredFiles) {
-        if (!formData[file as keyof FormData]) {
-          setError('Mohon upload semua dokumen yang diperlukan');
+      // Tentukan dokumen yang diperlukan berdasarkan jalur
+      const requiredFiles = ['photo', 'rekomendasi'];
+      const semesters = formData.jalur === 'reguler' 
+        ? ['3', '4', '5']  // Jalur Reguler
+        : ['2', '3', '4']; // Jalur Prestasi & Undangan
+
+      // Tambahkan raport sesuai semester
+      semesters.forEach(semester => {
+        requiredFiles.push(`raport${semester}`);
+      });
+
+      // Tambahkan dokumen khusus untuk jalur prestasi
+      if (formData.jalur === 'prestasi') {
+        requiredFiles.push('sertifikat');
+      }
+
+      // Cek setiap dokumen yang diperlukan
+      for (const fileKey of requiredFiles) {
+        const fileValue = formData[fileKey as keyof FormData];
+        if (!fileValue || (!(fileValue instanceof File) && typeof fileValue !== 'string')) {
+          setError(`Mohon upload semua dokumen yang diperlukan untuk jalur ${formData.jalur}`);
           return false;
         }
       }
@@ -509,7 +532,6 @@ const PPDBFormPage: React.FC = () => {
       } else {
         setShowSuccessModal(true);
       }
-      setIsFormChanged(false);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -572,7 +594,6 @@ const PPDBFormPage: React.FC = () => {
 
     showAlert('info', `Jalur berhasil diubah ke ${newJalurValue}. Nilai akademik dan dokumen raport telah direset sesuai jalur yang dipilih.`);
     setShowChangeJalurModal(false);
-    setIsFormChanged(true);
   };
 
   const renderInformasiSiswa = () => {
@@ -680,7 +701,6 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.tanggalLahir}
                 onChange={(date) => {
                   setFormData(prev => ({ ...prev, tanggalLahir: date }));
-                  setIsFormChanged(true); // Aktifkan tombol kirim saat tanggal berubah
                 }}
                 required
               />
@@ -789,6 +809,7 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const renderAkademik = () => {
+    // Tentukan semester berdasarkan jalur
     const semesters = formData.jalur === 'reguler' 
       ? ['3', '4', '5']  // Jalur Reguler
       : ['2', '3', '4']; // Jalur Prestasi & Undangan
@@ -1319,7 +1340,7 @@ const PPDBFormPage: React.FC = () => {
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 animate-pulse">
+                          <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-red-300 animate-pulse">
                             <img 
                               src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
                               alt="Dummy Profile"
@@ -1328,9 +1349,12 @@ const PPDBFormPage: React.FC = () => {
                             <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
                               <span className="text-white text-xs">!</span>
                             </div>
-                            <p className="text-xs text-gray-500 text-center px-2">
-                              Upload Foto 3x4
-                            </p>
+                            <div className="text-center px-2">
+                              <p className="text-xs text-red-500 font-medium">Pas Foto Wajib</p>
+                              <p className="text-[10px] text-gray-500">
+                                Upload foto 3x4 dengan latar biru
+                              </p>
+                            </div>
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
@@ -1353,9 +1377,34 @@ const PPDBFormPage: React.FC = () => {
             {error && <Alert type="error" message={error} className="my-2" />}
 
             <form onSubmit={(e) => handleSubmit(e, false)}>
+              {formStatus === 'submitted' && (
+                <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-100 rounded-full">
+                      <CheckCircleIcon className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-yellow-800">
+                        Formulir sudah terkirim
+                      </p>
+                      <p className="text-sm text-yellow-600">
+                        Data tidak dapat diubah. Pengumuman hasil seleksi akan diinformasikan pada tanggal {getRegistrationPeriod().announcement}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 min-h-[400px]">
                 <Tabs 
-                  tabs={tabs} 
+                  tabs={tabs.map(tab => ({
+                    ...tab,
+                    content: formStatus === 'submitted' ? (
+                      <div className="relative opacity-60 pointer-events-none">
+                        {tab.content}
+                      </div>
+                    ) : tab.content
+                  }))} 
                   activeTab={currentStep}
                   onChange={handleTabChange}
                 />
@@ -1420,25 +1469,19 @@ const PPDBFormPage: React.FC = () => {
                       </svg>
                     </Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      className={`flex items-center gap-2 transition-all duration-300 ${
-                        !isFormChanged 
-                          ? 'bg-gray-300 cursor-not-allowed opacity-60 hover:bg-gray-300' 
-                          : 'bg-green-600 hover:bg-green-700 animate-pulse hover:animate-none transform hover:scale-105 text-white'
-                      }`}
-                      disabled={loading || !isFormChanged}
-                      title={!isFormChanged ? 'Belum ada perubahan data yang perlu dikirim' : 'Kirim perubahan data'}
-                    >
-                      <svg className={`w-4 h-4 ${isFormChanged ? 'animate-bounce' : ''}`} 
-                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className={isFormChanged ? 'font-semibold' : ''}>
+                    formStatus !== 'submitted' && (
+                      <Button
+                        type="submit"
+                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                        disabled={loading}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M5 13l4 4L19 7" />
+                        </svg>
                         {loading ? 'Mengirim...' : 'Kirim Formulir'}
-                      </span>
-                    </Button>
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -1491,14 +1534,11 @@ const PPDBFormPage: React.FC = () => {
             </h3>
             <p className="text-gray-600 mb-6">
               Terima kasih telah mendaftar di SMAN Modal Bangsa. 
-              Pengumuman hasil seleksi akan diinformasikan pada tanggal 15 Mei 2024.
+              Pengumuman hasil seleksi akan diinformasikan pada tanggal {getRegistrationPeriod().announcement}.
             </p>
             <div className="flex gap-4 justify-center">
               <Button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  setIsFormChanged(false);
-                }}
+                onClick={() => setShowSuccessModal(false)}
                 className="bg-gray-100 text-gray-700 hover:bg-gray-200"
               >
                 Tetap di Halaman Ini

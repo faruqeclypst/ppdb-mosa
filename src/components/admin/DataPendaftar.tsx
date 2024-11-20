@@ -5,7 +5,6 @@ import Table from '../ui/Table';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
-import Badge from '../ui/Badge';
 import { showAlert } from '../ui/Alert';
 import { 
   CheckCircleIcon, 
@@ -13,11 +12,13 @@ import {
   DocumentArrowDownIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  XMarkIcon
+  XMarkIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import classNames from 'classnames';
 
 type PPDBData = {
   uid: string;
@@ -41,18 +42,23 @@ type PPDBData = {
   nilaiAgama2: string;
   nilaiAgama3: string;
   nilaiAgama4: string;
+  nilaiAgama5: string;
   nilaiBindo2: string;
   nilaiBindo3: string;
   nilaiBindo4: string;
+  nilaiBindo5: string;
   nilaiBing2: string;
   nilaiBing3: string;
   nilaiBing4: string;
+  nilaiBing5: string;
   nilaiMtk2: string;
   nilaiMtk3: string;
   nilaiMtk4: string;
+  nilaiMtk5: string;
   nilaiIpa2: string;
   nilaiIpa3: string;
   nilaiIpa4: string;
+  nilaiIpa5: string;
 
   // Informasi Orang Tua
   namaAyah: string;
@@ -64,18 +70,67 @@ type PPDBData = {
   instansiIbu: string;
   hpIbu: string;
 
-  // Status dan Metadata
-  status: 'pending' | 'diterima' | 'ditolak';
-  createdAt: string;
-  lastUpdated?: string;
-  submittedAt?: string;
-
   // Files
   rekomendasi?: string;
   raport2?: string;
   raport3?: string;
   raport4?: string;
+  raport5?: string;
   photo?: string;
+  sertifikat?: string;
+
+  // Status dan Metadata
+  status: 'pending' | 'submitted' | 'diterima' | 'ditolak';
+  createdAt: string;
+  lastUpdated?: string;
+  submittedAt?: string;
+};
+
+type BadgeProps = {
+  status: PPDBData['status'];
+  className?: string;
+};
+
+const StatusBadge: React.FC<BadgeProps> = ({ status, className }) => {
+  const getStatusLabel = (status: PPDBData['status']) => {
+    switch (status) {
+      case 'pending':
+        return 'Draft';
+      case 'submitted':
+        return 'Belum dicek';
+      case 'diterima':
+        return 'Diterima';
+      case 'ditolak':
+        return 'Ditolak';
+      default:
+        return status;
+    }
+  };
+
+  const getStatusColor = (status: PPDBData['status']) => {
+    switch (status) {
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'submitted':
+        return 'text-blue-600 bg-blue-50';
+      case 'diterima':
+        return 'text-green-600 bg-green-50';
+      case 'ditolak':
+        return 'text-red-600 bg-red-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  return (
+    <span className={classNames(
+      'px-2 py-1 rounded-full text-sm font-medium',
+      getStatusColor(status),
+      className
+    )}>
+      {getStatusLabel(status)}
+    </span>
+  );
 };
 
 const getJalurLabel = (jalur: PPDBData['jalur']) => {
@@ -85,6 +140,21 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
     undangan: 'Undangan'
   };
   return labels[jalur];
+};
+
+const getStatusColor = (status: PPDBData['status']) => {
+  switch (status) {
+    case 'pending':
+      return 'text-yellow-600 bg-yellow-50';
+    case 'submitted':
+      return 'text-blue-600 bg-blue-50';
+    case 'diterima':
+      return 'text-green-600 bg-green-50';
+    case 'ditolak':
+      return 'text-red-600 bg-red-50';
+    default:
+      return 'text-gray-600 bg-gray-50';
+  }
 };
 
 const customScrollbarStyles = `
@@ -138,10 +208,12 @@ const DataPendaftar: React.FC = () => {
       const snapshot = await get(ppdbRef);
       
       if (snapshot.exists()) {
-        const data = Object.entries(snapshot.val()).map(([uid, value]) => ({
-          uid,
-          ...(value as Omit<PPDBData, 'uid'>)
-        }));
+        const data = Object.entries(snapshot.val())
+          .map(([uid, value]) => ({
+            uid,
+            ...(value as Omit<PPDBData, 'uid'>)
+          }))
+          .filter(entry => entry.submittedAt); // Only include entries that have been submitted
         setPendaftar(data);
       }
     } catch (error) {
@@ -459,6 +531,141 @@ const DataPendaftar: React.FC = () => {
     }
   };
 
+  const renderDetailAkademik = (data: PPDBData) => {
+    const semesters = data.jalur === 'reguler' 
+      ? ['3', '4', '5'] 
+      : ['2', '3', '4'];
+
+    const mapelList = [
+      { label: 'Agama', key: 'nilaiAgama' },
+      { label: 'B.Indo', key: 'nilaiBindo' },
+      { label: 'B.Ing', key: 'nilaiBing' },
+      { label: 'MTK', key: 'nilaiMtk' },
+      { label: 'IPA', key: 'nilaiIpa' }
+    ];
+
+    return (
+      <div className="bg-white shadow-sm border rounded-xl p-4 h-[300px]">
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className="text-left text-sm font-medium text-gray-500 pb-3">Mapel</th>
+              {semesters.map(semester => (
+                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-3">
+                  Sem {semester}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {mapelList.map(({ label, key }) => (
+              <tr key={key} className="border-t">
+                <td className="py-2 text-sm font-medium text-gray-600">{label}</td>
+                {semesters.map(semester => {
+                  const nilai = Number(data[`${key}${semester}` as keyof PPDBData]);
+                  return (
+                    <td key={semester} className="text-center">
+                      <span className={classNames(
+                        'inline-block px-3 py-1 rounded-full text-sm font-medium',
+                        nilai >= 85
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      )}>
+                        {nilai}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="mt-3 text-right">
+          <span className="text-sm text-gray-500">
+            Nilai Minimum: <span className="font-medium text-gray-700">85</span>
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDetailDokumen = (data: PPDBData) => {
+    const semesters = data.jalur === 'reguler' 
+      ? ['3', '4', '5'] 
+      : ['2', '3', '4'];
+
+    return (
+      <div className="bg-white shadow-sm border rounded-xl p-4 h-[300px] overflow-y-auto">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Kolom 1: Dokumen Wajib */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Dokumen Wajib</h4>
+            <div className="space-y-2">
+              {data.photo && (
+                <Button
+                  onClick={() => handleDownloadFile(data.photo!, 'photo.jpg')}
+                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                >
+                  <div className="p-1.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                    <DocumentArrowDownIcon className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <span className="text-sm">Pas Foto</span>
+                </Button>
+              )}
+              {data.rekomendasi && (
+                <Button
+                  onClick={() => handleDownloadFile(data.rekomendasi!, 'rekomendasi.pdf')}
+                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                >
+                  <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                    <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span className="text-sm">Surat Rekomendasi</span>
+                </Button>
+              )}
+              {data.jalur === 'prestasi' && data.sertifikat && (
+                <Button
+                  onClick={() => handleDownloadFile(data.sertifikat!, 'sertifikat.pdf')}
+                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                >
+                  <div className="p-1.5 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                    <DocumentArrowDownIcon className="w-4 h-4 text-yellow-600" />
+                  </div>
+                  <span className="text-sm">Sertifikat Prestasi</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Kolom 2: Dokumen Raport */}
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Dokumen Raport</h4>
+            <div className="space-y-2">
+              {semesters.map((semester) => {
+                const raportKey = `raport${semester}` as keyof PPDBData;
+                if (data[raportKey]) {
+                  return (
+                    <Button
+                      key={semester}
+                      onClick={() => handleDownloadFile(data[raportKey] as string, `raport_semester_${semester}.pdf`)}
+                      className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                    >
+                      <div className="p-1.5 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                        <DocumentArrowDownIcon className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="text-sm">Raport Semester {semester}</span>
+                    </Button>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -576,7 +783,11 @@ const DataPendaftar: React.FC = () => {
             item.nisn,
             getJalurLabel(item.jalur),
             item.asalSekolah,
-            <Badge key={item.uid} status={item.status} />,
+            <StatusBadge 
+              key={item.uid} 
+              status={item.status}
+              className={getStatusColor(item.status)}
+            />,
             new Date(item.createdAt).toLocaleDateString('id-ID'),
             <div key={item.uid} className="flex gap-2">
               <Button
@@ -589,16 +800,18 @@ const DataPendaftar: React.FC = () => {
               >
                 <EyeIcon className="w-4 h-4" />
               </Button>
-              <Button
-                onClick={() => {
-                  setSelectedData(item);
-                  setShowStatusModal(true);
-                }}
-                className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
-                title="Ubah Status"
-              >
-                <CheckCircleIcon className="w-4 h-4" />
-              </Button>
+              {item.status === 'submitted' && (
+                <Button
+                  onClick={() => {
+                    setSelectedData(item);
+                    setShowStatusModal(true);
+                  }}
+                  className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg"
+                  title="Ubah Status"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           ])} />
         ) : (
@@ -623,7 +836,7 @@ const DataPendaftar: React.FC = () => {
                 <h3 className="text-xl font-bold text-gray-900">
                   {selectedData?.namaSiswa}
                 </h3>
-                <Badge status={selectedData?.status || 'pending'} />
+                <StatusBadge status={selectedData?.status || 'pending'} />
               </div>
               <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
@@ -672,7 +885,7 @@ const DataPendaftar: React.FC = () => {
                         <div className="flex gap-6">
                           {/* Pas Foto */}
                           <div className="flex-shrink-0">
-                            {selectedData.photo ? (
+                            {selectedData?.photo ? (
                               <div className="relative group">
                                 <div 
                                   className="w-32 h-40 rounded-lg overflow-hidden shadow-lg border border-gray-200 cursor-pointer"
@@ -683,27 +896,6 @@ const DataPendaftar: React.FC = () => {
                                     alt="Pas Foto"
                                     className="w-full h-full object-cover"
                                   />
-                                </div>
-                                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => setShowPhotoModal(true)}
-                                      className="bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full"
-                                      title="Lihat Foto"
-                                    >
-                                      <EyeIcon className="w-5 h-5" />
-                                    </Button>
-                                    <Button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDownloadFile(selectedData.photo!, 'photo.jpg');
-                                      }}
-                                      className="bg-white/90 hover:bg-white text-gray-800 p-2 rounded-full"
-                                      title="Download Foto"
-                                    >
-                                      <DocumentArrowDownIcon className="w-5 h-5" />
-                                    </Button>
-                                  </div>
                                 </div>
                               </div>
                             ) : (
@@ -718,17 +910,13 @@ const DataPendaftar: React.FC = () => {
                           {/* Info Utama */}
                           <div className="flex-1">
                             <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                              <InfoItem label="NIK" value={selectedData.nik} />
-                              <InfoItem label="Jenis Kelamin" value={selectedData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
+                              <InfoItem label="NIK" value={selectedData?.nik} />
+                              <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
                               <InfoItem 
                                 label="Tempat, Tanggal Lahir" 
-                                value={`${selectedData.tempatLahir}, ${new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })}`}
+                                value={`${selectedData?.tempatLahir}, ${new Date(selectedData?.tanggalLahir || '').toLocaleDateString('id-ID')}`}
                               />
-                              <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData.anakKe} dari ${selectedData.jumlahSaudara}`} />
+                              <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData?.anakKe} dari ${selectedData?.jumlahSaudara}`} />
                             </div>
                           </div>
                         </div>
@@ -737,10 +925,10 @@ const DataPendaftar: React.FC = () => {
                         <div className="bg-gray-50 p-4 rounded-lg">
                           <h4 className="font-medium text-gray-900 mb-3">Alamat</h4>
                           <div className="space-y-2">
-                            <InfoItem label="Alamat Lengkap" value={selectedData.alamat} />
+                            <InfoItem label="Alamat Lengkap" value={selectedData?.alamat} />
                             <div className="grid grid-cols-2 gap-4">
-                              <InfoItem label="Kecamatan" value={selectedData.kecamatan} />
-                              <InfoItem label="Kabupaten" value={selectedData.kabupaten} />
+                              <InfoItem label="Kecamatan" value={selectedData?.kecamatan} />
+                              <InfoItem label="Kabupaten" value={selectedData?.kabupaten} />
                             </div>
                           </div>
                         </div>
@@ -749,61 +937,54 @@ const DataPendaftar: React.FC = () => {
                         <div className="bg-gray-50 p-4 rounded-lg">
                           <h4 className="font-medium text-gray-900 mb-3">Asal Sekolah</h4>
                           <div className="grid grid-cols-2 gap-4">
-                            <InfoItem label="Nama Sekolah" value={selectedData.asalSekolah} />
-                            <InfoItem label="Kabupaten" value={selectedData.kabupatenAsalSekolah} />
+                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah} />
+                            <InfoItem label="Kabupaten" value={selectedData?.kabupatenAsalSekolah} />
                           </div>
                         </div>
                       </div>
                     )
                   },
                   {
-                    label: "Nilai Akademik",
+                    label: "Akademik & Dokumen",
                     content: (
                       <div className="p-4 min-h-[400px]">
-                        {/* Semester */}
-                        <div className="grid grid-cols-3 gap-4">
-                          {['2', '3', '4'].map((semester) => (
-                            <div key={semester} className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="font-medium text-gray-900 mb-3">Semester {semester}</h4>
-                              <div className="space-y-2">
-                                {[
-                                  { label: 'Pendidikan Agama', key: `nilaiAgama${semester}` },
-                                  { label: 'Bahasa Indonesia', key: `nilaiBindo${semester}` },
-                                  { label: 'Bahasa Inggris', key: `nilaiBing${semester}` },
-                                  { label: 'Matematika', key: `nilaiMtk${semester}` },
-                                  { label: 'IPA', key: `nilaiIpa${semester}` }
-                                ].map(({ label, key }) => (
-                                  <div key={key} className="flex justify-between items-center py-1 border-b border-gray-200 last:border-0">
-                                    <span className="text-sm text-gray-600">{label}</span>
-                                    <span className="font-medium text-gray-900">{selectedData[key as keyof PPDBData]}</span>
-                                  </div>
-                                ))}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          {/* Nilai Akademik */}
+                          <div>
+                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 mb-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-blue-500 rounded-lg">
+                                  <AcademicCapIcon className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">Nilai Akademik</h4>
+                                  <p className="text-sm text-blue-700">
+                                    Semester {selectedData?.jalur === 'reguler' ? '3-5' : '2-4'} ({getJalurLabel(selectedData?.jalur || 'reguler')})
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
 
-                        {/* Dokumen */}
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-3 pb-2 border-b">Dokumen Akademik</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            {[
-                              { key: 'raport2', label: 'Raport Semester 2' },
-                              { key: 'raport3', label: 'Raport Semester 3' },
-                              { key: 'raport4', label: 'Raport Semester 4' },
-                              { key: 'rekomendasi', label: 'Surat Rekomendasi' }
-                            ].map(({ key, label }) => (
-                              selectedData[key as keyof PPDBData] && (
-                                <Button
-                                  key={key}
-                                  onClick={() => handleDownloadFile(selectedData[key as keyof PPDBData] as string, `${key}.pdf`)}
-                                  className="bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center gap-3 p-4 rounded-lg"
-                                >
-                                  <DocumentArrowDownIcon className="w-5 h-5 text-blue-500" />
-                                  <span>{label}</span>
-                                </Button>
-                              )
-                            ))}
+                            {renderDetailAkademik(selectedData)}
+                          </div>
+
+                          {/* Dokumen */}
+                          <div>
+                            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border border-green-200 mb-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-green-500 rounded-lg">
+                                  <DocumentArrowDownIcon className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">Dokumen</h4>
+                                  <p className="text-sm text-green-700">
+                                    Klik untuk mengunduh dokumen
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {renderDetailDokumen(selectedData)}
                           </div>
                         </div>
                       </div>
@@ -823,19 +1004,19 @@ const DataPendaftar: React.FC = () => {
                               <div className="space-y-3">
                                 <InfoItem 
                                   label="Nama Lengkap" 
-                                  value={selectedData[`nama${prefix}` as keyof PPDBData] as string} 
+                                  value={selectedData?.[`nama${prefix}` as keyof PPDBData] as string} 
                                 />
                                 <InfoItem 
                                   label="Pekerjaan" 
-                                  value={selectedData[`pekerjaan${prefix}` as keyof PPDBData] as string} 
+                                  value={selectedData?.[`pekerjaan${prefix}` as keyof PPDBData] as string} 
                                 />
                                 <InfoItem 
                                   label="Instansi" 
-                                  value={selectedData[`instansi${prefix}` as keyof PPDBData] as string} 
+                                  value={selectedData?.[`instansi${prefix}` as keyof PPDBData] as string} 
                                 />
                                 <InfoItem 
                                   label="No. HP/WA" 
-                                  value={selectedData[`hp${prefix}` as keyof PPDBData] as string} 
+                                  value={selectedData?.[`hp${prefix}` as keyof PPDBData] as string} 
                                 />
                               </div>
                             </div>
