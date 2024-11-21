@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import IconButton from '../../ui/IconButton';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../../../firebase/config';
-import { UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, ArrowRightOnRectangleIcon, Bars3Icon } from '@heroicons/react/24/outline';
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { ref, update, get } from 'firebase/database';
 import { showAlert } from '../../ui/Alert';
+import Sidebar from '../layout/Sidebar';
+import classNames from 'classnames';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ const Header: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [adminName, setAdminName] = useState('Admin');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -29,8 +30,7 @@ const Header: React.FC = () => {
         
         if (snapshot.exists()) {
           const adminData = snapshot.val();
-          setAdminName(adminData.fullName);
-          setNewName(adminData.fullName); // Set initial value for edit form
+          setNewName(adminData.fullName);
         }
       } catch (error) {
         console.error('Error loading admin data:', error);
@@ -65,7 +65,6 @@ const Header: React.FC = () => {
         updatedAt: new Date().toISOString()
       });
 
-      setAdminName(newName); // Update displayed name
       showAlert('success', 'Nama berhasil diperbarui');
       setShowProfileModal(false);
     } catch (error) {
@@ -76,34 +75,62 @@ const Header: React.FC = () => {
   };
 
   return (
-    <>
-      <header className="bg-white shadow-sm fixed top-0 right-0 left-0 z-50">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-gray-800">
-              Admin Dashboard
-            </h1>
-          </div>
+    <header className="bg-white shadow-sm border-b">
+      <div className="h-16 px-4 flex items-center justify-between">
+        {/* Mobile menu button */}
+        <button
+          className="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100"
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+        >
+          <Bars3Icon className="w-6 h-6" />
+        </button>
+
+        <h1 className="text-lg font-semibold text-gray-800">
+          Admin Dashboard
+        </h1>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className={classNames(
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
+              'text-gray-700 hover:bg-gray-100 transition-colors'
+            )}
+          >
+            <UserCircleIcon className="w-5 h-5" />
+            <span className="hidden md:inline">Profil</span>
+          </button>
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className={classNames(
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
+              'text-red-600 hover:bg-red-50 transition-colors'
+            )}
+          >
+            <ArrowRightOnRectangleIcon className="w-5 h-5" />
+            <span className="hidden md:inline">Keluar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Drawer */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setShowMobileMenu(false)}
+          />
           
-          <div className="flex items-center space-x-4">
-            <div className="text-sm font-medium text-gray-700">
-              {adminName}
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 w-64 bg-white">
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold">Menu</h2>
             </div>
-            <IconButton
-              icon={<UserCircleIcon className="w-5 h-5" />}
-              label="Profile"
-              onClick={() => setShowProfileModal(true)}
-              className="text-gray-600 hover:text-gray-800"
-            />
-            <IconButton
-              icon={<ArrowRightOnRectangleIcon className="w-5 h-5" />}
-              label="Logout"
-              onClick={() => setShowLogoutModal(true)}
-              className="text-red-600 hover:text-red-700"
-            />
+            <Sidebar mobile onClose={() => setShowMobileMenu(false)} />
           </div>
         </div>
-      </header>
+      )}
 
       {/* Modal Profile */}
       <Modal 
@@ -151,9 +178,9 @@ const Header: React.FC = () => {
         </div>
       </Modal>
 
-      {/* Modal Konfirmasi Logout */}
-      <Modal 
-        isOpen={showLogoutModal} 
+      {/* Modal Logout */}
+      <Modal
+        isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
         className="z-[70]"
       >
@@ -186,7 +213,7 @@ const Header: React.FC = () => {
           </div>
         </div>
       </Modal>
-    </>
+    </header>
   );
 };
 

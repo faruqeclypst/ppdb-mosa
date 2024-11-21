@@ -5,9 +5,8 @@ import Table from '../ui/Table';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
-import Card from '../ui/Card';
 import { showAlert } from '../ui/Alert';
-import { KeyIcon, TrashIcon, UserPlusIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { KeyIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 
 type Admin = {
   uid: string;
@@ -178,51 +177,76 @@ const UserManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Manajemen Admin</h1>
-      </div>
-
-      <Card>
-        <div className="p-8 space-y-8">
-          {/* Status Section */}
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500 rounded-lg">
-                  <UserGroupIcon className="w-6 h-6 text-white" />
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Data Admin Table - Mobile Optimized */}
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="p-4 md:p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Daftar Admin</h3>
+            <Button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+            >
+              <UserPlusIcon className="w-5 h-5" />
+              <span className="hidden md:inline">Tambah Admin</span>
+            </Button>
+          </div>
+          
+          {/* Mobile View */}
+          <div className="md:hidden space-y-4">
+            {admins.map(admin => (
+              <div 
+                key={admin.uid}
+                className="bg-gray-50 rounded-lg p-4 space-y-2"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium text-gray-900">{admin.fullName}</h4>
+                    <p className="text-sm text-gray-600">{admin.email}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setShowResetModal(true);
+                      }}
+                      className="p-2 bg-yellow-500 text-white rounded-lg"
+                    >
+                      <KeyIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedAdmin(admin);
+                        setShowDeleteModal(true);
+                      }}
+                      className="p-2 bg-red-500 text-white rounded-lg"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Total Admin</h3>
-                  <p className="text-3xl font-bold text-blue-600">{admins.length}</p>
+                <div className="text-xs text-gray-500">
+                  Terdaftar: {new Date(admin.createdAt).toLocaleDateString('id-ID')}
                 </div>
               </div>
-              <Button
-                onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
-              >
-                <UserPlusIcon className="w-5 h-5" />
-                Tambah Admin
-              </Button>
-            </div>
+            ))}
           </div>
 
-          {/* Data Admin Table */}
-          <div className="bg-white rounded-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Daftar Admin</h3>
+          {/* Desktop View */}
+          <div className="hidden md:block">
             <Table headers={headers} data={data} />
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Modal Tambah Admin */}
+      {/* Modal Tambah Admin - Mobile Optimized */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
       >
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <div className="p-4 md:p-6">
+          <div className="text-center mb-4">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
               <UserPlusIcon className="w-6 h-6 text-blue-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">
@@ -266,16 +290,16 @@ const UserManagement: React.FC = () => {
               required
             />
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col md:flex-row gap-3 pt-4">
               <Button
                 onClick={() => setShowAddModal(false)}
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="w-full md:w-auto order-2 md:order-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 md:py-2"
               >
                 Batal
               </Button>
               <Button
                 onClick={handleAddAdmin}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className="w-full md:w-auto order-1 md:order-2 bg-blue-600 text-white hover:bg-blue-700 py-3 md:py-2"
               >
                 Simpan
               </Button>

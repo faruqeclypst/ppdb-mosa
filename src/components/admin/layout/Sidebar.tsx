@@ -1,14 +1,21 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   HomeIcon,
   UserGroupIcon,
   Cog6ToothIcon,
   AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
+import classNames from 'classnames';
 
-const Sidebar: React.FC = () => {
+type SidebarProps = {
+  mobile?: boolean;
+  onClose?: () => void;
+};
+
+const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const menuItems = [
     {
@@ -33,33 +40,38 @@ const Sidebar: React.FC = () => {
     }
   ];
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (mobile && onClose) {
+      onClose();
+    }
   };
 
   return (
-    <div className="bg-white h-full w-64 border-r flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b">
-        <h1 className="text-xl font-bold text-gray-900">Admin PPDB</h1>
+    <div className={classNames(
+      "bg-white h-full flex flex-col border-r",
+      mobile ? "" : "shadow-sm"
+    )}>
+      <div className="h-16 flex items-center px-6 border-b">
+        <h1 className="text-xl font-bold text-gray-900">PPDB MoSa</h1>
       </div>
 
-      {/* Menu */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
+      <nav className="flex-1 overflow-y-auto py-4">
+        <ul className="space-y-1 px-3">
           {menuItems.map((item) => (
             <li key={item.path}>
-              <Link
-                to={item.path}
-                className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors ${
-                  isActive(item.path)
+              <button
+                onClick={() => handleNavigation(item.path)}
+                className={classNames(
+                  'w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors',
+                  location.pathname === item.path
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                )}
               >
                 <item.icon className="w-5 h-5" />
-                <span>{item.name}</span>
-              </Link>
+                <span className="font-medium">{item.name}</span>
+              </button>
             </li>
           ))}
         </ul>
