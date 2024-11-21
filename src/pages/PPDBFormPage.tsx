@@ -162,6 +162,83 @@ const getAcademicYear = () => {
   return `${startYear}/${endYear}`;
 };
 
+// Tambahkan konstanta untuk validasi
+const VALIDATION_CONFIG = {
+  // Mapping field ke label untuk pesan error
+  FIELD_LABELS: {
+    namaSiswa: 'Nama Siswa',
+    nik: 'NIK',
+    nisn: 'NISN',
+    jenisKelamin: 'Jenis Kelamin',
+    tempatLahir: 'Tempat Lahir',
+    tanggalLahir: 'Tanggal Lahir',
+    anakKe: 'Anak Ke',
+    jumlahSaudara: 'Jumlah Saudara',
+    alamat: 'Alamat',
+    kecamatan: 'Kecamatan',
+    kabupaten: 'Kabupaten',
+    asalSekolah: 'Asal Sekolah',
+    kabupatenAsalSekolah: 'Kabupaten Asal Sekolah'
+  },
+
+  // Nilai minimum per jalur
+  MIN_NILAI: {
+    prestasi: 85,
+    reguler: 85,
+    undangan: 85
+  },
+
+  // Semester yang diperlukan per jalur
+  SEMESTER_CONFIG: {
+    reguler: ['3', '4', '5'],
+    prestasi: ['2', '3', '4'],
+    undangan: ['2', '3', '4']
+  },
+
+  // Mata pelajaran yang divalidasi
+  MAPEL: ['Agama', 'Bindo', 'Bing', 'Mtk', 'Ipa'],
+
+  // Tambahkan required fields untuk setiap tab
+  REQUIRED_FIELDS: {
+    SISWA: [
+      'namaSiswa', 'nik', 'nisn', 'jenisKelamin', 'tempatLahir', 'tanggalLahir',
+      'anakKe', 'jumlahSaudara', 'alamat', 'kecamatan', 'kabupaten',
+      'asalSekolah', 'kabupatenAsalSekolah'
+    ],
+    ORANG_TUA: [
+      'namaAyah', 'pekerjaanAyah', 'instansiAyah', 'hpAyah',
+      'namaIbu', 'pekerjaanIbu', 'instansiIbu', 'hpIbu'
+    ]
+  }
+};
+
+// Helper functions
+const getRequiredSemesters = (jalur: string) => {
+  return VALIDATION_CONFIG.SEMESTER_CONFIG[jalur as keyof typeof VALIDATION_CONFIG.SEMESTER_CONFIG] || [];
+};
+
+const getNilaiFields = (semesters: string[]) => {
+  return semesters.flatMap(semester => 
+    VALIDATION_CONFIG.MAPEL.map(mapel => `nilai${mapel}${semester}`)
+  );
+};
+
+const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?: string } => {
+  if (!nilai) return { isValid: false, error: 'Nilai harus diisi' };
+
+  const nilaiNum = parseFloat(nilai);
+  if (isNaN(nilaiNum) || nilaiNum < 0 || nilaiNum > 100) {
+    return { isValid: false, error: 'Nilai harus valid dan antara 0-100' };
+  }
+
+  const minNilai = VALIDATION_CONFIG.MIN_NILAI[jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
+  if (nilaiNum < minNilai) {
+    return { isValid: false, error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}` };
+  }
+
+  return { isValid: true };
+};
+
 const PPDBFormPage: React.FC = () => {
   // Pindahkan hooks ke dalam komponen
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
@@ -351,146 +428,126 @@ const PPDBFormPage: React.FC = () => {
     }
   };
 
+  // Tambahkan fungsi untuk mengecek apakah tab bisa diakses
+  const canAccessTab = (tabIndex: number): boolean => {
+    // Tab pertama selalu bisa diakses
+    if (tabIndex === 0) return true;
+
+    // Cek kelengkapan data informasi siswa
+    const requiredFields = Object.keys(VALIDATION_CONFIG.FIELD_LABELS);
+    const isInfoComplete = requiredFields.every(field => 
+      formData[field as keyof FormData] && 
+      formData[field as keyof FormData] !== ''
+    );
+
+    if (!isInfoComplete) return false;
+
+    // Cek jalur untuk tab akademik dan selanjutnya
+    if (tabIndex >= 1 && !formData.jalur) return false;
+
+    return true;
+  };
+
+  // Update fungsi handleTabChange
+  const handleTabChange = (index: number) => {
+    if (!canAccessTab(index)) {
+      const message = !formData.jalur && index >= 1 
+        ? 'Mohon pilih jalur pendaftaran terlebih dahulu'
+        : 'Mohon lengkapi data informasi siswa terlebih dahulu';
+      setError(message);
+      return;
+    }
+    setCurrentStep(index);
+  };
+
+  // Update fungsi validateForm
   const validateForm = () => {
-    // Validasi Informasi Siswa
-    if (currentStep === 0) {
-      if (!formData.namaSiswa || !formData.nik || !formData.nisn) {
-        setError('Mohon lengkapi semua field yang wajib diisi');
+    // 1. Validasi informasi siswa
+    const missingInfoSiswa = VALIDATION_CONFIG.REQUIRED_FIELDS.SISWA.filter(field => {
+      const value = formData[field as keyof FormData];
+      return !value || (value && value.toString().trim() === '');
+    });
+
+    if (missingInfoSiswa.length > 0) {
+      const missingLabels = missingInfoSiswa.map(field => 
+        VALIDATION_CONFIG.FIELD_LABELS[field as keyof typeof VALIDATION_CONFIG.FIELD_LABELS]
+      );
+      setError(`Data Siswa yang masih kosong: ${missingLabels.join(', ')}`);
+      return false;
+    }
+
+    // 2. Validasi NIK
+    if (formData.nik !== '-' && formData.nik.length !== 16) {
+      setError('NIK harus 16 digit atau isi dengan "-" jika belum ada');
+      return false;
+    }
+
+    // 3. Validasi nilai akademik
+    const semesters = getRequiredSemesters(formData.jalur);
+    const nilaiFields = getNilaiFields(semesters);
+
+    for (const field of nilaiFields) {
+      const nilaiStr = formData[field as keyof FormData];
+      if (!nilaiStr) {
+        setError(`Nilai akademik ${field.replace('nilai', '')} belum diisi`);
         return false;
       }
-      // Validasi NIK hanya jika bukan tanda strip
-      if (formData.nik !== '-' && formData.nik.length !== 16) {
-        setError('NIK harus 16 digit atau isi dengan "-" jika belum ada');
+      const validation = validateNilai(nilaiStr as string, formData.jalur);
+      if (!validation.isValid) {
+        setError(validation.error || 'Error validasi nilai');
         return false;
       }
     }
 
-    // Validasi Akademik
-    if (currentStep === 1) {
-      // Tentukan semester berdasarkan jalur
-      const semesters = formData.jalur === 'reguler' 
-        ? ['3', '4', '5']  // Jalur Reguler
-        : ['2', '3', '4']; // Jalur Prestasi & Undangan
+    // 4. Validasi informasi orang tua
+    const missingInfoOrtu = VALIDATION_CONFIG.REQUIRED_FIELDS.ORANG_TUA.filter(field => {
+      const value = formData[field as keyof FormData];
+      return !value || (value && value.toString().trim() === '');
+    });
 
-      // Buat array field nilai yang perlu divalidasi berdasarkan semester
-      const nilaiFields = [];
-      for (const semester of semesters) {
-        nilaiFields.push(
-          `nilaiAgama${semester}`,
-          `nilaiBindo${semester}`,
-          `nilaiBing${semester}`,
-          `nilaiMtk${semester}`,
-          `nilaiIpa${semester}`
-        );
-      }
-
-      // Validasi setiap nilai
-      for (const field of nilaiFields) {
-        const nilaiStr = formData[field as keyof FormData];
-
-        if (!nilaiStr && nilaiStr !== '0') {
-          setError('Semua nilai harus diisi');
-          return false;
-        }
-
-        const nilai = parseFloat(nilaiStr as string);
-
-        if (isNaN(nilai)) {
-          setError(`Nilai ${field} tidak valid`);
-          return false;
-        }
-
-        if (nilai < 0 || nilai > 100) {
-          setError('Nilai harus antara 0-100');
-          return false;
-        }
-
-        // Sesuaikan nilai minimal berdasarkan jalur
-        const minNilai = formData.jalur === 'prestasi' ? 85 : 80;
-        if (nilai < minNilai) {
-          setError(`Nilai minimal untuk jalur ${formData.jalur} adalah ${minNilai}`);
-          return false;
-        }
-      }
+    if (missingInfoOrtu.length > 0) {
+      const missingLabels = missingInfoOrtu.map(field => 
+        VALIDATION_CONFIG.FIELD_LABELS[field as keyof typeof VALIDATION_CONFIG.FIELD_LABELS]
+      );
+      setError(`Data Orang Tua yang masih kosong: ${missingLabels.join(', ')}`);
+      return false;
     }
 
-    // Validasi Dokumen
-    if (currentStep === 3) {
-      // Tentukan dokumen yang diperlukan berdasarkan jalur
-      const requiredFiles = ['photo', 'rekomendasi'];
-      const semesters = formData.jalur === 'reguler' 
-        ? ['3', '4', '5']  // Jalur Reguler
-        : ['2', '3', '4']; // Jalur Prestasi & Undangan
+    // 5. Validasi dokumen
+    const requiredFiles = ['photo', 'rekomendasi'];
+    semesters.forEach(semester => {
+      requiredFiles.push(`raport${semester}`);
+    });
 
-      // Tambahkan raport sesuai semester
-      semesters.forEach(semester => {
-        requiredFiles.push(`raport${semester}`);
+    const missingDocs = requiredFiles.filter(key => {
+      const fileValue = formData[key as keyof FormData];
+      return !fileValue || (!(fileValue instanceof File) && typeof fileValue !== 'string');
+    });
+
+    if (missingDocs.length > 0) {
+      const docLabels = missingDocs.map(key => {
+        switch(key) {
+          case 'photo': return 'Pas Foto';
+          case 'rekomendasi': return formData.jalur === 'prestasi' ? 
+            'Surat Rekomendasi / Sertifikat' : 'Surat Rekomendasi';
+          default: return `Raport Semester ${key.replace('raport', '')}`;
+        }
       });
-
-      // Tambahkan dokumen khusus untuk jalur prestasi
-      if (formData.jalur === 'prestasi') {
-        requiredFiles.push('sertifikat');
-      }
-
-      // Cek setiap dokumen yang diperlukan
-      for (const fileKey of requiredFiles) {
-        const fileValue = formData[fileKey as keyof FormData];
-        if (!fileValue || (!(fileValue instanceof File) && typeof fileValue !== 'string')) {
-          setError(`Mohon upload semua dokumen yang diperlukan untuk jalur ${formData.jalur}`);
-          return false;
-        }
-      }
+      setError(`Dokumen yang belum diupload: ${docLabels.join(', ')}`);
+      return false;
     }
 
     setError('');
     return true;
   };
 
-  const handleTabChange = (index: number) => {
-    // Pindah tab tanpa validasi
-    setCurrentStep(index);
-  };
-
-  const handleNext = () => {
-    if (validateForm()) {
-      if (currentStep < tabs.length - 1) {
-        setCurrentStep(prev => prev + 1);
-      }
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
 
-    // Validasi form dokumen jika bukan draft
-    if (!isDraft) {
-      const dokumenForm = document.getElementById('dokumenForm') as HTMLFormElement;
-      if (dokumenForm && !dokumenForm.checkValidity()) {
-        dokumenForm.reportValidity();
-        return;
-      }
-    }
-
-    // Jika ini adalah draft, langsung proses
+    // Jika menyimpan draft, langsung proses tanpa modal konfirmasi
     if (isDraft) {
       await submitForm(isDraft);
       return;
-    }
-
-    // Jika ini adalah submit final (bukan draft)
-    // Dan tombol "Kirim Formulir" diklik
-    const submitButton = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement;
-    if (!isDraft && submitButton?.textContent?.includes('Kirim Formulir')) {
-      if (!validateForm()) {
-        return;
-      }
-      setShowConfirmModal(true);
     }
   };
 
@@ -600,12 +657,14 @@ const PPDBFormPage: React.FC = () => {
     const getAvailableJalur = () => {
       if (!ppdbSettings) {
         return [
-          { value: '', label: '-- Pilih Jalur --' }
+          { value: '', label: '-- Pilih Jalur --', disabled: true }
         ];
       }
 
       const now = new Date();
-      const options = [];
+      const options = [
+        { value: '', label: '-- Pilih Jalur --', disabled: true }
+      ];
 
       // Helper untuk cek apakah jalur aktif
       const isJalurActive = (jalur: JalurPeriod | undefined) => {
@@ -623,19 +682,16 @@ const PPDBFormPage: React.FC = () => {
 
       // Cek setiap jalur dengan null check
       if (ppdbSettings.jalurPrestasi && isJalurActive(ppdbSettings.jalurPrestasi)) {
-        options.push({ value: 'prestasi', label: 'Prestasi' });
+        options.push({ value: 'prestasi', label: 'Prestasi', disabled: false });
       }
       if (ppdbSettings.jalurReguler && isJalurActive(ppdbSettings.jalurReguler)) {
-        options.push({ value: 'reguler', label: 'Reguler' });
+        options.push({ value: 'reguler', label: 'Reguler', disabled: false });
       }
       if (ppdbSettings.jalurUndangan && isJalurActive(ppdbSettings.jalurUndangan)) {
-        options.push({ value: 'undangan', label: 'Undangan' });
+        options.push({ value: 'undangan', label: 'Undangan', disabled: false });
       }
 
-      return [
-        { value: '', label: '-- Pilih Jalur --' },
-        ...options
-      ];
+      return options;
     };
 
     return (
@@ -651,6 +707,7 @@ const PPDBFormPage: React.FC = () => {
                 onChange={handleInputChange}
                 options={getAvailableJalur()}
                 required
+                className="bg-white"
               />
 
               <Input
@@ -662,27 +719,20 @@ const PPDBFormPage: React.FC = () => {
               />
 
               <Input
-                label="NIK (isi '-' jika belum ada)"
+                label={<span>NIK <span className="text-gray-500 text-xs">(-) jika tidak ada</span></span>}
                 name="nik"
                 value={formData.nik}
                 onChange={(e) => {
-                  const value = e.target.value;
-                  // Jika input adalah tanda strip, terima
-                  if (value === '-') {
-                    setFormData(prev => ({ ...prev, nik: value }));
-                    return;
-                  }
-                  // Jika input adalah angka dan panjangnya <= 16
-                  if (/^\d*$/.test(value) && value.length <= 16) {
-                    setFormData(prev => ({ ...prev, nik: value }));
-                  }
+                  // Hanya terima input angka dan -
+                  const value = e.target.value.replace(/[^0-9-]/g, '');
+                  setFormData(prev => ({ ...prev, nik: value }));
                 }}
                 onKeyPress={(e) => {
-                  // Mencegah input karakter non-angka kecuali tanda strip
-                  if (!/[\d-]/.test(e.key)) {
+                  if (!/[0-9-]/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
+                maxLength={16}
                 required
               />
             </div>
@@ -706,10 +756,20 @@ const PPDBFormPage: React.FC = () => {
               />
 
               <Input
-                label="NISN (isi '-' jika belum ada)"
+                label={<span>NISN <span className="text-gray-500 text-xs">(-) jika tidak ada</span></span>}
                 name="nisn"
                 value={formData.nisn}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  // Hanya terima input angka dan -
+                  const value = e.target.value.replace(/[^0-9-]/g, '');
+                  setFormData(prev => ({ ...prev, nisn: value }));
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9-]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                maxLength={10}
                 required
               />
             </div>
@@ -731,20 +791,42 @@ const PPDBFormPage: React.FC = () => {
               <Input
                 label="Anak Ke"
                 name="anakKe"
-                type="number"
-                min="1"
                 value={formData.anakKe}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  // Hanya terima input angka
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (Number(value) > 0 || value === '') {
+                    setFormData(prev => ({ ...prev, anakKe: value }));
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                min="1"
+                maxLength={2}
                 required
               />
 
               <Input
                 label="Jumlah Saudara"
                 name="jumlahSaudara"
-                type="number"
-                min="0"
                 value={formData.jumlahSaudara}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  // Hanya terima input angka
+                  const value = e.target.value.replace(/\D/g, '');
+                  if (Number(value) >= 0 || value === '') {
+                    setFormData(prev => ({ ...prev, jumlahSaudara: value }));
+                  }
+                }}
+                onKeyPress={(e) => {
+                  if (!/[0-9]/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                min="0"
+                maxLength={2}
                 required
               />
             </div>
@@ -809,120 +891,55 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const renderAkademik = () => {
-    // Tentukan semester berdasarkan jalur
     const semesters = formData.jalur === 'reguler' 
-      ? ['3', '4', '5']  // Jalur Reguler
-      : ['2', '3', '4']; // Jalur Prestasi & Undangan
+      ? ['3', '4', '5'] 
+      : ['2', '3', '4'];
+
+    const mapelList = [
+      { label: 'Pendidikan Agama', mobileLabel: 'Pendidikan Agama', key: 'nilaiAgama' },
+      { label: 'Bahasa Indonesia', mobileLabel: 'Bahasa Indonesia', key: 'nilaiBindo' },
+      { label: 'Bahasa Inggris', mobileLabel: 'Bahasa Inggris', key: 'nilaiBing' },
+      { label: 'Matematika', mobileLabel: 'Matematika', key: 'nilaiMtk' },
+      { label: 'IPA', mobileLabel: 'IPA', key: 'nilaiIpa' }
+    ];
 
     return (
-      <div className="grid grid-cols-3 gap-6">
-        {semesters.map((semester) => (
-          <div key={semester} className="space-y-6">
-            <SectionTitle>Semester {semester}</SectionTitle>
-            <div className="space-y-4">
-              <Input
-                label="Pendidikan Agama"
-                name={`nilaiAgama${semester}`}
-                type="number"
-                min="0"
-                max="100"
-                value={String(formData[`nilaiAgama${semester}` as keyof typeof formData] || '')}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (!isNaN(value) && value >= 0 && value <= 100) {
-                    handleInputChange(e);
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required
-              />
-              <Input
-                label="Bahasa Indonesia"
-                name={`nilaiBindo${semester}`}
-                type="number"
-                min="0"
-                max="100"
-                value={String(formData[`nilaiBindo${semester}` as keyof typeof formData] || '')}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (!isNaN(value) && value >= 0 && value <= 100) {
-                    handleInputChange(e);
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required
-              />
-              <Input
-                label="Bahasa Inggris"
-                name={`nilaiBing${semester}`}
-                type="number"
-                min="0"
-                max="100"
-                value={String(formData[`nilaiBing${semester}` as keyof typeof formData] || '')}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (!isNaN(value) && value >= 0 && value <= 100) {
-                    handleInputChange(e);
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required
-              />
-              <Input
-                label="Matematika"
-                name={`nilaiMtk${semester}`}
-                type="number"
-                min="0"
-                max="100"
-                value={String(formData[`nilaiMtk${semester}` as keyof typeof formData] || '')}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (!isNaN(value) && value >= 0 && value <= 100) {
-                    handleInputChange(e);
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required
-              />
-              <Input
-                label="IPA"
-                name={`nilaiIpa${semester}`}
-                type="number"
-                min="0"
-                max="100"
-                value={String(formData[`nilaiIpa${semester}` as keyof typeof formData] || '')}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  if (!isNaN(value) && value >= 0 && value <= 100) {
-                    handleInputChange(e);
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                required
-              />
-            </div>
+      <div className="space-y-10">
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {semesters.map((semester) => (
+              <div key={semester} className="space-y-6">
+                <SectionTitle>Semester {semester}</SectionTitle>
+                <div className="space-y-4">
+                  {mapelList.map(({ label, mobileLabel, key }) => (
+                    <Input
+                      key={key}
+                      label={label}
+                      mobilelabel={mobileLabel}
+                      name={`${key}${semester}`}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={String(formData[`${key}${semester}` as keyof typeof formData] || '')}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        if (!isNaN(value) && value >= 0 && value <= 100) {
+                          handleInputChange(e);
+                        }
+                      }}
+                      onKeyPress={(e) => {
+                        if (!/[0-9]/.test(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      required
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     );
   };
@@ -1149,10 +1166,26 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const tabs = [
-    { label: 'Informasi Siswa', content: renderInformasiSiswa() },
-    { label: 'Akademik', content: renderAkademik() },
-    { label: 'Informasi Orang Tua', content: renderInformasiOrangTua() },
-    { label: 'Dokumen', content: renderDokumen() }
+    { 
+      label: "Siswa",
+      mobileLabel: "Siswa",
+      content: renderInformasiSiswa() 
+    },
+    { 
+      label: "Akademik",
+      mobileLabel: "Akademik",
+      content: renderAkademik() 
+    },
+    { 
+      label: "Orang Tua",
+      mobileLabel: "Orang Tua",
+      content: renderInformasiOrangTua() 
+    },
+    { 
+      label: "Dokumen",
+      mobileLabel: "Dokumen",
+      content: renderDokumen() 
+    }
   ];
 
   // Tambahkan fungsi getRegistrationPeriod di dalam komponen
@@ -1245,20 +1278,22 @@ const PPDBFormPage: React.FC = () => {
   }
 
   return (
-    <Container>
-      <div className="py-10">
-        <Card className="max-w-4xl mx-auto relative">
-          <div className="p-6">
-            <div className="mb-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">
+    <Container className="max-w-full md:max-w-6xl px-2 md:px-6">
+      <div className="py-4 md:py-10">
+        <Card className="max-w-full md:max-w-4xl mx-auto relative">
+          <div className="p-4 md:p-6">
+            <div className="mb-4 md:mb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
                     Formulir Pendaftaran PPDB
                   </h1>
-                  <h2 className="text-lg text-gray-600 mb-2">
+                  <h2 className="text-base md:text-lg text-gray-600">
                     SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}
                   </h2>
-                  <div className="grid grid-cols-2 mb-2">
+                  
+                  {/* Grid untuk info periode - Stack di mobile */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
                     <div>
                       <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
                       <p className="font-medium text-gray-700">
@@ -1272,7 +1307,9 @@ const PPDBFormPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm">
+
+                  {/* Status badges - Wrap di mobile */}
+                  <div className="flex flex-wrap gap-2 text-sm">
                     {formData.jalur && (
                       <div className="bg-blue-100 px-3 py-1 rounded-full">
                         <span className="text-gray-500">Jalur: </span>
@@ -1313,7 +1350,8 @@ const PPDBFormPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-4">
+                {/* Photo upload section - Adjust size for mobile */}
+                <div className="w-full md:w-auto flex justify-center md:justify-end">
                   <div className="relative group">
                     <input
                       type="file"
@@ -1326,14 +1364,13 @@ const PPDBFormPage: React.FC = () => {
                       htmlFor="photoUpload" 
                       className="cursor-pointer block"
                     >
-                      <div className="w-32 h-40 rounded-lg overflow-hidden relative">
+                      <div className="w-20 h-28 md:w-32 md:h-40 rounded-lg overflow-hidden relative">
                         {formData.photo ? (
                           <img 
                             src={formData.photo instanceof File ? URL.createObjectURL(formData.photo) : formData.photo}
                             alt="Pas Foto"
                             className="w-full h-full object-cover"
                             onLoad={(e) => {
-                              // Cleanup URL object setelah gambar dimuat
                               if (formData.photo instanceof File) {
                                 URL.revokeObjectURL((e.target as HTMLImageElement).src);
                               }
@@ -1344,25 +1381,25 @@ const PPDBFormPage: React.FC = () => {
                             <img 
                               src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
                               alt="Dummy Profile"
-                              className="w-20 h-20 opacity-50 mb-2"
+                              className="w-12 h-12 md:w-20 md:h-20 opacity-50 mb-1 md:mb-2"
                             />
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
-                              <span className="text-white text-xs">!</span>
+                            <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
+                              <span className="text-white text-[10px] md:text-xs">!</span>
                             </div>
-                            <div className="text-center px-2">
-                              <p className="text-xs text-red-500 font-medium">Pas Foto Wajib</p>
-                              <p className="text-[10px] text-gray-500">
-                                Upload foto 3x4 dengan latar biru
+                            <div className="text-center px-1 md:px-2">
+                              <p className="text-[10px] md:text-xs text-red-500 font-medium">Pas Foto Wajib</p>
+                              <p className="text-[8px] md:text-[10px] text-gray-500">
+                                Upload foto 3x4 latar biru
                               </p>
                             </div>
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                           <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                            <span className="text-white text-sm font-medium block">
+                            <span className="text-white text-xs md:text-sm font-medium block">
                               {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
                             </span>
-                            <span className="text-gray-300 text-xs">
+                            <span className="text-gray-300 text-[10px] md:text-xs">
                               Klik untuk memilih
                             </span>
                           </div>
@@ -1376,7 +1413,9 @@ const PPDBFormPage: React.FC = () => {
 
             {error && <Alert type="error" message={error} className="my-2" />}
 
-            <form onSubmit={(e) => handleSubmit(e, false)}>
+            <form onSubmit={(e) => {
+              e.preventDefault(); // Mencegah form submit
+            }}>
               {formStatus === 'submitted' && (
                 <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
                   <div className="flex items-center gap-3">
@@ -1407,81 +1446,79 @@ const PPDBFormPage: React.FC = () => {
                   }))} 
                   activeTab={currentStep}
                   onChange={handleTabChange}
+                  className="space-y-4 md:space-y-6"
                 />
               </div>
 
-              <div className="mt-6 pt-4 border-t flex justify-between sticky bottom-0 bg-white">
-                <div className="flex space-x-4">
-                  {currentStep > 0 && (
-                    <Button
-                      type="button"
-                      onClick={handlePrevious}
-                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Sebelumnya
-                    </Button>
-                  )}
-                  
-                  {formStatus !== 'submitted' && (
-                    <Button
-                      type="button"
-                      onClick={(e) => handleSubmit(e, true)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center gap-2"
-                      disabled={loading}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                      </svg>
-                      {loading ? 'Menyimpan...' : 'Simpan Draft'}
-                    </Button>
-                  )}
-                </div>
-
-                <div className="flex space-x-4">
+              <div className="mt-6 pt-4 border-t bg-white">
+                <div className="flex flex-row gap-2">
                   <Button
                     onClick={() => setShowLogoutModal(true)}
                     type="button"
-                    className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                    className="bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                         d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
                       />
                     </svg>
-                    Keluar
+                    <span className="hidden md:inline">Keluar</span>
+                    <span className="inline md:hidden">Exit</span>
                   </Button>
 
-                  {currentStep < tabs.length - 1 ? (
+                  {formStatus !== 'submitted' && (
                     <Button
                       type="button"
-                      onClick={handleNext}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                      onClick={(e) => handleSubmit(e, true)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
+                      disabled={loading}
                     >
-                      Selanjutnya
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M9 5l7 7-7 7" />
+                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                       </svg>
+                      {loading ? (
+                        <>
+                          <span className="hidden md:inline">Menyimpan...</span>
+                          <span className="inline md:hidden">Menyimpan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden md:inline">Simpan Draft</span>
+                          <span className="inline md:hidden">Draft</span>
+                        </>
+                      )}
                     </Button>
-                  ) : (
-                    formStatus !== 'submitted' && (
-                      <Button
-                        type="submit"
-                        className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
-                        disabled={loading}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                            d="M5 13l4 4L19 7" />
-                        </svg>
-                        {loading ? 'Mengirim...' : 'Kirim Formulir'}
-                      </Button>
-                    )
+                  )}
+
+                  {currentStep === tabs.length - 1 && formStatus !== 'submitted' && (
+                    <Button
+                      type="button"
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
+                      disabled={loading || !canAccessTab(currentStep)}
+                      onClick={() => {
+                        if (!validateForm()) {
+                          return;
+                        }
+                        setShowConfirmModal(true);
+                      }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M5 13l4 4L19 7" />
+                      </svg>
+                      {loading ? (
+                        <>
+                          <span className="hidden md:inline">Mengirim...</span>
+                          <span className="inline md:hidden">Mengirim...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden md:inline">Kirim Formulir</span>
+                          <span className="inline md:hidden">Kirim</span>
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
               </div>

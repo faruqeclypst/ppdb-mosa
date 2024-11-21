@@ -21,21 +21,21 @@ const TESTIMONIALS: Testimonial[] = [
     author: "Faisal Alam",
     role: "Siswa Kelas XI",
     rating: 5,
-    image: "/src/assets/testimonials/faisal.png"
+    image: "/images/testimonials/faisal.png"
   },
   {
     content: "Sebagai orang tua, saya sangat puas dengan perkembangan anak saya. Para guru sangat profesional dan perhatian terhadap setiap siswa.",
     author: "Rini Rosita",
     role: "Orang Tua Siswa",
     rating: 5,
-    image: "/src/assets/testimonials/rini.jpg"
+    image: "/images/testimonials/rini.jpg"
   },
   {
     content: "Fasilitas dan program pembelajaran di sini sangat mendukung pengembangan potensi siswa. Saya merasa beruntung bisa bersekolah di sini.",
     author: "Fandira",
     role: "Siswa Kelas XI",
     rating: 5,
-    image: "/src/assets/testimonials/fandira.png"
+    image: "/images/testimonials/fandira.png"
   }
 ];
 

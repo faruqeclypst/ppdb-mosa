@@ -3,7 +3,6 @@ import Container from '../ui/Container';
 import Button from '../ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { getPPDBStatus } from '../../utils/ppdbStatus';
 import Modal from '../ui/Modal';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -27,7 +26,7 @@ const HeroSection: React.FC = () => {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
-          backgroundImage: "url('/src/assets/hero-bg.jpg')",
+          backgroundImage: "url('/images/hero-bg.jpg')",
           backgroundAttachment: "fixed"
         }}
       >
@@ -62,24 +61,39 @@ const HeroSection: React.FC = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center lg:justify-start">
-              <Link to="/register">
+              <Link to="/register" className="w-full sm:w-auto">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <Button 
                     onClick={handleRegisterClick}
-                    className="w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-2 group"
+                    className="w-full bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2"
                   >
-                    Daftar Sekarang
-                    <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <span>Daftar PPDB</span>
+                    <svg 
+                      className="w-5 h-5 group-hover:translate-x-1 transition-transform" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
                   </Button>
                 </motion.div>
               </Link>
 
-              <Link to="/info-ppdb">
-                <Button className="w-full sm:w-auto bg-transparent border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-full backdrop-blur-sm transition-all duration-300">
-                  Info PPDB
+              <Link to="/info-ppdb" className="w-full sm:w-auto">
+                <Button className="w-full bg-transparent border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-full backdrop-blur-sm transition-all duration-300 flex items-center justify-center gap-2">
+                  <span>Info PPDB</span>
+                  <svg 
+                    className="w-5 h-5" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </Button>
               </Link>
             </div>
@@ -90,14 +104,14 @@ const HeroSection: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            className="hidden lg:block"
+            className="hidden lg:block lg:flex lg:items-center lg:justify-center"
           >
-            <div className="relative">
+            <div className="relative w-full max-w-3xl">
               <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
               <img 
-                src="/src/assets/mosa.png" 
-                alt="Education Illustration"
-                className="relative w-full h-auto max-w-lg mx-auto drop-shadow-2xl rounded-2xl"
+                src="/images/mosa.png" 
+                alt="SMAN Modal Bangsa Logo"
+                className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-125"
               />
             </div>
           </motion.div>
