@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
     <footer className="bg-gradient-to-b from-gray-900 to-gray-800 text-gray-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Footer Content */}
-        <div className="py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="py-8 sm:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* School Info */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -48,8 +48,7 @@ const Footer: React.FC = () => {
           >
             <div className="flex items-center space-x-3">
               <img 
-                src="/src/assets/mosa.png" 
-                alt="SMAN Modal Bangsa Logo" 
+                src="/images/mosa.png" 
                 className="h-12 w-auto"
               />
               <div>
@@ -71,7 +70,7 @@ const Footer: React.FC = () => {
             viewport={{ once: true }}
             className="space-y-4"
           >
-            <h3 className="text-white font-semibold">Link Cepat</h3>
+            <h3 className="text-lg sm:text-xl text-white font-semibold">Link Cepat</h3>
             <ul className="space-y-2">
               {[
                 { label: 'Beranda', path: '/' },
@@ -100,7 +99,7 @@ const Footer: React.FC = () => {
             viewport={{ once: true }}
             className="space-y-4"
           >
-            <h3 className="text-white font-semibold">Kontak</h3>
+            <h3 className="text-lg sm:text-xl text-white font-semibold">Kontak</h3>
             <ul className="space-y-3">
               <li>
                 <a 
@@ -138,7 +137,7 @@ const Footer: React.FC = () => {
             viewport={{ once: true }}
             className="space-y-4"
           >
-            <h3 className="text-white font-semibold">Ikuti Kami</h3>
+            <h3 className="text-lg sm:text-xl text-white font-semibold">Ikuti Kami</h3>
             <div className="flex space-x-4">
               {[
                 { type: 'facebook' as const, url: 'https://facebook.com/smanmodalbangsa' },

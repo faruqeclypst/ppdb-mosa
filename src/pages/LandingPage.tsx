@@ -11,11 +11,14 @@ const LandingPage: React.FC = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
+      className="overflow-hidden"
     >
       <HeroSection />
-      <FeaturesSection />
-      <TestimonialsSection />
-      <CallToActionSection />
+      <div className="space-y-8 sm:space-y-16">
+        <FeaturesSection />
+        <TestimonialsSection />
+        <CallToActionSection />
+      </div>
     </motion.div>
   );
 };

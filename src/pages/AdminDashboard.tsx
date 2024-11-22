@@ -47,20 +47,11 @@ const AdminDashboard: React.FC = () => {
           </div>
         </main>
 
-        <div className="fixed bottom-0 right-0 left-0 md:left-64 z-[15]">
+        <div className="fixed bottom-0 right-0 left-0 md:left-64">
           <Footer />
         </div>
 
         <div className="md:hidden fixed bottom-20 right-4 flex flex-col gap-2 z-[15]">
-          <button 
-            className="p-3 bg-white rounded-full shadow-lg text-blue-600"
-            onClick={() => {/* handle filter */}}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-          </button>
-
           <button 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="p-3 bg-blue-500 text-white rounded-full shadow-lg"

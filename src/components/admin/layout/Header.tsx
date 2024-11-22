@@ -75,7 +75,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-white border-b fixed top-0 right-0 left-0 z-40">
       <div className="h-16 px-4 flex items-center justify-between">
         {/* Mobile menu button */}
         <button

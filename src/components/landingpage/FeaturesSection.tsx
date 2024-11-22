@@ -16,6 +16,7 @@ type Feature = {
   title: string;
   description: string;
   color: string;
+  className?: string;
 };
 
 // Constants
@@ -63,7 +64,8 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
   icon, 
   title, 
   description, 
-  color, 
+  color,
+  className,
   index 
 }) => {
   const colorClasses = {
@@ -81,10 +83,10 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
       viewport={{ once: true }}
-      className="relative group h-full"
+      className="relative group"
     >
       <div className="absolute -inset-2 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg blur opacity-0 group-hover:opacity-10 transition duration-500" />
-      <div className="relative p-6 bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col">
+      <div className={`relative bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col ${className}`}>
         <div className="flex items-center space-x-4 mb-4">
           <div className={`inline-flex p-3 rounded-lg ${colorClasses[color as keyof typeof colorClasses]}`}>
             {icon}
@@ -104,15 +106,15 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
 // Main Component
 const FeaturesSection: React.FC = () => {
   return (
-    <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+    <section className="py-12 sm:py-20 bg-gradient-to-b from-gray-50 to-white">
       <Container>
-        <div className="text-center max-w-3xl mx-auto mb-12">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
-            className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4"
+            className="text-2xl sm:text-3xl font-bold text-gray-900 sm:text-4xl mb-4"
           >
             Keunggulan Kami
           </motion.h2>
@@ -121,16 +123,16 @@ const FeaturesSection: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
-            className="text-xl text-gray-600"
+            className="text-base sm:text-lg text-gray-600"
           >
             Memadukan pendidikan berkualitas dengan fasilitas modern untuk menciptakan
             lingkungan belajar yang optimal
           </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
           {FEATURES.map((feature, index) => (
-            <FeatureCard key={index} {...feature} index={index} />
+            <FeatureCard key={index} {...feature} index={index} className="p-4 sm:p-6" />
           ))}
         </div>
       </Container>

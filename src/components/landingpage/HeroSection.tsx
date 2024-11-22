@@ -21,32 +21,29 @@ const HeroSection: React.FC = () => {
   };
 
   return (
-    <section className="relative min-h-screen w-full flex items-center overflow-hidden">
+    <section className="relative min-h-[100dvh] w-full flex items-center overflow-hidden">
       {/* Background Image & Overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
           backgroundImage: "url('/images/hero-bg.jpg')",
-          backgroundAttachment: "fixed"
+          backgroundAttachment: "scroll"
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 via-gray-900/90 to-blue-900/80" />
       </div>
 
       {/* Content */}
-      <Container className="relative z-10 h-full flex items-center">
-        {/* Spacer div untuk memberikan jarak dari header */}
-        <div className="absolute top-0 left-0 right-0 h-24" /> {/* Header spacing */}
-        
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center w-full pt-16"> {/* Tambahkan padding top */}
+      <Container className="relative z-10 h-full flex items-center py-20 sm:py-24">
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center w-full">
           {/* Text Content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center lg:text-left space-y-6"
+            className="text-center lg:text-left space-y-4 sm:space-y-6"
           >
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
               PPDB 2025/2026{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
@@ -55,12 +52,12 @@ const HeroSection: React.FC = () => {
               </span>
             </h1>
             
-            <p className="text-lg sm:text-xl text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Membentuk generasi unggul dengan pendidikan berkualitas dan karakter yang kuat 
               melalui program pembelajaran yang terintegrasi dan inovatif.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 justify-center lg:justify-start">
               <Link to="/register" className="w-full sm:w-auto">
                 <motion.div
                   whileHover={{ scale: 1.05 }}

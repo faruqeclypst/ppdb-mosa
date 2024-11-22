@@ -4,13 +4,13 @@ import { db } from '../../firebase/config';
 import Card from '../ui/Card';
 import {
   UserGroupIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon,
   AcademicCapIcon,
   ChartBarIcon,
   DocumentTextIcon,
-  ArrowTrendingUpIcon
+  ArrowTrendingUpIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -24,11 +24,16 @@ type DashboardStats = {
   jalurUndangan: number;
   recentPendaftar: Array<{
     namaSiswa: string;
-    asalSekolah: string;
     jalur: string;
-    status: string;
     createdAt: string;
   }>;
+};
+
+type StatItem = {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
 };
 
 const DashboardPage: React.FC = () => {
@@ -53,15 +58,13 @@ const DashboardPage: React.FC = () => {
         if (snapshot.exists()) {
           const data = Object.values(snapshot.val()) as any[];
           
-          // Get recent pendaftar
+          // Get recent pendaftar - hanya 3 terbaru
           const recentPendaftar = data
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 5)
+            .slice(0, 3)
             .map(item => ({
               namaSiswa: item.namaSiswa,
-              asalSekolah: item.asalSekolah,
               jalur: item.jalur,
-              status: item.status,
               createdAt: item.createdAt
             }));
 
@@ -86,50 +89,39 @@ const DashboardPage: React.FC = () => {
     loadStats();
   }, []);
 
-  const mainStats = [
+  const getMainStats = (stats: DashboardStats): StatItem[] => [
     {
       title: 'Total Pendaftar',
       value: stats.totalPendaftar,
       icon: <UserGroupIcon className="w-6 h-6" />,
-      color: 'blue',
-      desc: 'Total keseluruhan pendaftar'
+      color: 'blue'
     },
     {
       title: 'Pendaftar Baru',
       value: stats.pendaftarBaru,
       icon: <ClockIcon className="w-6 h-6" />,
-      color: 'yellow',
-      desc: 'Menunggu verifikasi'
+      color: 'yellow'
     },
     {
       title: 'Diterima',
       value: stats.pendaftarDiterima,
       icon: <CheckCircleIcon className="w-6 h-6" />,
-      color: 'green',
-      desc: 'Pendaftar yang diterima'
+      color: 'green'
     },
     {
       title: 'Ditolak',
       value: stats.pendaftarDitolak,
       icon: <XCircleIcon className="w-6 h-6" />,
-      color: 'red',
-      desc: 'Pendaftar yang ditolak'
+      color: 'red'
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'diterima': return 'text-green-600 bg-green-50';
-      case 'ditolak': return 'text-red-600 bg-red-50';
-      default: return 'text-yellow-600 bg-yellow-50';
-    }
-  };
-
-  const getJalurIcon = (jalur: string) => {
+  const getJalurIcon = (jalur?: string) => {
     switch (jalur) {
       case 'prestasi': return <AcademicCapIcon className="w-5 h-5 text-blue-500" />;
       case 'reguler': return <UserGroupIcon className="w-5 h-5 text-green-500" />;
-      default: return <DocumentTextIcon className="w-5 h-5 text-purple-500" />;
+      case 'undangan': return <DocumentTextIcon className="w-5 h-5 text-purple-500" />;
+      default: return <UserGroupIcon className="w-5 h-5 text-gray-500" />;
     }
   };
 
@@ -141,31 +133,58 @@ const DashboardPage: React.FC = () => {
     );
   }
 
+  const mainStats = getMainStats(stats);
+
   return (
     <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-      </div>
-
-      {/* Main Stats */}
+      {/* Main Stats dengan design baru */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {mainStats.map((stat, index) => (
+        {mainStats.map((stat: StatItem, index: number) => (
           <Card 
             key={index}
-            className={`p-6 border-l-4 border-${stat.color}-500 hover:shadow-lg transition-shadow`}
+            className={`relative overflow-hidden group hover:shadow-lg transition-all duration-300
+              ${stat.color === 'blue' ? 'bg-gradient-to-br from-blue-50 via-white to-blue-50' :
+                stat.color === 'yellow' ? 'bg-gradient-to-br from-yellow-50 via-white to-yellow-50' :
+                stat.color === 'green' ? 'bg-gradient-to-br from-green-50 via-white to-green-50' :
+                'bg-gradient-to-br from-red-50 via-white to-red-50'
+              }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-sm text-gray-500">{stat.desc}</p>
-              </div>
-              <div className={`p-3 bg-${stat.color}-100 rounded-full`}>
-                <div className={`text-${stat.color}-600`}>
+            {/* Decorative pattern */}
+            <div className="absolute right-0 top-0 -mt-4 -mr-4 w-24 h-24 rounded-full 
+              bg-gradient-to-br from-white/40 to-white/0 transform rotate-45" />
+            
+            <div className="p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900">
+                    {stat.value}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl
+                  ${stat.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                    stat.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                    stat.color === 'green' ? 'bg-green-100 text-green-600' :
+                    'bg-red-100 text-red-600'
+                  } transform group-hover:scale-110 transition-transform duration-300`}
+                >
                   {stat.icon}
                 </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-4 w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`h-full transition-all duration-500
+                  ${stat.color === 'blue' ? 'bg-blue-500' :
+                    stat.color === 'yellow' ? 'bg-yellow-500' :
+                    stat.color === 'green' ? 'bg-green-500' :
+                    'bg-red-500'
+                  }`}
+                  style={{ 
+                    width: `${(stat.value / stats.totalPendaftar * 100) || 0}%`,
+                    minWidth: '5%'
+                  }}
+                />
               </div>
             </div>
           </Card>
@@ -215,26 +234,32 @@ const DashboardPage: React.FC = () => {
           </div>
           <div className="space-y-4">
             {stats.recentPendaftar.map((pendaftar, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-4">
+              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-3">
                   <div className="p-2 bg-white rounded-lg">
-                    {getJalurIcon(pendaftar.jalur)}
+                    {getJalurIcon(pendaftar?.jalur)}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{pendaftar.namaSiswa}</p>
-                    <p className="text-sm text-gray-600">{pendaftar.asalSekolah}</p>
+                    <p className="font-medium text-gray-900">{pendaftar?.namaSiswa || 'Nama tidak tersedia'}</p>
+                    <p className="text-sm text-gray-600">
+                      Jalur {pendaftar?.jalur ? 
+                        pendaftar.jalur.charAt(0).toUpperCase() + pendaftar.jalur.slice(1) 
+                        : 'Tidak tersedia'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(pendaftar.status)}`}>
-                    {pendaftar.status}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(pendaftar.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
+                <span className="text-sm text-gray-500">
+                  {pendaftar?.createdAt ? 
+                    new Date(pendaftar.createdAt).toLocaleDateString() 
+                    : '-'}
+                </span>
               </div>
             ))}
+            {stats.recentPendaftar.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                Belum ada pendaftar
+              </div>
+            )}
           </div>
         </Card>
       </div>

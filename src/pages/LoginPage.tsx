@@ -111,7 +111,7 @@ const LoginPage: React.FC = () => {
                 transition={{ duration: 0.5 }}
               >
                 <img
-                  src="/src/assets/mosa.png"
+                  src="images/mosa.png"
                   alt="Logo"
                   className="h-20 mx-auto mb-4"
                 />

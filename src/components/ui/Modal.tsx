@@ -1,5 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import classNames from 'classnames';
 
 type ModalProps = {
   isOpen: boolean;
@@ -10,58 +11,58 @@ type ModalProps = {
 };
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md', className = '' }) => {
+  // Handle escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
   const sizeClasses = {
-    sm: 'max-w-md w-[28rem]',
-    md: 'max-w-lg w-[32rem]',
-    lg: 'max-w-3xl w-[48rem]',
-    xl: 'max-w-5xl w-[64rem]',
-    '2xl': 'max-w-7xl w-[80rem]',
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-3xl',
+    xl: 'max-w-5xl',
+    '2xl': 'max-w-7xl',
     'full': 'max-w-[95%] w-[95%]'
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
             onClick={onClose}
-            className={`fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center overflow-hidden ${className}`}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ 
-                opacity: 1, 
-                scale: 1, 
-                y: 0,
-                transition: {
-                  type: "spring",
-                  duration: 0.5,
-                  bounce: 0.3
-                }
-              }}
-              exit={{ 
-                opacity: 0, 
-                scale: 0.95, 
-                y: 20,
-                transition: {
-                  duration: 0.2,
-                  ease: 'easeInOut'
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className={`${sizeClasses[size]} bg-white rounded-lg shadow-xl 
-                         mx-4 my-8 max-h-[80vh] overflow-hidden ${className}`}
-            >
-              <div className="h-full overflow-y-auto w-full">
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <div 
+                className={classNames(
+                  'relative bg-white rounded-lg shadow-xl w-full',
+                  sizeClasses[size],
+                  className
+                )}
+                onClick={e => e.stopPropagation()}
+              >
                 {children}
               </div>
-            </motion.div>
-          </motion.div>
-        </>
+            </div>
+          </div>
+        </div>
       )}
     </AnimatePresence>
   );

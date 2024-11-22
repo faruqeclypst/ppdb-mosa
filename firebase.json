@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "ppdb-mosatest",
     "public": "dist",
     "ignore": [
       "firebase.json",

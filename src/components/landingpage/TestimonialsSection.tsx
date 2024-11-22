@@ -12,6 +12,7 @@ import React from 'react';
   role: string;
   rating: number;
   image: string;
+  className?: string;
 };
 
 // Constants
@@ -59,6 +60,7 @@ const TestimonialCard: React.FC<Testimonial & { index: number }> = ({
   role,
   rating,
   image,
+  className,
   index
 }) => (
   <motion.div
@@ -69,7 +71,7 @@ const TestimonialCard: React.FC<Testimonial & { index: number }> = ({
     className="relative group"
   >
     <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-lg blur opacity-0 group-hover:opacity-10 transition duration-500" />
-    <div className="relative p-8 bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300">
+    <div className={`relative bg-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 ${className}`}>
       <ChatBubbleBottomCenterTextIcon className="w-8 h-8 text-blue-500/20 absolute top-4 left-4" />
       
       <div className="flex items-center mb-6">
@@ -99,31 +101,32 @@ const TestimonialCard: React.FC<Testimonial & { index: number }> = ({
 // Main Component
 const TestimonialsSection: React.FC = () => {
   return (
-    <section className="py-24 bg-gradient-to-b from-white to-gray-50">
+    <section className="py-12 sm:py-24 bg-gradient-to-b from-white to-gray-50">
       <Container>
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
               Apa Kata Mereka?
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-base sm:text-lg text-gray-600">
               Dengarkan pengalaman langsung dari siswa, alumni, dan orang tua tentang
               SMAN Modal Bangsa
             </p>
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
           {TESTIMONIALS.map((testimonial, index) => (
             <TestimonialCard 
               key={index} 
               {...testimonial} 
               index={index} 
+              className="p-4 sm:p-8"
             />
           ))}
         </div>

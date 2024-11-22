@@ -82,22 +82,22 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
   const activeJalur = React.useMemo(() => getActiveJalur(), [settings]);
 
   return (
-    <section className="py-24 bg-gradient-to-br from-gray-50 to-blue-50/30 min-h-screen">
+    <section className="py-12 md:py-24 bg-gradient-to-br from-gray-50 to-blue-50/30 min-h-screen">
       <Container>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16"
+          className="text-center mb-8 md:mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 md:mb-6">
             Jalur PPDB{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
               {settings?.academicYear || '2025/2026'}
             </span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
             Pilih jalur pendaftaran sesuai dengan kriteria dan prestasi Anda
           </p>
         </motion.div>
@@ -105,7 +105,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto flex-grow">
           {/* Jalur Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
             {activeJalur.map((jalur, index) => (
               <motion.div
                 key={jalur.name}
@@ -187,7 +187,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
           </div>
 
           {/* Announcement & Contact - Compact Version */}
-          <div className="mt-16 grid md:grid-cols-2 gap-8">
+          <div className="mt-8 md:mt-16 grid md:grid-cols-2 gap-4 md:gap-8">
             {/* Announcement */}
             {settings?.announcementDate && (
               <motion.div
