@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../../../firebase/config';
-import { UserCircleIcon, ArrowRightOnRectangleIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { UserCircleIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
@@ -18,6 +18,7 @@ const Header: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -39,6 +40,34 @@ const Header: React.FC = () => {
 
     loadAdminData();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateTime = (date: Date) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    const day = days[date.getDay()];
+    const dateNum = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    const time = `${hours}:${minutes}:${seconds}`;
+
+    return `${day}, ${dateNum} ${month} ${year} - ${time}`;
+  };
 
   const handleLogout = async () => {
     try {
@@ -77,15 +106,13 @@ const Header: React.FC = () => {
   return (
     <header className="bg-white border-b fixed top-0 right-0 left-0 z-40">
       <div className="h-16 px-4 flex items-center justify-between">
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100"
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-        >
-          <Bars3Icon className="w-6 h-6" />
-        </button>
+        <div className="hidden md:block">
+          <span className="text-sm font-medium text-gray-900">
+            {formatDateTime(currentTime)}
+          </span>
+        </div>
 
-        <h1 className="text-lg font-semibold text-gray-800">
+        <h1 className="md:hidden text-lg font-semibold text-gray-800">
           Admin Dashboard
         </h1>
         

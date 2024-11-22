@@ -10,148 +10,154 @@ import {
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
-export type AlertType = 'success' | 'error' | 'warning' | 'info';
+type AlertType = 'success' | 'error' | 'info' | 'warning';
 
-type AlertProps = {
-  type?: AlertType;
-  message: string;
-  className?: string;
-  onClose?: () => void;
-  autoClose?: boolean;
-  duration?: number;
+let alertContainer: HTMLDivElement | null = null;
+let alerts: { id: string; type: AlertType; message: string }[] = [];
+
+const createContainer = () => {
+  alertContainer = document.createElement('div');
+  alertContainer.className = classNames(
+    'fixed z-50 flex flex-col',
+    'md:bottom-4 md:left-4 md:top-auto md:right-auto',
+    'top-0 right-0 left-0 md:left-auto',
+    'gap-1 md:gap-2'
+  );
+  document.body.appendChild(alertContainer);
+  return alertContainer;
 };
 
-const Alert: React.FC<AlertProps> = ({ 
-  type = 'info', 
+const getContainer = () => {
+  return alertContainer || createContainer();
+};
+
+const Alert: React.FC<{ type: AlertType; message: string; onClose: () => void }> = ({ 
+  type, 
   message, 
-  className,
-  onClose,
-  autoClose = false,
-  duration = 5000
+  onClose 
 }) => {
-  const [isVisible, setIsVisible] = React.useState(true);
-
-  React.useEffect(() => {
-    if (autoClose) {
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        onClose?.();
-      }, duration);
-
-      return () => clearTimeout(timer);
-    }
-  }, [autoClose, duration, onClose]);
-
-  const typeStyles = {
-    success: {
-      bg: 'bg-green-50',
-      border: 'border-green-400',
-      text: 'text-green-800',
-      icon: <CheckCircleIcon className="h-5 w-5 text-green-400" />,
-    },
-    error: {
-      bg: 'bg-red-50',
-      border: 'border-red-400',
-      text: 'text-red-800',
-      icon: <XCircleIcon className="h-5 w-5 text-red-400" />,
-    },
-    warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-400',
-      text: 'text-yellow-800',
-      icon: <ExclamationCircleIcon className="h-5 w-5 text-yellow-400" />,
-    },
-    info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-400',
-      text: 'text-blue-800',
-      icon: <InformationCircleIcon className="h-5 w-5 text-blue-400" />,
-    },
+  const icons = {
+    success: CheckCircleIcon,
+    error: XCircleIcon,
+    info: InformationCircleIcon,
+    warning: ExclamationCircleIcon
   };
 
-  const style = typeStyles[type];
+  const colors = {
+    success: 'bg-green-50 text-green-800 border-green-200',
+    error: 'bg-red-50 text-red-800 border-red-200',
+    info: 'bg-blue-50 text-blue-800 border-blue-200',
+    warning: 'bg-yellow-50 text-yellow-800 border-yellow-200'
+  };
+
+  const Icon = icons[type];
+
+  const isMobile = window.innerWidth < 768;
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className={classNames(
-            'border rounded-lg p-4 flex items-start',
-            style.bg,
-            style.border,
-            style.text,
-            className
-          )}
-          role="alert"
-        >
-          <div className="flex-shrink-0">{style.icon}</div>
-          <div className="ml-3 flex-1">
-            <p className="text-sm font-medium">{message}</p>
-          </div>
-          {onClose && (
-            <button
-              onClick={() => {
-                setIsVisible(false);
-                onClose();
-              }}
-              className="ml-auto flex-shrink-0 -mx-1.5 -my-1.5 p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2"
-            >
-              <span className="sr-only">Dismiss</span>
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          )}
-        </motion.div>
+    <motion.div
+      initial={{ opacity: 0, y: isMobile ? -20 : 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: isMobile ? -20 : 20, scale: 0.95 }}
+      className={classNames(
+        'flex items-center gap-3 border shadow-sm',
+        colors[type],
+        isMobile 
+          ? 'mx-2 mt-2 p-3 rounded-lg text-sm' 
+          : 'w-full max-w-sm p-4 rounded-lg'
       )}
-    </AnimatePresence>
+    >
+      <div className="flex-shrink-0 flex items-center justify-center">
+        <Icon className="w-5 h-5" />
+      </div>
+      <span className="flex-1 leading-5">{message}</span>
+      <div className="flex-shrink-0 flex items-center justify-center">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg hover:bg-black/5 transition-colors"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </motion.div>
   );
 };
 
-// Utility function untuk menampilkan alert global
-export const showAlert = (
-  type: AlertType,
-  message: string,
-  duration: number = 5000
-): string => {
-  // Generate unique ID untuk alert
-  const alertId = `alert-${Date.now()}`;
-  
-  // Cari atau buat container untuk alert
-  let container = document.getElementById('alert-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'alert-container';
-    container.style.position = 'fixed';
-    container.style.top = '1rem';
-    container.style.right = '1rem';
-    container.style.zIndex = '9999';
-    document.body.appendChild(container);
-  }
+export const showAlert = (type: AlertType, message: string) => {
+  const container = getContainer();
+  const alertId = Math.random().toString(36).substr(2, 9);
+  const root = createRoot(container);
 
-  // Buat element untuk alert
-  const alertElement = document.createElement('div');
-  alertElement.id = alertId;
-  container.appendChild(alertElement);
+  alerts.push({ id: alertId, type, message });
 
-  // Render alert
-  const root = createRoot(alertElement);
   root.render(
-    <Alert
-      type={type}
-      message={message}
-      autoClose={duration > 0}
-      duration={duration}
-      onClose={() => {
-        root.unmount();
-        alertElement.remove();
-        if (container!.childNodes.length === 0) {
-          container!.remove();
-        }
-      }}
-    />
+    <AnimatePresence>
+      {alerts.map(alert => (
+        <Alert
+          key={alert.id}
+          type={alert.type}
+          message={alert.message}
+          onClose={() => {
+            alerts = alerts.filter(a => a.id !== alert.id);
+            if (alerts.length === 0) {
+              root.unmount();
+              container.remove();
+              alertContainer = null;
+            } else {
+              root.render(
+                <AnimatePresence>
+                  {alerts.map(alert => (
+                    <Alert
+                      key={alert.id}
+                      type={alert.type}
+                      message={alert.message}
+                      onClose={() => {
+                        alerts = alerts.filter(a => a.id !== alert.id);
+                        if (alerts.length === 0) {
+                          root.unmount();
+                          container.remove();
+                          alertContainer = null;
+                        }
+                      }}
+                    />
+                  ))}
+                </AnimatePresence>
+              );
+            }
+          }}
+        />
+      ))}
+    </AnimatePresence>
   );
+
+  setTimeout(() => {
+    alerts = alerts.filter(a => a.id !== alertId);
+    if (alerts.length === 0) {
+      root.unmount();
+      container.remove();
+      alertContainer = null;
+    } else {
+      root.render(
+        <AnimatePresence>
+          {alerts.map(alert => (
+            <Alert
+              key={alert.id}
+              type={alert.type}
+              message={alert.message}
+              onClose={() => {
+                alerts = alerts.filter(a => a.id !== alert.id);
+                if (alerts.length === 0) {
+                  root.unmount();
+                  container.remove();
+                  alertContainer = null;
+                }
+              }}
+            />
+          ))}
+        </AnimatePresence>
+      );
+    }
+  }, 5000);
 
   return alertId;
 };

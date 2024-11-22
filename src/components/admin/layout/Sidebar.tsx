@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   HomeIcon,
   UserGroupIcon,
   Cog6ToothIcon,
-  AdjustmentsHorizontalIcon
+  AdjustmentsHorizontalIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
@@ -46,22 +46,43 @@ const SidebarItem: React.FC<{
   item: MenuItem;
   isActive: boolean;
   onClick: () => void;
-}> = ({ item, isActive, onClick }) => (
+  collapsed?: boolean;
+}> = ({ item, isActive, onClick, collapsed }) => (
   <li>
     <button
       onClick={onClick}
       className={classNames(
-        'w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
+        'w-full flex items-center transition-colors duration-200',
+        'px-4 py-2.5',
         isActive
-          ? 'bg-blue-50 text-blue-700 font-semibold shadow-sm'
-          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          ? 'text-blue-600 bg-blue-50/50 font-medium'
+          : 'text-gray-600 hover:bg-gray-50/80 hover:text-gray-900',
+        'rounded-lg relative group'
       )}
     >
-      <item.icon className={classNames(
-        'w-5 h-5 transition-transform',
-        isActive ? 'transform scale-110' : ''
-      )} />
-      <span className="font-medium">{item.name}</span>
+      <div className="w-5 flex-shrink-0 flex items-center justify-center">
+        <item.icon className={classNames(
+          'transition-all',
+          'w-5 h-5'
+        )} />
+      </div>
+      
+      <div className={classNames(
+        'flex-1 transition-all duration-300 overflow-hidden text-left',
+        collapsed ? 'w-0 ml-0' : 'ml-3'
+      )}>
+        <span className="font-medium whitespace-nowrap">
+          {item.name}
+        </span>
+      </div>
+
+      {collapsed && (
+        <div className="absolute left-full ml-3 px-2 py-1 bg-gray-900 text-white text-xs 
+                      rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+                      transition-all duration-200 whitespace-nowrap z-50">
+          {item.name}
+        </div>
+      )}
     </button>
   </li>
 );
@@ -69,6 +90,7 @@ const SidebarItem: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isCollapsed, setIsCollapsed] = useState(!mobile);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -76,26 +98,48 @@ const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   };
 
   return (
-    <div className={classNames(
-      "bg-white h-full flex flex-col border-r",
-      mobile ? "" : "shadow-lg"
-    )}>
-      <div className="h-16 flex items-center px-6 border-b bg-gradient-to-r from-blue-50 to-white">
-        <h1 className="text-xl font-bold text-gray-800">PPDB MoSa</h1>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto py-6">
-        <ul className="space-y-2 px-3">
+    <div 
+      className={classNames(
+        "bg-white h-full flex flex-col transition-all duration-300 relative",
+        mobile ? "" : "shadow-sm fixed left-0 top-0 bottom-0 border-r",
+        isCollapsed ? "w-[64px]" : "w-64"
+      )}
+      onMouseEnter={() => !mobile && setIsCollapsed(false)}
+      onMouseLeave={() => !mobile && setIsCollapsed(true)}
+    >
+      <div className="flex-1 overflow-hidden hover:overflow-y-auto py-4 mt-16">
+        <ul className="space-y-1 px-2">
           {menuItems.map((item) => (
             <SidebarItem
               key={item.path}
               item={item}
               isActive={location.pathname === item.path}
               onClick={() => handleNavigation(item.path)}
+              collapsed={isCollapsed}
             />
           ))}
         </ul>
-      </nav>
+      </div>
+
+      <div className="p-2 border-t bg-gray-50/50">
+        <div className={classNames(
+          'w-full flex items-center transition-colors duration-200',
+          'px-4 py-2.5',
+          'text-gray-600 rounded-lg'
+        )}>
+          <div className="w-5 flex-shrink-0 flex items-center justify-center">
+            <UserGroupIcon className="w-5 h-5" />
+          </div>
+          
+          <div className={classNames(
+            'flex-1 transition-all duration-300 overflow-hidden text-left',
+            isCollapsed ? 'w-0 ml-0' : 'ml-3'
+          )}>
+            <p className="text-xs font-medium text-gray-900 truncate whitespace-nowrap">v1.0.0</p>
+            <p className="text-[10px] text-gray-500 truncate whitespace-nowrap">© 2024 PPDB MoSa</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -27,12 +27,12 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="hidden md:block fixed top-0 left-0 h-full w-64 z-[15]">
+      <div className="hidden md:block fixed top-0 left-0 h-full z-[15]">
         <Sidebar />
       </div>
 
-      <div className="md:pl-64 min-h-screen flex flex-col">
-        <div className="fixed top-0 right-0 left-0 md:left-64 z-[15]">
+      <div className="md:pl-16 min-h-screen flex flex-col">
+        <div className="fixed top-0 right-0 left-0 md:left-16 z-[15]">
           <Header />
         </div>
 
@@ -47,7 +47,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </main>
 
-        <div className="fixed bottom-0 right-0 left-0 md:left-64">
+        <div className="fixed bottom-0 right-0 left-0 md:left-16">
           <Footer />
         </div>
 

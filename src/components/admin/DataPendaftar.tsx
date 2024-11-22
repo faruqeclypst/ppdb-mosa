@@ -15,12 +15,14 @@ import {
   AcademicCapIcon,
   UserGroupIcon,
   ClockIcon,
-  XCircleIcon
+  XCircleIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import classNames from 'classnames';
+import Pagination from '../ui/Pagination';
 
 type PPDBData = {
   uid: string;
@@ -191,6 +193,7 @@ const DataPendaftar: React.FC = () => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Jumlah item per halaman
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -674,89 +677,78 @@ const DataPendaftar: React.FC = () => {
     return Math.ceil(getFilteredData().length / itemsPerPage);
   };
 
-  // Component Pagination
-  const Pagination: React.FC<{
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-  }> = ({ currentPage, totalPages, onPageChange }) => {
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-    const visiblePages = pages.filter(page => 
-      page === 1 || 
-      page === totalPages || 
-      (page >= currentPage - 1 && page <= currentPage + 1)
-    );
-
-    return (
-      <div className="flex items-center justify-between px-4 py-3 border-t">
-        <div className="flex items-center text-sm text-gray-500">
-          Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, getFilteredData().length)} dari {getFilteredData().length} data
-        </div>
-        <div className="flex gap-1">
-          <Button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="p-2 text-gray-600 bg-white border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Sebelumnya
-          </Button>
-          
-          {visiblePages.map((page, index) => {
-            // Tambahkan ellipsis jika ada gap
-            if (index > 0 && page - visiblePages[index - 1] > 1) {
-              return (
-                <React.Fragment key={`ellipsis-${page}`}>
-                  <span className="px-3 py-2 text-gray-400">...</span>
-                  <Button
-                    onClick={() => onPageChange(page)}
-                    className={`p-2 min-w-[40px] ${
-                      currentPage === page 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'text-gray-600 bg-white border hover:bg-gray-50'
-                    }`}
-                  >
-                    {page}
-                  </Button>
-                </React.Fragment>
-              );
-            }
-            
-            return (
-              <Button
-                key={page}
-                onClick={() => onPageChange(page)}
-                className={`p-2 min-w-[40px] ${
-                  currentPage === page 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'text-gray-600 bg-white border hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </Button>
-            );
-          })}
-
-          <Button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="p-2 text-gray-600 bg-white border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Selanjutnya
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
-  // Reset halaman ke 1 ketika filter berubah
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, jalurFilter, sortBy]);
-
   // Tambahkan helper function untuk deteksi mobile
   const isMobile = () => {
     return window.innerWidth <= 640; // Menggunakan breakpoint sm
   };
+
+  const renderMobileRow = (item: PPDBData) => (
+    <div key={item.uid} className="border-b last:border-b-0">
+      <div 
+        onClick={() => setExpandedRow(expandedRow === item.uid ? null : item.uid)}
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+      >
+        <div>
+          <p className="font-medium text-gray-900">{item.namaSiswa}</p>
+          <p className="text-sm text-gray-500">{item.nisn}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge 
+            status={item.status}
+            className={getStatusColor(item.status)}
+          />
+          <ChevronDownIcon 
+            className={classNames(
+              "w-5 h-5 text-gray-400 transition-transform",
+              expandedRow === item.uid ? "transform rotate-180" : ""
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Dropdown Content */}
+      {expandedRow === item.uid && (
+        <div className="px-4 pb-4 space-y-3 bg-gray-50">
+          <div>
+            <p className="text-xs text-gray-500">Jalur</p>
+            <p className="text-sm text-gray-900">{getJalurLabel(item.jalur)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Asal Sekolah</p>
+            <p className="text-sm text-gray-900">{item.asalSekolah}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Tanggal Daftar</p>
+            <p className="text-sm text-gray-900">
+              {new Date(item.createdAt).toLocaleDateString('id-ID')}
+            </p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={() => {
+                setSelectedData(item);
+                setShowDetailModal(true);
+              }}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg text-sm"
+            >
+              Lihat Detail
+            </Button>
+            {item.status === 'submitted' && (
+              <Button
+                onClick={() => {
+                  setSelectedData(item);
+                  setShowStatusModal(true);
+                }}
+                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-2 rounded-lg text-sm"
+              >
+                Ubah Status
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -891,28 +883,40 @@ const DataPendaftar: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table/List View */}
       <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
-        <div className="overflow-x-auto">
-          {getFilteredData().length > 0 ? (
-            <div className="min-w-[800px]">
+        {getFilteredData().length > 0 ? (
+          <>
+            {/* Mobile View */}
+            <div className="md:hidden">
+              <div className="divide-y">
+                {getPaginatedData().map(renderMobileRow)}
+              </div>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block">
               <Table 
                 headers={headers} 
                 data={getPaginatedData().map((item, index) => [
                   <span className="text-gray-600">
                     {((currentPage - 1) * itemsPerPage) + index + 1}
                   </span>,
-                  item.namaSiswa,
-                  item.nisn,
-                  getJalurLabel(item.jalur),
-                  item.asalSekolah,
+                  <div className="truncate max-w-[150px]" title={item.namaSiswa}>
+                    {item.namaSiswa}
+                  </div>,
+                  <div>{item.nisn}</div>,
+                  <div>{getJalurLabel(item.jalur)}</div>,
+                  <div className="truncate max-w-[150px]" title={item.asalSekolah}>
+                    {item.asalSekolah}
+                  </div>,
                   <StatusBadge 
                     key={item.uid} 
                     status={item.status}
                     className={getStatusColor(item.status)}
                   />,
-                  new Date(item.createdAt).toLocaleDateString('id-ID'),
-                  <div key={item.uid} className="flex gap-2">
+                  <div>{new Date(item.createdAt).toLocaleDateString('id-ID')}</div>,
+                  <div key={item.uid} className="flex gap-2 justify-end">
                     <Button
                       onClick={() => {
                         setSelectedData(item);
@@ -938,23 +942,26 @@ const DataPendaftar: React.FC = () => {
                   </div>
                 ])}
               />
-              <Pagination
-                currentPage={currentPage}
-                totalPages={getTotalPages()}
-                onPageChange={setCurrentPage}
-              />
             </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              <div className="max-w-sm mx-auto">
-                <p className="mb-2">Tidak ada data yang sesuai dengan filter</p>
-                <p className="text-sm text-gray-400">
-                  Coba ubah filter atau kata kunci pencarian
-                </p>
-              </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={getTotalPages()}
+              onPageChange={setCurrentPage}
+              totalItems={getFilteredData().length}
+              itemsPerPage={itemsPerPage}
+            />
+          </>
+        ) : (
+          <div className="p-8 text-center text-gray-500">
+            <div className="max-w-sm mx-auto">
+              <p className="mb-2">Tidak ada data yang sesuai dengan filter</p>
+              <p className="text-sm text-gray-400">
+                Coba ubah filter atau kata kunci pencarian
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Modal Detail */}
@@ -1039,7 +1046,7 @@ const DataPendaftar: React.FC = () => {
           {/* Content */}
           {selectedData && (
             <div className={`
-              ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[calc(100vh-280px)]'} 
+              ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[600px]'} 
               overflow-y-auto custom-scrollbar
             `}>
               <Tabs
@@ -1047,7 +1054,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Biodata",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} space-y-4 min-h-[400px]`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'} space-y-4`}>
                         {/* Foto dan Info Utama */}
                         <div className={`flex ${isMobile() ? 'flex-col' : 'gap-6'}`}>
                           {/* Pas Foto */}
@@ -1113,7 +1120,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Akademik",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'}`}>
                         <div className={`grid grid-cols-1 ${!isMobile() && 'lg:grid-cols-2'} gap-4`}>
                           {/* Nilai Akademik */}
                           <div>
@@ -1159,7 +1166,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Data Orang Tua",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'}`}>
                         <div className={`grid ${isMobile() ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                           {[
                             { title: 'Data Ayah', prefix: 'Ayah' },
