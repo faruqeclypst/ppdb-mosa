@@ -58,8 +58,11 @@ const DashboardPage: React.FC = () => {
         if (snapshot.exists()) {
           const data = Object.values(snapshot.val()) as any[];
           
-          // Get recent pendaftar - hanya 3 terbaru
-          const recentPendaftar = data
+          // Filter hanya pendaftar yang sudah submit (sama seperti di DataPendaftar)
+          const submittedData = data.filter(item => item.submittedAt);
+          
+          // Get recent pendaftar - hanya 3 terbaru dari yang sudah submit
+          const recentPendaftar = submittedData
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, 3)
             .map(item => ({
@@ -69,13 +72,13 @@ const DashboardPage: React.FC = () => {
             }));
 
           setStats({
-            totalPendaftar: data.length,
-            pendaftarBaru: data.filter(item => item.status === 'pending').length,
-            pendaftarDiterima: data.filter(item => item.status === 'diterima').length,
-            pendaftarDitolak: data.filter(item => item.status === 'ditolak').length,
-            jalurPrestasi: data.filter(item => item.jalur === 'prestasi').length,
-            jalurReguler: data.filter(item => item.jalur === 'reguler').length,
-            jalurUndangan: data.filter(item => item.jalur === 'undangan').length,
+            totalPendaftar: submittedData.length,
+            pendaftarBaru: submittedData.filter(item => item.status === 'submitted').length,
+            pendaftarDiterima: submittedData.filter(item => item.status === 'diterima').length,
+            pendaftarDitolak: submittedData.filter(item => item.status === 'ditolak').length,
+            jalurPrestasi: submittedData.filter(item => item.jalur === 'prestasi').length,
+            jalurReguler: submittedData.filter(item => item.jalur === 'reguler').length,
+            jalurUndangan: submittedData.filter(item => item.jalur === 'undangan').length,
             recentPendaftar
           });
         }

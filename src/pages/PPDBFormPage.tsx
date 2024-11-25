@@ -257,6 +257,7 @@ const PPDBFormPage: React.FC = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showChangeJalurModal, setShowChangeJalurModal] = useState(false);
   const [newJalurValue, setNewJalurValue] = useState('');
+  const [showGuideModal, setShowGuideModal] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -359,7 +360,7 @@ const PPDBFormPage: React.FC = () => {
       let compressedFile: File;
 
       if (file.type.startsWith('image/')) {
-        const alertId = showAlert('info', 'Sedang mengkompresi gambar...', 0);
+        const alertId = showAlert('info', 'Sedang mengkompresi gambar...', 3000);
         
         compressedFile = await compressFile(file, 30, {
           maxWidthOrHeight: 800,
@@ -1269,6 +1270,88 @@ const PPDBFormPage: React.FC = () => {
     loadPPDBSettings();
   }, []);
 
+  // Tambahkan komponen GuideModal
+  const GuideModal = () => {
+    return (
+      <Modal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+        size="md"
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Petunjuk Pengisian Formulir
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Mohon perhatikan petunjuk berikut sebelum mengisi formulir
+            </p>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-medium text-blue-800 mb-2">Langkah Pengisian:</p>
+              <ol className="list-decimal ml-4 text-blue-700 space-y-2">
+                <li>Lengkapi data di tab Siswa terlebih dahulu</li>
+                <li>Pilih jalur pendaftaran sesuai dengan periode yang aktif</li>
+                <li>Isi nilai akademik di tab Akademik</li>
+                <li>Lengkapi data orang tua di tab Orang Tua</li>
+                <li>Upload dokumen yang diperlukan di tab Dokumen</li>
+              </ol>
+            </div>
+
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="font-medium text-yellow-800 mb-2">Hal Penting:</p>
+              <ul className="list-disc ml-4 text-yellow-700 space-y-2">
+                <li>Pastikan mengisi data dengan benar</li>
+                <li>Simpan draft secara berkala</li>
+                <li>Periksa kembali sebelum mengirim formulir</li>
+                <li>Formulir yang sudah dikirim tidak dapat diubah</li>
+              </ul>
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-medium text-green-800 mb-2">Petunjuk Upload Dokumen:</p>
+              <ul className="list-disc ml-4 text-green-700 space-y-2">
+                <li>Kompres foto dan dokumen sebelum upload</li>
+                <li>Ukuran maksimal file: 4MB</li>
+                <li>Format foto: JPG/PNG, Dokumen: PDF</li>
+                <li>Pastikan dokumen yang diupload jelas dan lengkap</li>
+                <li>Gunakan koneksi internet yang stabil</li>
+              </ul>
+            </div>
+
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-medium text-purple-800 mb-2">Tips Tambahan:</p>
+              <ul className="list-disc ml-4 text-purple-700 space-y-2">
+                <li>Siapkan semua dokumen sebelum mulai mengisi</li>
+                <li>Isi formulir dengan teliti dan lengkap</li>
+                <li>Jika mengalami kendala teknis, coba refresh halaman</li>
+                <li>Hubungi panitia jika membutuhkan bantuan</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setShowGuideModal(false)}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Saya Mengerti
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1280,6 +1363,9 @@ const PPDBFormPage: React.FC = () => {
   return (
     <Container className="max-w-full md:max-w-6xl px-2 md:px-6">
       <div className="py-4 md:py-10">
+        {/* Render GuideModal */}
+        <GuideModal />
+        
         <Card className="max-w-full md:max-w-4xl mx-auto relative">
           <div className="p-4 md:p-6">
             <div className="mb-4 md:mb-6">
@@ -1411,7 +1497,14 @@ const PPDBFormPage: React.FC = () => {
               </div>
             </div>
 
-            {error && <Alert type="error" message={error} className="my-2" />}
+            {error && (
+              <Alert 
+                type="error" 
+                message={error} 
+                className="my-2"
+                onClose={() => setError('')}
+              />
+            )}
 
             <form onSubmit={(e) => {
               e.preventDefault(); // Mencegah form submit

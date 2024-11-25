@@ -10,7 +10,14 @@ import {
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
-type AlertType = 'success' | 'error' | 'info' | 'warning';
+type AlertType = 'success' | 'error' | 'warning' | 'info';
+
+interface AlertProps {
+  type: AlertType;
+  message: string;
+  onClose?: () => void;
+  className?: string;
+}
 
 let alertContainer: HTMLDivElement | null = null;
 let alerts: { id: string; type: AlertType; message: string }[] = [];
@@ -31,11 +38,7 @@ const getContainer = () => {
   return alertContainer || createContainer();
 };
 
-const Alert: React.FC<{ type: AlertType; message: string; onClose: () => void }> = ({ 
-  type, 
-  message, 
-  onClose 
-}) => {
+const Alert: React.FC<AlertProps> = ({ type, message, onClose, className }) => {
   const icons = {
     success: CheckCircleIcon,
     error: XCircleIcon,
@@ -64,7 +67,8 @@ const Alert: React.FC<{ type: AlertType; message: string; onClose: () => void }>
         colors[type],
         isMobile 
           ? 'mx-2 mt-2 p-3 rounded-lg text-sm' 
-          : 'w-full max-w-sm p-4 rounded-lg'
+          : 'w-full max-w-sm p-4 rounded-lg',
+        className
       )}
     >
       <div className="flex-shrink-0 flex items-center justify-center">
@@ -83,7 +87,7 @@ const Alert: React.FC<{ type: AlertType; message: string; onClose: () => void }>
   );
 };
 
-export const showAlert = (type: AlertType, message: string) => {
+export const showAlert = (type: AlertType, message: string, duration?: number) => {
   const container = getContainer();
   const alertId = Math.random().toString(36).substr(2, 9);
   const root = createRoot(container);
@@ -157,7 +161,7 @@ export const showAlert = (type: AlertType, message: string) => {
         </AnimatePresence>
       );
     }
-  }, 5000);
+  }, duration || 5000);
 
   return alertId;
 };

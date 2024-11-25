@@ -1046,7 +1046,7 @@ const DataPendaftar: React.FC = () => {
           {/* Content */}
           {selectedData && (
             <div className={`
-              ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[600px]'} 
+              ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[calc(100vh-280px)]'} 
               overflow-y-auto custom-scrollbar
             `}>
               <Tabs
@@ -1054,7 +1054,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Biodata",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} space-y-4`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'} space-y-4 min-h-[400px]`}>
                         {/* Foto dan Info Utama */}
                         <div className={`flex ${isMobile() ? 'flex-col' : 'gap-6'}`}>
                           {/* Pas Foto */}
@@ -1120,7 +1120,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Akademik",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'}`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
                         <div className={`grid grid-cols-1 ${!isMobile() && 'lg:grid-cols-2'} gap-4`}>
                           {/* Nilai Akademik */}
                           <div>
@@ -1166,7 +1166,7 @@ const DataPendaftar: React.FC = () => {
                   {
                     label: "Data Orang Tua",
                     content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'}`}>
+                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
                         <div className={`grid ${isMobile() ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                           {[
                             { title: 'Data Ayah', prefix: 'Ayah' },

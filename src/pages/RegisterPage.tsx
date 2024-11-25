@@ -195,7 +195,12 @@ const RegisterPage: React.FC = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Alert type="error" message={error} className="mb-6" />
+                  <Alert 
+                    type="error" 
+                    message={error} 
+                    className="mb-6"
+                    onClose={() => setError('')}
+                  />
                 </motion.div>
               )}
 

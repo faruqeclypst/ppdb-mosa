@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
             isCollapsed ? 'w-0 ml-0' : 'ml-3'
           )}>
             <p className="text-xs font-medium text-gray-900 truncate whitespace-nowrap">v1.0.0</p>
-            <p className="text-[10px] text-gray-500 truncate whitespace-nowrap">© 2024 PPDB MoSa</p>
+            <p className="text-[10px] text-gray-500 truncate whitespace-nowrap">© 2024 PPDB MOSA</p>
           </div>
         </div>
       </div>
