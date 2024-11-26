@@ -15,12 +15,10 @@ const LandingPage: React.FC = () => {
       className="overflow-hidden"
     >
       <HeroSection />
-      <div className="">
-        <FeaturesSection />
-        <TestimonialsSection />
-        <FAQSection />
-        <CallToActionSection />
-      </div>
+      <FeaturesSection />
+      <TestimonialsSection />
+      <FAQSection />
+      <CallToActionSection />
     </motion.div>
   );
 };
