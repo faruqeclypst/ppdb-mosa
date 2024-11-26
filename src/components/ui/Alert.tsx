@@ -26,7 +26,7 @@ const createContainer = () => {
   alertContainer = document.createElement('div');
   alertContainer.className = classNames(
     'fixed z-50 flex flex-col',
-    'md:bottom-4 md:left-4 md:top-auto md:right-auto',
+    'md:bottom-6 md:left-6 md:top-auto md:right-auto',
     'top-0 right-0 left-0 md:left-auto',
     'gap-1 md:gap-2'
   );
@@ -66,7 +66,7 @@ const Alert: React.FC<AlertProps> = ({ type, message, onClose, className }) => {
         'flex items-center gap-3 border shadow-sm',
         colors[type],
         isMobile 
-          ? 'mx-2 mt-2 p-3 rounded-lg text-sm' 
+          ? 'mx-4 mt-4 p-3 rounded-lg text-sm' 
           : 'w-full max-w-sm p-4 rounded-lg',
         className
       )}

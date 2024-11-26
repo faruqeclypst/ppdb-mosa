@@ -4,6 +4,7 @@ import HeroSection from '../components/landingpage/HeroSection';
 import FeaturesSection from '../components/landingpage/FeaturesSection';
 import TestimonialsSection from '../components/landingpage/TestimonialsSection';
 import CallToActionSection from '../components/landingpage/CallToActionSection';
+import FAQSection from '../components/landingpage/FAQSection';
 
 const LandingPage: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const LandingPage: React.FC = () => {
       <div className="">
         <FeaturesSection />
         <TestimonialsSection />
+        <FAQSection />
         <CallToActionSection />
       </div>
     </motion.div>

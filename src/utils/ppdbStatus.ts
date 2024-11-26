@@ -3,6 +3,9 @@ import { db } from '../firebase/config';
 import type { PPDBSettings } from '../types/settings';
 
 export const getPPDBStatus = async (): Promise<boolean> => {
+  // return false;
+   //hapus baris return false; untuk aktif ppdb 
+  
   try {
     const settingsRef = ref(db, 'settings/ppdb');
     const snapshot = await get(settingsRef);

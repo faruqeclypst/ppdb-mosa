@@ -485,23 +485,6 @@ const generateRegistrationCard = async (formData: FormData) => {
       year: 'numeric'
     });
 
-    // Fungsi untuk membuat garis putus-putus yang lebih halus
-    const drawDottedLine = (startX: number, y: number, width: number) => {
-      const dotSpacing = 4;
-      const dotWidth = 2;
-      let x = startX;
-      
-      while (x < startX + width) {
-        page.drawLine({
-          start: { x, y },
-          end: { x: x + dotWidth, y },
-          thickness: 0.5,
-          color: rgb(0.6, 0.6, 0.6), // Warna abu-abu yang lebih soft
-        });
-        x += dotSpacing + dotWidth;
-      }
-    };
-
     // Update fungsi drawSignatureBox
     const drawSignatureBox = (x: number, y: number, width: number, label: string, name?: string) => {
       // Label (Panitia/Pendaftar)

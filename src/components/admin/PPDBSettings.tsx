@@ -5,6 +5,7 @@ import Input from '../ui/Input';
 import Button from '../ui/Button';
 import { showAlert } from '../ui/Alert';
 import type { PPDBSettings as PPDBSettingsType } from '../../types/settings';
+import Modal from '../ui/Modal';
 
 const initialSettings: PPDBSettingsType = {
   academicYear: '',
@@ -47,6 +48,7 @@ const PPDBSettings: React.FC = () => {
   const [settings, setSettings] = useState<PPDBSettingsType>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -81,6 +83,7 @@ const PPDBSettings: React.FC = () => {
     try {
       await set(ref(db, 'settings/ppdb'), settings);
       showAlert('success', 'Pengaturan berhasil disimpan');
+      setShowConfirmModal(false);
     } catch (error) {
       console.error('Error saving settings:', error);
       showAlert('error', 'Gagal menyimpan pengaturan');
@@ -415,13 +418,11 @@ const PPDBSettings: React.FC = () => {
             />
           </div>
         </div>
-      </div>
 
-      {/* Tombol Simpan - Fixed Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 md:relative bg-white border-t md:border-0 p-4 md:p-0">
-        <div className="max-w-7xl mx-auto flex justify-end">
+        {/* Tombol Simpan dipindah ke sini */}
+        <div className="mt-8 flex justify-end border-t pt-6">
           <Button
-            onClick={handleSave}
+            onClick={() => setShowConfirmModal(true)}
             className="w-full md:w-auto bg-blue-600 text-white hover:bg-blue-700 px-8 py-2.5"
             disabled={saving}
           >
@@ -436,6 +437,50 @@ const PPDBSettings: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Modal Konfirmasi */}
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        className="z-50"
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Konfirmasi Simpan Pengaturan
+            </h3>
+            <p className="text-sm text-gray-600">
+              Apakah Anda yakin ingin menyimpan perubahan pengaturan PPDB?
+              <br />
+              <span className="text-yellow-600 mt-2 block">
+                Perubahan ini akan langsung mempengaruhi sistem PPDB.
+              </span>
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowConfirmModal(false)}
+              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              disabled={saving}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+              disabled={saving}
+            >
+              {saving ? 'Menyimpan...' : 'Ya, Simpan'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
