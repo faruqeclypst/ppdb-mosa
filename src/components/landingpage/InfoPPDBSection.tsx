@@ -12,6 +12,7 @@ import {
   ClockIcon,
   ArrowLongRightIcon,
 } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 
 type InfoPPDBSectionProps = {
   settings: PPDBSettings | null;
@@ -42,8 +43,8 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-blue-500',
         requirements: [
           'Nilai Rapor Semester 2-4',
-          'Sertifikat Prestasi',
-          'Surat Rekomendasi'
+          'Surat Rekomendasi / Prestasi',
+          'Pas foto latar biru'
         ]
       });
     }
@@ -57,8 +58,8 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-green-500',
         requirements: [
           'Nilai Rapor Semester 3-5',
-          'Surat Keterangan Sehat',
-          'Kartu Keluarga'
+          'Surat Rekomendasi / Prestasi',
+          'Pas foto latar biru'
         ]
       });
     }
@@ -70,9 +71,10 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         icon: DocumentTextIcon,
         bgColor: 'bg-purple-500',
         requirements: [
-          'Surat Undangan',
           'Nilai Rapor Semester 2-4',
-          'Surat Rekomendasi'
+          'Minimal nilai rapor 85',
+          'Pas foto latar biru',
+          'Surat Rekomendasi / Prestasi'
         ]
       });
     }
@@ -174,12 +176,14 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                     </div>
 
                     {/* Action Button - Fixed height */}
-                    <button className={`w-full mt-6 ${jalur.bgColor} text-white py-3 px-4 
-                                     rounded-xl flex items-center justify-center gap-2 
-                                     transition-all duration-300 hover:opacity-90`}>
-                      <span>Daftar Sekarang</span>
-                      <ArrowLongRightIcon className="w-5 h-5" />
-                    </button>
+                    <Link to="/register">
+                      <button className={`w-full mt-6 ${jalur.bgColor} text-white py-3 px-4 
+                                       rounded-xl flex items-center justify-center gap-2 
+                                       transition-all duration-300 hover:opacity-90`}>
+                        <span>Daftar Sekarang</span>
+                        <ArrowLongRightIcon className="w-5 h-5" />
+                      </button>
+                    </Link>
                   </div>
                 </div>
               </motion.div>

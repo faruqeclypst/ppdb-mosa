@@ -19,7 +19,7 @@ const CallToActionSection: React.FC = () => {
     },
     {
       icon: <TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
-      value: "100+",
+      value: "500+",
       label: "Prestasi"
     }
   ];
@@ -164,14 +164,6 @@ const CallToActionSection: React.FC = () => {
                 </motion.div>
               </Link>
             </motion.div>
-
-            {/* Enhanced Additional Text */}
-            <motion.p 
-              variants={itemVariants}
-              className="text-blue-200 text-xs sm:text-sm pt-4 sm:pt-6 font-light"
-            >
-              Pendaftaran dibuka sampai dengan 30 April 2024
-            </motion.p>
           </div>
         </motion.div>
       </Container>

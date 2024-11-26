@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { getPPDBStatus } from '../utils/ppdbStatus';
 import Modal from '../components/ui/Modal';
+import type { PPDBSettings } from '../types/settings';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
+  const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
 
   useEffect(() => {
     const checkFirstAdmin = async () => {
@@ -53,6 +55,23 @@ const RegisterPage: React.FC = () => {
 
     checkPPDBStatus();
   }, [isFirstAdmin]);
+
+  useEffect(() => {
+    const loadPPDBSettings = async () => {
+      try {
+        const settingsRef = ref(db, 'settings/ppdb');
+        const snapshot = await get(settingsRef);
+        
+        if (snapshot.exists()) {
+          setPPDBSettings(snapshot.val());
+        }
+      } catch (error) {
+        console.error('Error loading PPDB settings:', error);
+      }
+    };
+
+    loadPPDBSettings();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +136,15 @@ const RegisterPage: React.FC = () => {
     }
   ];
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <Container className="max-w-6xl w-full">
@@ -151,21 +179,37 @@ const RegisterPage: React.FC = () => {
             </div>
 
             {/* Additional Info */}
-            <div className="space-y-4 bg-blue-50 p-6 rounded-xl">
+            <div className="space-y-4 bg-blue-50 p-5 rounded-xl">
               <h3 className="font-medium text-blue-900">Periode Pendaftaran</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Dibuka</span>
-                  <span className="text-blue-700 font-medium">1 Maret 2024</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Ditutup</span>
-                  <span className="text-blue-700 font-medium">30 April 2024</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Pengumuman</span>
-                  <span className="text-blue-700 font-medium">15 Mei 2024</span>
-                </div>
+                <div className="space-y-1">
+                {ppdbSettings && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Jalur Prestasi</span>
+                      <span className="text-blue-700 font-medium">
+                        {formatDate(ppdbSettings.jalurPrestasi.start)} - {formatDate(ppdbSettings.jalurPrestasi.end)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Jalur Reguler</span>
+                      <span className="text-blue-700 font-medium">
+                        {formatDate(ppdbSettings.jalurReguler.start)} - {formatDate(ppdbSettings.jalurReguler.end)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Jalur Undangan</span>
+                      <span className="text-blue-700 font-medium">
+                        {formatDate(ppdbSettings.jalurUndangan.start)} - {formatDate(ppdbSettings.jalurUndangan.end)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Pengumuman</span>
+                      <span className="text-blue-700 font-medium">
+                        {formatDate(ppdbSettings.announcementDate)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -176,13 +220,13 @@ const RegisterPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm">
-              {/* Header */}
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <Card className="p-4 md:p-8 shadow-2xl bg-white/80 backdrop-blur-sm">
+              {/* Header - Ukuran font lebih kecil di mobile */}
+              <div className="text-center mb-4 md:mb-8">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
                   {isFirstAdmin ? 'Setup Admin' : 'Daftar Akun PPDB'}
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs md:text-sm text-gray-600">
                   {isFirstAdmin 
                     ? 'Buat akun admin pertama untuk mengelola sistem'
                     : 'Lengkapi data berikut untuk membuat akun PPDB'}
@@ -198,16 +242,16 @@ const RegisterPage: React.FC = () => {
                   <Alert 
                     type="error" 
                     message={error} 
-                    className="mb-6"
+                    className="mb-4 md:mb-6 text-xs md:text-sm"
                     onClose={() => setError('')}
                   />
                 </motion.div>
               )}
 
-              {/* Register Form */}
-              <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Register Form - Spacing lebih kecil di mobile */}
+              <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
                 <div className="relative">
-                  <UserIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                  <UserIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Nama Lengkap"
                     type="text"
@@ -215,12 +259,12 @@ const RegisterPage: React.FC = () => {
                     value={formData.fullName}
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                     placeholder={isFirstAdmin ? "Nama Admin" : "Nama Lengkap"}
-                    className="pl-10"
+                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
                 </div>
 
                 <div className="relative">
-                  <EnvelopeIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                  <EnvelopeIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Email"
                     type="email"
@@ -228,12 +272,12 @@ const RegisterPage: React.FC = () => {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="Masukkan email"
-                    className="pl-10"
+                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
                 </div>
 
                 <div className="relative">
-                  <LockClosedIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                  <LockClosedIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Password"
                     type="password"
@@ -241,12 +285,12 @@ const RegisterPage: React.FC = () => {
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="Masukkan password"
-                    className="pl-10"
+                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
                 </div>
 
                 <div className="relative">
-                  <KeyIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                  <KeyIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Konfirmasi Password"
                     type="password"
@@ -254,21 +298,21 @@ const RegisterPage: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                     placeholder="Konfirmasi password"
-                    className="pl-10"
+                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   <Button 
                     type="submit"
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
                               hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 
-                              py-3 rounded-lg transition-all duration-300"
+                              py-2 md:py-3 rounded-lg transition-all duration-300 text-sm md:text-base"
                     disabled={loading}
                   >
                     {loading ? (
                       <div className="flex items-center justify-center">
-                        <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2" />
+                        <div className="w-4 h-4 md:w-5 md:h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2" />
                         {isFirstAdmin ? 'Membuat Admin...' : 'Mendaftar...'}
                       </div>
                     ) : (
@@ -276,22 +320,18 @@ const RegisterPage: React.FC = () => {
                     )}
                   </Button>
 
-                  <div className="text-center space-y-4">
-                    <p className="text-sm text-gray-500">
+                  <div className="text-center space-y-2 md:space-y-4">
+                    <p className="text-xs md:text-sm text-gray-500">
                       Sudah punya akun?{' '}
                       <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
                         Masuk di sini
                       </Link>
                     </p>
 
-                    <p className="text-xs text-gray-500">
+                    <p className="text-[10px] md:text-xs text-gray-500">
                       Dengan mendaftar, Anda menyetujui{' '}
-                      <Link to="/terms" className="text-blue-600 hover:text-blue-700">
-                        Syarat & Ketentuan
-                      </Link>
-                      {' '}dan{' '}
-                      <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
-                        Kebijakan Privasi
+                      <Link to="/info-ppdb" className="text-blue-600 hover:text-blue-700">
+                        Syarat & Ketentuan PPDB SMAN Modal Bangsa
                       </Link>
                     </p>
                   </div>

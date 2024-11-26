@@ -103,20 +103,20 @@ const Footer: React.FC = () => {
             <ul className="space-y-3">
               <li>
                 <a 
-                  href="tel:+628116700050" 
+                  href="https://wa.me/6285359907696" 
                   className="text-gray-400 hover:text-white transition-colors duration-200 text-sm flex items-center space-x-2"
                 >
                   <PhoneIcon className="h-4 w-4" />
-                  <span>+62 811-6700-050</span>
+                  <span>Rahmat</span>
                 </a>
               </li>
               <li>
                 <a 
-                  href="mailto:info@modalbangsa.sch.id" 
+                  href="mailto:alfaruqasri@sman-modalbangsa.sch.id" 
                   className="text-gray-400 hover:text-white transition-colors duration-200 text-sm flex items-center space-x-2"
                 >
                   <EnvelopeIcon className="h-4 w-4" />
-                  <span>info@modalbangsa.sch.id</span>
+                  <span>admin@sman-modalbangsa.sch.id</span>
                 </a>
               </li>
               <li className="flex items-start space-x-2 text-sm">
@@ -142,7 +142,7 @@ const Footer: React.FC = () => {
               {[
                 { type: 'facebook' as const, url: 'https://facebook.com/smanmodalbangsa' },
                 { type: 'instagram' as const, url: 'https://instagram.com/smanmodalbangsa' },
-                { type: 'youtube' as const, url: 'https://youtube.com/@smanmodalbangsa' }
+                { type: 'youtube' as const, url: 'https://www.youtube.com/@SMANModalBangsaAceh' }
               ].map((social) => (
                 <a
                   key={social.type}
@@ -157,7 +157,7 @@ const Footer: React.FC = () => {
             </div>
             <div className="mt-4">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3971.5647460255434!2d95.42163661476695!3d5.486910396023827!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30408aa0aa0a9441%3A0x6f5e0a9f7d3f55f9!2sSMAN%20Modal%20Bangsa!5e0!3m2!1sen!2sid!4v1647827937297!5m2!1sen!2sid"
+                src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d15885.574551070333!2d95.3956953!3d5.5084365!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30404789b47e89ab%3A0xb253dc7568697eaf!2sModal%20Bangsa%20Senior%20High%20School!5e0!3m2!1sen!2sid!4v1732586937320!5m2!1sen!2sid"
                 className="w-full h-32 rounded-lg"
                 loading="lazy"
               ></iframe>

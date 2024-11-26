@@ -22,7 +22,7 @@ const TESTIMONIALS: Testimonial[] = [
     author: "Faisal Alam",
     role: "Siswa Kelas XI",
     rating: 5,
-    image: "/images/testimonials/faisal.png"
+    image: "/images/testimonials/faisal.jpg"
   },
   {
     content: "Sebagai orang tua, saya sangat puas dengan perkembangan anak saya. Para guru sangat profesional dan perhatian terhadap setiap siswa.",
@@ -36,7 +36,7 @@ const TESTIMONIALS: Testimonial[] = [
     author: "Fandira",
     role: "Siswa Kelas XI",
     rating: 5,
-    image: "/images/testimonials/fandira.png"
+    image: "/images/testimonials/fandira.jpg"
   }
 ];
 

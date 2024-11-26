@@ -14,7 +14,7 @@ const LandingPage: React.FC = () => {
       className="overflow-hidden"
     >
       <HeroSection />
-      <div className="space-y-8 sm:space-y-16">
+      <div className="">
         <FeaturesSection />
         <TestimonialsSection />
         <CallToActionSection />

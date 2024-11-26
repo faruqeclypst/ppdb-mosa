@@ -19,6 +19,8 @@ import Modal from '../components/ui/Modal';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { signOut } from 'firebase/auth';
 import { getPPDBStatus } from '../utils/ppdbStatus';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { saveAs } from 'file-saver';
 
 // Types
 export type JalurPeriod = {
@@ -38,6 +40,9 @@ export type PPDBSettings = {
 
 // Tambahkan di bagian atas file, setelah imports
 type FormData = {
+  // Tambahkan uid
+  uid?: string;
+  
   // Informasi Siswa
   jalur: string;
   namaSiswa: string;
@@ -96,6 +101,7 @@ type FormData = {
 
 // Tambahkan INITIAL_FORM_DATA
 const INITIAL_FORM_DATA: FormData = {
+  uid: undefined,
   jalur: '',
   namaSiswa: '',
   nik: '',
@@ -183,9 +189,9 @@ const VALIDATION_CONFIG = {
 
   // Nilai minimum per jalur
   MIN_NILAI: {
-    prestasi: 85,
-    reguler: 85,
-    undangan: 85
+    prestasi: 83,
+    reguler: 83,
+    undangan: 83
   },
 
   // Semester yang diperlukan per jalur
@@ -239,6 +245,354 @@ const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?
   return { isValid: true };
 };
 
+// Fungsi untuk mendapatkan tahun ajaran PPDB
+const getPPDBYear = () => {
+  return {
+    start: 2025,
+    end: 2026
+  };
+};
+
+// Update fungsi formatRegistrationNumber
+const formatRegistrationNumber = (uid: string, jalur: string) => {
+  // Ambil 6 karakter terakhir dari uid
+  const shortId = uid.slice(-6).toUpperCase();
+  
+  // Dapatkan kode jalur
+  const jalurCode = {
+    'prestasi': 'PST',
+    'reguler': 'REG', 
+    'undangan': 'UND'
+  }[jalur] || 'XXX';
+  
+  // Gunakan tahun PPDB yang tetap (2025)
+  const { start } = getPPDBYear();
+  
+  // Format: PPDB/2025/PST/XXXXXX
+  return `PPDB/${start}/${jalurCode}/${shortId}`;
+};
+
+// Tambahkan fungsi untuk memecah teks panjang
+const wrapText = (text: string, maxLength: number): string[] => {
+  if (text.length <= maxLength) return [text];
+  
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    if ((currentLine + ' ' + word).length <= maxLength) {
+      currentLine += ' ' + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine);
+
+  return lines;
+};
+
+// Tambahkan fungsi untuk membuat kartu pendaftaran PDF
+const generateRegistrationCard = async (formData: FormData) => {
+  try {
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]); // A4 size
+    const { width, height } = page.getSize();
+
+    // Load fonts
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+    // Load logo sekolah
+    const logoResponse = await fetch('/images/mosa.png');
+    const logoArrayBuffer = await logoResponse.arrayBuffer();
+    const logoImage = await pdfDoc.embedPng(logoArrayBuffer);
+    const logoDims = logoImage.scale(0.07);
+
+    // Header positioning
+    const headerY = height - 80; // Turunkan sedikit header
+    const marginX = 50; // Margin kiri-kanan yang konsisten
+
+    // Draw logo
+    page.drawImage(logoImage, {
+      x: marginX,
+      y: headerY - logoDims.height/2,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+
+    // Header text dengan alignment yang lebih baik
+    const headerTextX = marginX + logoDims.width + 30;
+    
+    page.drawText('PENERIMAAN PESERTA DIDIK BARU', {
+      x: headerTextX,
+      y: headerY + 15,
+      size: 16,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+
+    page.drawText('SMAN MODAL BANGSA', {
+      x: headerTextX,
+      y: headerY - 10,
+      size: 14,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+
+    const { start, end } = getPPDBYear();
+    page.drawText(`TAHUN PELAJARAN ${start}/${end}`, {
+      x: headerTextX,
+      y: headerY - 35,
+      size: 12,
+      font: helveticaFont,
+      color: rgb(0, 0, 0),
+    });
+
+    // Garis pemisah yang lebih panjang
+    const lineY = headerY - 60;
+    page.drawLine({
+      start: { x: marginX, y: lineY },
+      end: { x: width - marginX, y: lineY },
+      thickness: 1,
+      color: rgb(0.7, 0.7, 0.7),
+    });
+
+    // Judul Kartu dengan spacing yang lebih baik
+    page.drawText('KARTU PENDAFTARAN', {
+      x: (width - helveticaBold.widthOfTextAtSize('KARTU PENDAFTARAN', 14)) / 2,
+      y: lineY - 30,
+      size: 14,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+
+    // Area foto dengan border yang lebih halus
+    const photoWidth = 3 * 28.35;
+    const photoHeight = 4 * 28.35;
+    const photoX = width - photoWidth - marginX;
+    const photoY = lineY - photoHeight - 20;
+
+    // Border foto dengan sudut rounded
+    page.drawRectangle({
+      x: photoX,
+      y: photoY,
+      width: photoWidth,
+      height: photoHeight,
+      borderColor: rgb(0.8, 0.8, 0.8),
+      borderWidth: 0.75,
+    });
+
+    // Teks petunjuk foto yang lebih rapi
+    const textColor = rgb(0.5, 0.5, 0.5);
+    page.drawText('Tempel', {
+      x: photoX + photoWidth/2 - 12,
+      y: photoY + photoHeight/2 + 10,
+      size: 8,
+      font: helveticaFont,
+      color: textColor,
+    });
+
+    page.drawText('Pas Foto 3x4', {
+      x: photoX + photoWidth/2 - 20,
+      y: photoY + photoHeight/2 - 5,
+      size: 8,
+      font: helveticaFont,
+      color: textColor,
+    });
+
+    // Format nomor pendaftaran
+    const registrationNumber = formatRegistrationNumber(formData.uid || '', formData.jalur);
+
+    // Informasi pendaftar dengan layout yang lebih rapi
+    const startY = lineY - 80;
+    const lineHeight = 25;
+    let currentY = startY;
+
+    const drawField = (label: string, value: string, y: number) => {
+      page.drawText(label, {
+        x: marginX,
+        y,
+        size: 10,
+        font: helveticaBold,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(': ' + value, {
+        x: marginX + 150, // Sejajarkan semua nilai
+        y,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+      });
+    };
+
+    // Data pendaftar dengan grouping yang lebih jelas
+    const fields = [
+      { label: 'No. Pendaftaran', value: registrationNumber },
+      { label: 'Jalur Pendaftaran', value: formData.jalur.toUpperCase() },
+      { label: 'Nama Lengkap', value: formData.namaSiswa },
+      { label: 'NISN', value: formData.nisn },
+      { label: 'NIK', value: formData.nik },
+      { label: 'Tempat, Tgl Lahir', value: `${formData.tempatLahir}, ${new Date(formData.tanggalLahir).toLocaleDateString('id-ID')}` },
+      { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' },
+      { label: 'Asal Sekolah', value: formData.asalSekolah },
+      { label: 'Alamat', value: formData.alamat },
+      { label: 'Nama Ayah', value: formData.namaAyah },
+      { label: 'Nama Ibu', value: formData.namaIbu },
+      { label: 'No. HP', value: formData.hpAyah }
+    ];
+
+    fields.forEach((field) => {
+      drawField(field.label, field.value, currentY);
+      currentY -= lineHeight;
+    });
+
+    // Catatan dengan style yang lebih baik
+    currentY -= 30;
+    page.drawText('Catatan:', {
+      x: marginX,
+      y: currentY,
+      size: 10,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+
+    const notes = [
+      '1. Kartu ini sebagai bukti pendaftaran PPDB SMAN Modal Bangsa',
+      '2. Simpan kartu ini dan tunjukkan saat pendaftaran ulang',
+      '3. Pengumuman hasil seleksi dapat dilihat di website PPDB'
+    ];
+
+    notes.forEach((note) => {
+      currentY -= 20;
+      page.drawText(note, {
+        x: marginX,
+        y: currentY,
+        size: 9,
+        font: helveticaFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+    });
+
+    // Area tanda tangan dengan layout yang lebih rapi
+    currentY -= 60;
+    const today = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    // Fungsi untuk membuat garis putus-putus yang lebih halus
+    const drawDottedLine = (startX: number, y: number, width: number) => {
+      const dotSpacing = 4;
+      const dotWidth = 2;
+      let x = startX;
+      
+      while (x < startX + width) {
+        page.drawLine({
+          start: { x, y },
+          end: { x: x + dotWidth, y },
+          thickness: 0.5,
+          color: rgb(0.6, 0.6, 0.6), // Warna abu-abu yang lebih soft
+        });
+        x += dotSpacing + dotWidth;
+      }
+    };
+
+    // Update fungsi drawSignatureBox
+    const drawSignatureBox = (x: number, y: number, width: number, label: string, name?: string) => {
+      // Label (Panitia/Pendaftar)
+      page.drawText(label, {
+        x: x,
+        y: y + 40,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+      });
+
+      // Kurung dan garis putus-putus untuk nama
+      page.drawText('(', {
+        x: x,
+        y: y - 20,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(')', {
+        x: x + width - 5,
+        y: y - 20,
+        size: 10,
+        font: helveticaFont,
+        color: rgb(0, 0, 0),
+      });
+
+      // Nama (jika ada) - dengan word wrap
+      if (name) {
+        const lines = wrapText(name, 25); // Batasi 25 karakter per baris
+        lines.forEach((line, index) => {
+          page.drawText(line, {
+            x: x + 4,
+            y: y - 21 - (index * 12), // Spasi antar baris 12pt
+            size: 10,
+            font: helveticaFont,
+            color: rgb(0, 0, 0),
+          });
+        });
+      }
+    };
+
+    // Update bagian tanda tangan
+    // Pindahkan deklarasi konstanta ke atas
+    const signatureWidth = 140; // Lebar area tanda tangan yang lebih besar
+    const boxStartY = currentY - 40;
+
+    // Hitung posisi kolom kanan
+    const rightColumnX = width - marginX - signatureWidth;
+
+    // Tanggal dan tanda tangan sejajar
+    const dateText = 'Aceh Besar, ' + today;
+
+    // Tanggal dan "Pendaftar" sejajar di kanan
+    page.drawText(dateText, {
+      x: rightColumnX,
+      y: currentY + 15,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0, 0, 0),
+    });
+
+    // Box tanda tangan kiri (Panitia)
+    drawSignatureBox(
+      marginX, 
+      boxStartY,
+      signatureWidth,
+      'Panitia PPDB'
+    );
+
+    // Box tanda tangan kanan (Pendaftar)
+    drawSignatureBox(
+      rightColumnX,
+      boxStartY,
+      signatureWidth,
+      'Pendaftar',
+      formData.namaSiswa
+    );
+
+    // Save PDF
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    saveAs(blob, `Kartu_Pendaftaran_${formData.namaSiswa}.pdf`);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    showAlert('error', 'Gagal membuat kartu pendaftaran');
+  }
+};
+
 const PPDBFormPage: React.FC = () => {
   // Pindahkan hooks ke dalam komponen
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
@@ -275,10 +629,17 @@ const PPDBFormPage: React.FC = () => {
           const data = snapshot.val();
           setFormData({
             ...INITIAL_FORM_DATA,
-            ...data
+            ...data,
+            uid: user.uid // Pastikan uid selalu terisi saat load data
           });
           setFormStatus(data.status || 'draft');
           setLastUpdated(data.lastUpdated || '');
+        } else {
+          // Jika belum ada data, set uid dari user
+          setFormData({
+            ...INITIAL_FORM_DATA,
+            uid: user.uid
+          });
         }
       } catch (err) {
         setError('Gagal memuat data');
@@ -552,18 +913,30 @@ const PPDBFormPage: React.FC = () => {
     }
   };
 
+  // Tambahkan type untuk data yang akan disimpan
+  type SavedData = FormData & {
+    status: string;
+    lastUpdated: string;
+    submittedAt: string | null;
+    [key: string]: any; // Tambahkan index signature
+  };
+
   const submitForm = async (isDraft: boolean = false) => {
     setError('');
     setLoading(true);
 
     try {
+      if (!user) {
+        throw new Error('User tidak ditemukan');
+      }
+
       // Upload files
       const uploadPromises = [];
       const fileUrls: Record<string, string> = {};
 
       for (const [key, file] of Object.entries(formData)) {
         if (file instanceof File) {
-          const fileRef = storageRef(storage, `ppdb/${user!.uid}/${key}`);
+          const fileRef = storageRef(storage, `ppdb/${user.uid}/${key}`);
           uploadPromises.push(
             uploadBytes(fileRef, file).then(() => getDownloadURL(fileRef))
               .then(url => { fileUrls[key] = url; })
@@ -573,14 +946,25 @@ const PPDBFormPage: React.FC = () => {
 
       await Promise.all(uploadPromises);
 
-      // Save form data
-      await update(ref(db, `ppdb/${user!.uid}`), {
+      // Prepare data untuk disimpan
+      const dataToSave: SavedData = {
         ...formData,
         ...fileUrls,
+        uid: user.uid,
         status: isDraft ? 'draft' : 'submitted',
         lastUpdated: new Date().toISOString(),
         submittedAt: isDraft ? null : new Date().toISOString()
+      };
+
+      // Hapus undefined values sebelum menyimpan ke Firebase
+      Object.keys(dataToSave).forEach(key => {
+        if (dataToSave[key] === undefined) {
+          delete dataToSave[key];
+        }
       });
+
+      // Save form data
+      await update(ref(db, `ppdb/${user.uid}`), dataToSave);
 
       setFormStatus(isDraft ? 'draft' : 'submitted');
       setLastUpdated(new Date().toISOString());
@@ -1515,7 +1899,7 @@ const PPDBFormPage: React.FC = () => {
                     <div className="p-2 bg-yellow-100 rounded-full">
                       <CheckCircleIcon className="w-5 h-5 text-yellow-600" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-yellow-800">
                         Formulir sudah terkirim
                       </p>
@@ -1523,6 +1907,12 @@ const PPDBFormPage: React.FC = () => {
                         Data tidak dapat diubah. Pengumuman hasil seleksi akan diinformasikan pada tanggal {getRegistrationPeriod().announcement}
                       </p>
                     </div>
+                    <Button
+                      onClick={() => generateRegistrationCard(formData)}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                    >
+                      Cetak Kartu
+                    </Button>
                   </div>
                 </div>
               )}

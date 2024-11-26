@@ -6,6 +6,7 @@
     "lib": ["ES2023", "dom"],
     "module": "ESNext",
     "skipLibCheck": true,
+    "types": ["file-saver"],
 
     /* Bundler mode */
     "moduleResolution": "Bundler",

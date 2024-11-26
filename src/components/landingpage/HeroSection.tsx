@@ -11,6 +11,14 @@ const HeroSection: React.FC = () => {
   const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
   const navigate = useNavigate();
 
+  const getPPDBYears = () => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    // Jika bulan > 6 (Juli), tampilkan tahun berikutnya
+    const startYear = currentDate.getMonth() > 6 ? currentYear + 1 : currentYear;
+    return `${startYear}/${startYear + 1}`;
+  };
+
   const handleRegisterClick = async () => {
     const isPPDBActive = await getPPDBStatus();
     if (!isPPDBActive) {
@@ -35,16 +43,16 @@ const HeroSection: React.FC = () => {
 
       {/* Content */}
       <Container className="relative z-10 h-full flex items-center py-20 sm:py-24">
-        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center w-full">
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center justify-items-center w-full">
           {/* Text Content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center lg:text-left space-y-4 sm:space-y-6"
+            className="text-center lg:text-left space-y-4 sm:space-y-6 w-full"
           >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
-              PPDB 2025/2026{' '}
+              PPDB {getPPDBYears()}{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
                   SMAN Modal Bangsa
@@ -52,6 +60,18 @@ const HeroSection: React.FC = () => {
               </span>
             </h1>
             
+            {/* Logo untuk Mobile */}
+            <div className="lg:hidden flex justify-center items-center my-12">
+              <div className="relative w-36 mx-auto">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
+                <img 
+                  src="/images/mosa.png" 
+                  alt="SMAN Modal Bangsa Logo"
+                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
+                />
+              </div>
+            </div>
+
             <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
               Membentuk generasi unggul dengan pendidikan berkualitas dan karakter yang kuat 
               melalui program pembelajaran yang terintegrasi dan inovatif.
@@ -96,19 +116,19 @@ const HeroSection: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* Hero Image */}
+          {/* Hero Image untuk Desktop */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            className="hidden lg:block lg:flex lg:items-center lg:justify-center"
+            className="hidden lg:block w-full flex items-center justify-center"
           >
-            <div className="relative w-full max-w-3xl">
+            <div className="relative w-full max-w-md mx-auto flex items-center justify-center">
               <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
               <img 
                 src="/images/mosa.png" 
                 alt="SMAN Modal Bangsa Logo"
-                className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-125"
+                className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
               />
             </div>
           </motion.div>
