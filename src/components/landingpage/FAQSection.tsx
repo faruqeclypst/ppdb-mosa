@@ -12,7 +12,7 @@ type FAQItem = {
 const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Apa saja jalur masuk yang tersedia?",
-    answer: "SMAN Modal Bangsa menyediakan 3 jalur masuk: Jalur Prestasi (akademik/non-akademik), Jalur Reguler (umum), dan Jalur Undangan (rekomendasi sekolah).",
+    answer: "SMAN Modal Bangsa menyediakan 3 jalur masuk:\n\n• Jalur Prestasi: Untuk siswa berprestasi akademik/non-akademik\n• Jalur Reguler: Seleksi umum berdasarkan nilai akademik\n• Jalur Undangan: Khusus rekomendasi dari sekolah asal\n\nSetiap jalur memiliki kuota dan persyaratan khusus yang berbeda.",
     category: "pendaftaran"
   },
   {
@@ -250,7 +250,7 @@ const FAQSection: React.FC = () => {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     <p className="text-sm text-blue-700">
-                                      Pastikan semua dokumen yang diunggah dalam format PDF dan ukuran maksimal 2MB per file.
+                                      Pastikan semua dokumen yang diunggah dalam format PDF dan ukuran maksimal 500KB per file.
                                     </p>
                                   </div>
                                 </div>

@@ -859,11 +859,11 @@ const DataPendaftar: React.FC = () => {
               className="bg-white border"
             />
             <StatCard
-              label="Pending"
-              value={getFilteredData().filter(item => item.status === 'pending').length}
-              icon={<ClockIcon className="w-5 h-5 text-yellow-600" />}
-              className="bg-yellow-50 border-yellow-200"
-              valueColor="text-yellow-600"
+              label="Belum Dicek"
+              value={getFilteredData().filter(item => item.status === 'submitted').length}
+              icon={<ClockIcon className="w-5 h-5 text-blue-600" />}
+              className="bg-blue-50 border-blue-200"
+              valueColor="text-blue-600"
             />
             <StatCard
               label="Diterima"

@@ -44,8 +44,9 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-blue-500',
         requirements: [
           'Nilai Rapor Semester 2-4',
-          'Surat Rekomendasi / Prestasi',
-          'Pas foto latar biru'
+          'Minimal nilai rapor 83',
+          'Pas foto latar biru',
+          'Surat Rekomendasi / Prestasi'
         ]
       });
     }
@@ -59,8 +60,9 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-green-500',
         requirements: [
           'Nilai Rapor Semester 3-5',
-          'Surat Rekomendasi / Prestasi',
-          'Pas foto latar biru'
+          'Minimal nilai rapor 83',
+          'Pas foto latar biru',
+          'Surat Rekomendasi / Prestasi'
         ]
       });
     }
@@ -73,7 +75,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-purple-500',
         requirements: [
           'Nilai Rapor Semester 2-4',
-          'Minimal nilai rapor 85',
+          'Minimal nilai rapor 83',
           'Pas foto latar biru',
           'Surat Rekomendasi / Prestasi'
         ]
