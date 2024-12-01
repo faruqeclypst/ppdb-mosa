@@ -69,12 +69,12 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <ScrollToTop />
         <AppRoutes />
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 };
 
