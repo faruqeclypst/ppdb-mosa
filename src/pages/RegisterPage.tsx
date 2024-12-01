@@ -112,7 +112,12 @@ const RegisterPage: React.FC = () => {
       }
 
     } catch (err: any) {
-      setError(err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email telah digunakan. Silakan gunakan email lain atau login.');
+      } else {
+        setError('Gagal membuat akun. Silakan coba lagi.');
+      }
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -156,7 +161,7 @@ const RegisterPage: React.FC = () => {
                 Selamat Datang di PPDB Online
               </h1>
               <p className="text-lg text-gray-600">
-                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2024/2025
+                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
               </p>
             </div>
 
@@ -200,12 +205,6 @@ const RegisterPage: React.FC = () => {
                       <span className="text-gray-600">Jalur Undangan</span>
                       <span className="text-blue-700 font-medium">
                         {formatDate(ppdbSettings.jalurUndangan.start)} - {formatDate(ppdbSettings.jalurUndangan.end)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Pengumuman</span>
-                      <span className="text-blue-700 font-medium">
-                        {formatDate(ppdbSettings.announcementDate)}
                       </span>
                     </div>
                   </>

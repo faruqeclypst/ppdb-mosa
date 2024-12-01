@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, remove } from 'firebase/database';
 import { db } from '../../firebase/config';
 import Table from '../ui/Table';
 import Button from '../ui/Button';
@@ -16,7 +16,8 @@ import {
   UserGroupIcon,
   ClockIcon,
   XCircleIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
@@ -194,6 +195,7 @@ const DataPendaftar: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Jumlah item per halaman
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -744,11 +746,58 @@ const DataPendaftar: React.FC = () => {
                 Ubah Status
               </Button>
             )}
+            <Button
+              onClick={() => {
+                setSelectedData(item);
+                setShowDeleteModal(true);
+              }}
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm"
+            >
+              Hapus Data
+            </Button>
           </div>
         </div>
       )}
     </div>
   );
+
+  const handleDeleteData = async () => {
+    if (!selectedData || modalLoading) return;
+
+    setModalLoading(true);
+    try {
+      // Hapus data dari Realtime Database
+      await remove(ref(db, `ppdb/${selectedData.uid}`));
+
+      // Hapus akun dari Firebase Auth
+      const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
+      const response = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${API_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            idToken: selectedData.uid, // Gunakan ID token jika tersedia
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Error deleting auth account:', await response.json());
+      }
+
+      showAlert('success', 'Data pendaftar berhasil dihapus');
+      setShowDeleteModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      showAlert('error', 'Gagal menghapus data pendaftar');
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -939,6 +988,16 @@ const DataPendaftar: React.FC = () => {
                         <CheckCircleIcon className="w-4 h-4" />
                       </Button>
                     )}
+                    <Button
+                      onClick={() => {
+                        setSelectedData(item);
+                        setShowDeleteModal(true);
+                      }}
+                      className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                      title="Hapus Data"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </Button>
                   </div>
                 ])}
               />
@@ -1306,6 +1365,55 @@ const DataPendaftar: React.FC = () => {
             <p className="text-white text-center font-medium">
               Pas Foto: {selectedData?.namaSiswa}
             </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <TrashIcon className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Hapus Data Pendaftar
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Apakah Anda yakin ingin menghapus data pendaftar{' '}
+              <span className="font-medium">{selectedData?.namaSiswa}</span>?
+              <br />
+              <span className="text-sm text-red-500 mt-2 block">
+                Tindakan ini tidak dapat dibatalkan dan akan menghapus akun pendaftar.
+              </span>
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => setShowDeleteModal(false)}
+              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              disabled={modalLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleDeleteData}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={modalLoading}
+            >
+              {modalLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Menghapus...</span>
+                </div>
+              ) : (
+                'Hapus'
+              )}
+            </Button>
           </div>
         </div>
       </Modal>

@@ -24,6 +24,7 @@ import { saveAs } from 'file-saver';
 
 // Types
 export type JalurPeriod = {
+  announcementDate: string | undefined;
   start: string;    // Format: YYYY-MM-DD
   end: string;      // Format: YYYY-MM-DD
   isActive: boolean;
@@ -1023,41 +1024,16 @@ const PPDBFormPage: React.FC = () => {
 
   const renderInformasiSiswa = () => {
     const getAvailableJalur = () => {
-      if (!ppdbSettings) {
-        return [
-          { value: '', label: '-- Pilih Jalur --', disabled: true }
-        ];
-      }
-
-      const now = new Date();
       const options = [
         { value: '', label: '-- Pilih Jalur --', disabled: true }
       ];
 
-      // Helper untuk cek apakah jalur aktif
-      const isJalurActive = (jalur: JalurPeriod | undefined) => {
-        if (!jalur || !jalur.isActive) return false;
-        
-        try {
-          const start = new Date(jalur.start);
-          const end = new Date(jalur.end);
-          return now >= start && now <= end;
-        } catch (error) {
-          console.error('Error checking jalur period:', error);
-          return false;
-        }
-      };
-
-      // Cek setiap jalur dengan null check
-      if (ppdbSettings.jalurPrestasi && isJalurActive(ppdbSettings.jalurPrestasi)) {
-        options.push({ value: 'prestasi', label: 'Prestasi', disabled: false });
-      }
-      if (ppdbSettings.jalurReguler && isJalurActive(ppdbSettings.jalurReguler)) {
-        options.push({ value: 'reguler', label: 'Reguler', disabled: false });
-      }
-      if (ppdbSettings.jalurUndangan && isJalurActive(ppdbSettings.jalurUndangan)) {
-        options.push({ value: 'undangan', label: 'Undangan', disabled: false });
-      }
+      // Tambahkan jalur yang tersedia
+      options.push(
+        { value: 'prestasi', label: 'Prestasi', disabled: false },
+        { value: 'reguler', label: 'Reguler', disabled: false },
+        { value: 'undangan', label: 'Undangan', disabled: false }
+      );
 
       return options;
     };
@@ -1719,6 +1695,30 @@ const PPDBFormPage: React.FC = () => {
     );
   };
 
+  const getAnnouncementDate = () => {
+    console.log('PPDB Settings:', ppdbSettings);
+    console.log('Selected Jalur:', formData.jalur);
+
+    if (!ppdbSettings || !formData.jalur) {
+      return 'Memuat...';
+    }
+
+    const selectedJalur = ppdbSettings[`jalur${formData.jalur.charAt(0).toUpperCase() + formData.jalur.slice(1)}` as keyof typeof ppdbSettings] as JalurPeriod;
+    console.log('Selected Jalur Data:', selectedJalur);
+
+    const formatDate = (dateStr?: string) => {
+      console.log('Formatting date:', dateStr);
+      if (!dateStr) return 'Belum ditentukan';
+      return new Date(dateStr).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    };
+
+    return formatDate(selectedJalur?.announcementDate);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1756,7 +1756,7 @@ const PPDBFormPage: React.FC = () => {
                     <div>
                       <p className="text-sm text-gray-500">Pengumuman:</p>
                       <p className="font-medium text-gray-700">
-                        {getRegistrationPeriod().announcement}
+                        {getAnnouncementDate()}
                       </p>
                     </div>
                   </div>
@@ -1887,7 +1887,7 @@ const PPDBFormPage: React.FC = () => {
                         Formulir sudah terkirim
                       </p>
                       <p className="text-sm text-yellow-600">
-                        Data tidak dapat diubah. Pengumuman hasil seleksi akan diinformasikan pada tanggal {getRegistrationPeriod().announcement}
+                        Data tidak dapat diubah. Pengumuman hasil seleksi akan diinformasikan pada tanggal {getAnnouncementDate()}
                       </p>
                     </div>
                     <Button
@@ -2036,8 +2036,8 @@ const PPDBFormPage: React.FC = () => {
               Formulir Berhasil Dikirim!
             </h3>
             <p className="text-gray-600 mb-6">
-              Terima kasih telah mendaftar di SMAN Modal Bangsa. 
-              Pengumuman hasil seleksi akan diinformasikan pada tanggal {getRegistrationPeriod().announcement}.
+              Terima kasih telah mendaftar di SMAN Modal Bangsa.
+              Pengumuman hasil seleksi akan diinformasikan pada tanggal {getAnnouncementDate()}.
             </p>
             <div className="flex gap-4 justify-center">
               <Button

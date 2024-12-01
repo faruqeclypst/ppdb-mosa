@@ -20,7 +20,7 @@ type InfoPPDBSectionProps = {
 };
 
 const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     return date.toLocaleDateString('id-ID', {
@@ -39,15 +39,11 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         name: 'Prestasi',
         description: 'Jalur khusus bagi siswa berprestasi akademik dan non-akademik',
         period: `${formatDate(settings.jalurPrestasi.start)} - ${formatDate(settings.jalurPrestasi.end)}`,
-        testDate: settings.jalurPrestasi.testDate,
+        testDate: settings.jalurPrestasi.testDate || null,
+        announcementDate: settings.jalurPrestasi.announcementDate,
         icon: AcademicCapIcon,
         bgColor: 'bg-blue-500',
-        requirements: [
-          'Nilai Rapor Semester 2-4',
-          'Minimal nilai rapor 83',
-          'Pas foto latar biru',
-          'Surat Rekomendasi / Prestasi'
-        ]
+        requirements: settings.jalurPrestasi.requirements || []
       });
     }
     if (settings.jalurReguler.isActive) {
@@ -55,15 +51,11 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         name: 'Reguler',
         description: 'Jalur umum untuk seluruh calon peserta didik',
         period: `${formatDate(settings.jalurReguler.start)} - ${formatDate(settings.jalurReguler.end)}`,
-        testDate: settings.jalurReguler.testDate,
+        testDate: settings.jalurReguler.testDate || null,
+        announcementDate: settings.jalurReguler.announcementDate,
         icon: UserGroupIcon,
         bgColor: 'bg-green-500',
-        requirements: [
-          'Nilai Rapor Semester 3-5',
-          'Minimal nilai rapor 83',
-          'Pas foto latar biru',
-          'Surat Rekomendasi / Prestasi'
-        ]
+        requirements: settings.jalurReguler.requirements || []
       });
     }
     if (settings.jalurUndangan.isActive) {
@@ -71,14 +63,11 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         name: 'Undangan',
         description: 'Jalur khusus berdasarkan rekomendasi sekolah asal',
         period: `${formatDate(settings.jalurUndangan.start)} - ${formatDate(settings.jalurUndangan.end)}`,
+        testDate: settings.jalurUndangan.testDate || null,
+        announcementDate: settings.jalurUndangan.announcementDate,
         icon: DocumentTextIcon,
         bgColor: 'bg-purple-500',
-        requirements: [
-          'Nilai Rapor Semester 2-4',
-          'Minimal nilai rapor 83',
-          'Pas foto latar biru',
-          'Surat Rekomendasi / Prestasi'
-        ]
+        requirements: settings.jalurUndangan.requirements || []
       });
     }
     return jalur;
@@ -151,7 +140,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                           <p className="text-gray-600 ml-7">{jalur.period}</p>
                         </div>
 
-                        {/* Test Date - Fixed height if exists */}
+                        {/* Test Date - Only show if exists */}
                         {jalur.testDate && (
                           <div className="mb-6">
                             <div className="flex items-center gap-2 mb-2">
@@ -169,12 +158,12 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                             <h4 className="font-medium text-gray-900">Persyaratan</h4>
                           </div>
                           <ul className="space-y-2 ml-7">
-                            {jalur.requirements.map((req, i) => (
+                            {jalur.requirements?.map((req, i) => (
                               <li key={i} className="text-gray-600 flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 bg-purple-400 rounded-full" />
                                 {req}
                               </li>
-                            ))}
+                            )) || []}
                           </ul>
                         </div>
                       </div>
@@ -197,7 +186,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
             {/* Announcement & Contact - Compact Version */}
             <div className="mt-8 md:mt-16 grid md:grid-cols-2 gap-4 md:gap-8">
               {/* Announcement */}
-              {settings?.announcementDate && (
+              {settings?.jalurPrestasi.announcementDate && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -205,49 +194,46 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                   viewport={{ once: true }}
                   className="h-full"
                 >
-                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 
-                                text-white h-full flex flex-col">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
                     <div className="flex items-center gap-3 mb-4">
                       <DocumentCheckIcon className="w-8 h-8" />
                       <h3 className="text-xl font-bold">Pengumuman Kelulusan</h3>
                     </div>
 
                     <div className="space-y-4">
-                      {/* Tanggal & Waktu */}
-                      <div className="bg-white/10 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CalendarIcon className="w-5 h-5" />
-                          <div>
-                            <p className="font-medium">{formatDate(settings.announcementDate)}</p>
-                            <p className="text-sm text-white/80">Pukul 10.00 WIB</p>
-                          </div>
+                      {/* Pengumuman per jalur */}
+                      {settings.jalurPrestasi.isActive && (
+                        <div className="bg-white/10 rounded-xl p-4">
+                          <p className="font-medium">Jalur Prestasi</p>
+                          <p className="text-sm text-white/80">
+                            {formatDate(settings.jalurPrestasi.announcementDate)}
+                          </p>
                         </div>
-                      </div>
+                      )}
 
-                      {/* Quick Info */}
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="bg-white/10 rounded-xl p-3">
-                          <p className="font-medium mb-1">Daftar Ulang</p>
-                          <p className="text-white/80">Maksimal 3 hari setelah pengumuman</p>
+                      {settings.jalurReguler.isActive && (
+                        <div className="bg-white/10 rounded-xl p-4">
+                          <p className="font-medium">Jalur Reguler</p>
+                          <p className="text-sm text-white/80">
+                            {settings.jalurReguler.announcementDate 
+                              ? formatDate(settings.jalurReguler.announcementDate)
+                              : '-'}
+                          </p>
                         </div>
-                        <div className="bg-white/10 rounded-xl p-3">
-                          <p className="font-medium mb-1">Lokasi</p>
-                          <p className="text-white/80">Website & Papan Pengumuman</p>
-                        </div>
-                      </div>
+                      )}
 
-                      {/* Persyaratan Compact */}
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <p className="font-medium mb-2">Persyaratan Daftar Ulang:</p>
-                        <div className="grid grid-cols-2 gap-2 text-sm text-white/80">
-                          <p>• Surat Pernyataan</p>
-                          <p>• Kartu Keluarga</p>
-                          <p>• Akta Kelahiran</p>
-                          <p>• Pas Foto 3x4</p>
+                      {settings.jalurUndangan.isActive && (
+                        <div className="bg-white/10 rounded-xl p-4">
+                          <p className="font-medium">Jalur Undangan</p>
+                          <p className="text-sm text-white/80">
+                            {settings.jalurUndangan.announcementDate 
+                              ? formatDate(settings.jalurUndangan.announcementDate)
+                              : '-'}
+                          </p>
                         </div>
-                      </div>
+                      )}
 
-                      {/* Note */}
+                      {/* Info tambahan */}
                       <div className="text-xs text-white/90 bg-white/10 rounded-xl p-3">
                         <p className="font-medium">Catatan:</p>
                         <p>Keputusan panitia PPDB bersifat final. Peserta yang tidak melakukan daftar ulang dianggap mengundurkan diri.</p>

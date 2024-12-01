@@ -137,7 +137,7 @@ const LoginPage: React.FC = () => {
                 />
               </motion.div>
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
-                Masuk ke Akun
+                Masuk ke Akun PPDB
               </h2>
               <p className="text-sm text-gray-600">
                 Atau{' '}
@@ -145,7 +145,7 @@ const LoginPage: React.FC = () => {
                   to="/register" 
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
                 >
-                  daftar akun baru
+                  Daftar akun PPDB baru
                 </Link>
               </p>
             </div>
