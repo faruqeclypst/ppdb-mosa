@@ -22,12 +22,12 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Berapa nilai minimal untuk mendaftar?",
-    answer: "Nilai minimal untuk mendaftar berbeda-beda setiap jalur:\n\n• Jalur Prestasi: Minimal rata-rata 83 untuk semester 2-4\n• Jalur Reguler: Minimal rata-rata 83 untuk semester 3-5\n• Jalur Undangan: Minimal rata-rata 83 untuk semester 2-4",
+    answer: "Nilai minimal untuk mendaftar berbeda-beda setiap jalur:\n\n• Jalur Prestasi: Minimal rata-rata 83 untuk semester 2,3 dan 4\n• Jalur Reguler: Minimal rata-rata 83 untuk semester 2,3 dan 4\n• Jalur Undangan: Minimal rata-rata 83 untuk semester 2,3 dan 4",
     category: "persyaratan"
   },
   {
     question: "Mata pelajaran apa saja yang diperhitungkan?",
-    answer: "Mata pelajaran yang diperhitungkan adalah:\n\n• Matematika\n• IPA (Fisika & Biologi)\n• Bahasa Inggris\n• Bahasa Indonesia\n\nNilai rata-rata dari mata pelajaran tersebut akan menjadi pertimbangan dalam seleksi.",
+    answer: "Mata pelajaran yang diperhitungkan adalah:\n\n• Matematika\n\n• Agama\n• IPA (Fisika & Biologi)\n• Bahasa Inggris\n• Bahasa Indonesia\n\nNilai rata-rata dari mata pelajaran tersebut akan menjadi pertimbangan dalam seleksi.",
     category: "persyaratan"
   },
   {
@@ -37,12 +37,12 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Bagaimana dengan prestasi non-akademik?",
-    answer: "Prestasi non-akademik yang diperhitungkan meliputi:\n\n• Juara 1-3 tingkat Kabupaten/Kota\n• Juara 1-3 tingkat Provinsi\n• Juara 1-3 tingkat Nasional\n• Prestasi Internasional\n\nSemua prestasi harus dibuktikan dengan sertifikat asli.",
+    answer: "Prestasi non-akademik yang diperhitungkan meliputi:\n• Juara 1-3 tingkat Provinsi\n• Juara 1-3 tingkat Nasional\n• Prestasi Internasional\n\nSemua prestasi harus dibuktikan dengan sertifikat asli dan  yang diselenggarakan Oleh Kementerian Pendidikan atau Kementerian Agama",
     category: "persyaratan"
   },
   {
     question: "Kapan pengumuman hasil seleksi?",
-    answer: "Pengumuman hasil seleksi akan disampaikan melalui website dan papan pengumuman sekolah sesuai jadwal yang telah ditentukan. Peserta yang diterima wajib melakukan daftar ulang maksimal 3 hari setelah pengumuman.",
+    answer: "Pengumuman hasil seleksi akan disampaikan melalui website dan papan pengumuman sekolah sesuai jadwal yang telah ditentukan. Peserta yang diterima wajib melakukan daftar ulang setelah pengumuman resmi diumumkan.",
     category: "pengumuman"
   },
   {

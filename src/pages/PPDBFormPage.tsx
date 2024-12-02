@@ -64,23 +64,18 @@ type FormData = {
   nilaiAgama2: string;
   nilaiAgama3: string;
   nilaiAgama4: string;
-  nilaiAgama5: string;
   nilaiBindo2: string;
   nilaiBindo3: string;
   nilaiBindo4: string;
-  nilaiBindo5: string;
   nilaiBing2: string;
   nilaiBing3: string;
   nilaiBing4: string;
-  nilaiBing5: string;
   nilaiMtk2: string;
   nilaiMtk3: string;
   nilaiMtk4: string;
-  nilaiMtk5: string;
   nilaiIpa2: string;
   nilaiIpa3: string;
   nilaiIpa4: string;
-  nilaiIpa5: string;
 
   // Informasi Orang Tua
   namaAyah: string;
@@ -122,23 +117,18 @@ const INITIAL_FORM_DATA: FormData = {
   nilaiAgama2: '',
   nilaiAgama3: '',
   nilaiAgama4: '',
-  nilaiAgama5: '',
   nilaiBindo2: '',
   nilaiBindo3: '',
   nilaiBindo4: '',
-  nilaiBindo5: '',
   nilaiBing2: '',
   nilaiBing3: '',
   nilaiBing4: '',
-  nilaiBing5: '',
   nilaiMtk2: '',
   nilaiMtk3: '',
   nilaiMtk4: '',
-  nilaiMtk5: '',
   nilaiIpa2: '',
   nilaiIpa3: '',
   nilaiIpa4: '',
-  nilaiIpa5: '',
   
   // Informasi Orang Tua
   namaAyah: '',
@@ -197,7 +187,7 @@ const VALIDATION_CONFIG = {
 
   // Semester yang diperlukan per jalur
   SEMESTER_CONFIG: {
-    reguler: ['3', '4', '5'],
+    reguler: ['3', '4'],
     prestasi: ['2', '3', '4'],
     undangan: ['2', '3', '4']
   },
@@ -977,8 +967,8 @@ const PPDBFormPage: React.FC = () => {
 
   const handleJalurChange = () => {
     // Tentukan semester yang perlu direset berdasarkan jalur baru
-    const oldSemesters = formData.jalur === 'reguler' ? ['3', '4', '5'] : ['2', '3', '4'];
-    const newSemesters = newJalurValue === 'reguler' ? ['3', '4', '5'] : ['2', '3', '4'];
+    const oldSemesters = formData.jalur === 'reguler' ? ['3', '4'] : ['2', '3'];
+    const newSemesters = newJalurValue === 'reguler' ? ['3', '4'] : ['2', '3'];
     
     // Buat object untuk reset nilai dan dokumen
     const resetData: Partial<FormData> = {
@@ -987,23 +977,18 @@ const PPDBFormPage: React.FC = () => {
       nilaiAgama2: '',
       nilaiAgama3: '',
       nilaiAgama4: '',
-      nilaiAgama5: '',
       nilaiBindo2: '',
       nilaiBindo3: '',
       nilaiBindo4: '',
-      nilaiBindo5: '',
       nilaiBing2: '',
       nilaiBing3: '',
       nilaiBing4: '',
-      nilaiBing5: '',
       nilaiMtk2: '',
       nilaiMtk3: '',
       nilaiMtk4: '',
-      nilaiMtk5: '',
       nilaiIpa2: '',
       nilaiIpa3: '',
       nilaiIpa4: '',
-      nilaiIpa5: '',
     };
 
     // Reset hanya dokumen raport yang berbeda antara jalur lama dan baru
@@ -1235,9 +1220,7 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const renderAkademik = () => {
-    const semesters = formData.jalur === 'reguler' 
-      ? ['3', '4', '5'] 
-      : ['2', '3', '4'];
+    const semesters = ['2', '3', '4'];
 
     const mapelList = [
       { label: 'Pendidikan Agama', mobileLabel: 'Pendidikan Agama', key: 'nilaiAgama' },
@@ -1401,10 +1384,9 @@ const PPDBFormPage: React.FC = () => {
   );
 
   const renderDokumen = () => {
-    const semesters = formData.jalur === 'reguler' 
-      ? ['3', '4', '5']  // Jalur Reguler
-      : ['2', '3', '4']; // Jalur Prestasi & Undangan
+    const semesters = ['2', '3', '4'];
 
+    // Sisanya tetap sama
     // Cek setiap field dan tampilkan nilainya untuk debug
     const fieldsToCheck = {
       jalur: formData.jalur,
@@ -1936,6 +1918,33 @@ const PPDBFormPage: React.FC = () => {
               </div>
 
               <div className="mt-6 pt-4 border-t bg-white">
+                {/* Info box untuk panduan pengiriman formulir */}
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="p-1">
+                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-blue-800 font-medium mb-1">
+                        Petunjuk Pengiriman Formulir:
+                      </p>
+                      <p className="text-sm text-blue-600">
+                        Tombol "Kirim Formulir" akan aktif dan tampil (pada tab Dokumen) setelah anda melengkapi semua data pada:
+                      </p>
+                      <ul className="mt-1 text-sm text-blue-600 list-disc list-inside">
+                        <li>Tab Siswa (informasi pribadi)</li>
+                        <li>Tab Akademik (nilai rapor)</li>
+                        <li>Tab Orang Tua (data ayah & ibu)</li>
+                        <li>Tab Dokumen (upload berkas)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tombol-tombol aksi */}
                 <div className="flex flex-row gap-2">
                   <Button
                     onClick={() => setShowLogoutModal(true)}
@@ -2058,21 +2067,22 @@ const PPDBFormPage: React.FC = () => {
               Terima kasih telah mendaftar di SMAN Modal Bangsa.
               Pengumuman hasil seleksi akan diinformasikan pada tanggal {getAnnouncementDate()}.
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col md:flex-row gap-4 justify-center">
+              <Button
+                onClick={() => generateRegistrationCard(formData)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Cetak Kartu Pendaftaran
+              </Button>
               <Button
                 onClick={() => setShowSuccessModal(false)}
                 className="bg-gray-100 text-gray-700 hover:bg-gray-200"
               >
-                Tetap di Halaman Ini
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  navigate('/');
-                }}
-                className="bg-green-600 text-white hover:bg-green-700"
-              >
-                Kembali ke Beranda
+                Tutup
               </Button>
             </div>
           </div>

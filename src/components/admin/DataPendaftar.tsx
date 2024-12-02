@@ -525,9 +525,7 @@ const DataPendaftar: React.FC = () => {
   };
 
   const renderDetailAkademik = (data: PPDBData) => {
-    const semesters = data.jalur === 'reguler' 
-      ? ['3', '4', '5'] 
-      : ['2', '3', '4'];
+    const semesters = ['2', '3', '4'];
 
     const mapelList = [
       { label: 'Agama', key: 'nilaiAgama' },
@@ -583,9 +581,7 @@ const DataPendaftar: React.FC = () => {
   };
 
   const renderDetailDokumen = (data: PPDBData) => {
-    const semesters = data.jalur === 'reguler' 
-      ? ['3', '4', '5'] 
-      : ['2', '3', '4'];
+    const semesters = ['2', '3', '4'];
 
     return (
       <div className="bg-white shadow-sm border rounded-xl p-4 h-[300px] overflow-y-auto">
