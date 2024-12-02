@@ -106,7 +106,7 @@ const FeatureCard: React.FC<Feature & { index: number }> = ({
 // Main Component
 const FeaturesSection: React.FC = () => {
   return (
-    <section className="py-12 sm:py-20 bg-gradient-to-b from-gray-50 to-white">
+    <section className="py-12 sm:py-20 bg-gradient-to-b from-blue-50/30 to-white">
       <Container>
         <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
           <motion.h2 

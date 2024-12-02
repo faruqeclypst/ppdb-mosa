@@ -1543,12 +1543,14 @@ const PPDBFormPage: React.FC = () => {
     }
 
     const formatDate = (dateStr: string) => {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('id-ID', {
+      const options: Intl.DateTimeFormatOptions = {
         day: 'numeric',
         month: 'long',
-        year: 'numeric'
-      });
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
+      };
+
+      return new Date(dateStr).toLocaleDateString('id-ID', options);
     };
 
     try {
@@ -1647,6 +1649,7 @@ const PPDBFormPage: React.FC = () => {
                 <li>Isi nilai akademik di tab Akademik</li>
                 <li>Lengkapi data orang tua di tab Orang Tua</li>
                 <li>Upload dokumen yang diperlukan di tab Dokumen</li>
+                <li>Ukuran dokumen PDF maksimal 500KB, Pastikan sudah melakukan kompres PDF terlebih dahulu</li>
               </ol>
             </div>
 
@@ -1664,7 +1667,7 @@ const PPDBFormPage: React.FC = () => {
               <p className="font-medium text-green-800 mb-2">Petunjuk Upload Dokumen:</p>
               <ul className="list-disc ml-4 text-green-700 space-y-2">
                 <li>Kompres foto dan dokumen sebelum upload</li>
-                <li>Ukuran maksimal file: 4MB</li>
+                <li>Ukuran maksimal file Pas Foto: 4MB</li>
                 <li>Format foto: JPG/PNG, Dokumen: PDF</li>
                 <li>Pastikan dokumen yang diupload jelas dan lengkap</li>
                 <li>Gunakan koneksi internet yang stabil</li>
@@ -1707,16 +1710,32 @@ const PPDBFormPage: React.FC = () => {
     console.log('Selected Jalur Data:', selectedJalur);
 
     const formatDate = (dateStr?: string) => {
-      console.log('Formatting date:', dateStr);
-      if (!dateStr) return 'Belum ditentukan';
-      return new Date(dateStr).toLocaleDateString('id-ID', {
+      const options: Intl.DateTimeFormatOptions = {
         day: 'numeric',
         month: 'long',
-        year: 'numeric'
-      });
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
+      };
+
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('id-ID', options);
     };
 
     return formatDate(selectedJalur?.announcementDate);
+  };
+
+  // Tambahkan fungsi formatDateTime untuk timestamp
+  const formatDateTime = (dateStr: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta'
+    };
+
+    return new Date(dateStr).toLocaleString('id-ID', options);
   };
 
   if (loading) {
@@ -1791,7 +1810,7 @@ const PPDBFormPage: React.FC = () => {
                       <div className="bg-gray-100 px-3 py-1 rounded-full">
                         <span className="text-gray-500">Terakhir diperbarui: </span>
                         <span className="font-medium text-gray-700">
-                          {new Date(lastUpdated).toLocaleString()}
+                          {formatDateTime(lastUpdated)}
                         </span>
                       </div>
                     )}

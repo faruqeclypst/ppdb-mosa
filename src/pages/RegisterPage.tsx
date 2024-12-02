@@ -143,11 +143,15 @@ const RegisterPage: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('id-ID', {
+    
+    const options: Intl.DateTimeFormatOptions = {
       day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    };
+
+    return new Date(dateStr).toLocaleDateString('id-ID', options);
   };
 
   return (
@@ -252,7 +256,7 @@ const RegisterPage: React.FC = () => {
                 <div className="relative">
                   <UserIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
-                    label="Nama Lengkap"
+                    label="Nama Lengkap Pendaftar"
                     type="text"
                     required
                     value={formData.fullName}

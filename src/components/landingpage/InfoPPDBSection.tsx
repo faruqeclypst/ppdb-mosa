@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '../ui/Container';
 import { motion } from 'framer-motion';
 import type { PPDBSettings } from '../../types/settings';
@@ -20,14 +20,31 @@ type InfoPPDBSectionProps = {
 };
 
 const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (showModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showModal]);
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('id-ID', {
+    
+    const options: Intl.DateTimeFormatOptions = {
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
-    });
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta'
+    };
+
+    return new Date(dateStr).toLocaleDateString('id-ID', options);
   };
 
   const getActiveJalur = () => {
@@ -74,6 +91,10 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
   };
 
   const activeJalur = React.useMemo(() => getActiveJalur(), [settings]);
+
+  const handleViewRequirements = () => {
+    setShowModal(true);
+  };
 
   return (
     <>
@@ -183,8 +204,27 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
               ))}
             </div>
 
+            {/* Button Lihat Detail Persyaratan */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="my-8 md:my-16 text-center"
+            >
+              <button
+                onClick={handleViewRequirements}
+                className="bg-blue-600 text-white px-6 py-3 rounded-xl 
+                         hover:bg-blue-700 transition-colors duration-300
+                         flex items-center gap-2 mx-auto"
+              >
+                <DocumentCheckIcon className="w-5 h-5" />
+                Lihat Detail Lengkap Persyaratan PPDB
+              </button>
+            </motion.div>
+
             {/* Announcement & Contact - Compact Version */}
-            <div className="mt-8 md:mt-16 grid md:grid-cols-2 gap-4 md:gap-8">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-8">
               {/* Announcement */}
               {settings?.jalurPrestasi.announcementDate && (
                 <motion.div
@@ -306,8 +346,38 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
           </div>
         </Container>
       </section>
-      
       <FAQSection />
+
+      {/* Modal */}
+      {showModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="relative max-w-3xl w-full bg-white rounded-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button 
+              onClick={() => setShowModal(false)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 z-10"
+            >
+              <span className="text-3xl">&times;</span>
+            </button>
+            
+            {/* Image Container with Scrolling */}
+            <div className="overflow-y-auto max-h-[90vh] rounded-xl">
+              <img 
+                src="/images/info/syarat.webp" 
+                alt="Persyaratan PPDB"
+                className="w-full h-auto object-contain"
+                style={{ minHeight: '600px' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

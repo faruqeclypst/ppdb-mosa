@@ -96,11 +96,10 @@ const FAQSection: React.FC = () => {
   };
 
   return (
-    <section className="py-12 sm:py-20 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+    <section className="py-12 sm:py-20 bg-gradient-to-b from-gray-50 to-blue-50/30 relative overflow-hidden">
       {/* Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full blur-3xl opacity-30" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-100 rounded-full blur-3xl opacity-30" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-100 rounded-full blur-3xl opacity-20" />
       </div>
 
       <Container className="relative">
@@ -271,7 +270,7 @@ const FAQSection: React.FC = () => {
                               )}
 
                               {/* Success Box - untuk informasi biaya */}
-                              {item.category === 'biaya' && (
+                              {/* {item.category === 'biaya' && (
                                 <div className="mt-4 bg-green-50 border border-green-100 rounded-lg p-4">
                                   <div className="flex items-start">
                                     <svg className="w-5 h-5 text-green-500 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,7 +281,7 @@ const FAQSection: React.FC = () => {
                                     </p>
                                   </div>
                                 </div>
-                              )}
+                              )} */}
                             </div>
                           </motion.div>
                         )}
