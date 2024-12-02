@@ -27,6 +27,7 @@ import Pagination from '../ui/Pagination';
 
 type PPDBData = {
   uid: string;
+  email: string;
   // Informasi Siswa
   jalur: 'prestasi' | 'reguler' | 'undangan';
   namaSiswa: string;
@@ -102,7 +103,7 @@ const StatusBadge: React.FC<BadgeProps> = ({ status, className }) => {
       case 'pending':
         return 'Draft';
       case 'submitted':
-        return 'Belum dicek';
+        return 'Pending';
       case 'diterima':
         return 'Diterima';
       case 'ditolak':
@@ -922,7 +923,7 @@ const DataPendaftar: React.FC = () => {
               className="bg-white border"
             />
             <StatCard
-              label="Belum Dicek"
+              label="Pending"
               value={getFilteredData().filter(item => item.status === 'submitted').length}
               icon={<ClockIcon className="w-5 h-5 text-blue-600" />}
               className="bg-blue-50 border-blue-200"
@@ -1081,6 +1082,10 @@ const DataPendaftar: React.FC = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">NISN:</span>
                   <span>{selectedData?.nisn}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium">Email:</span>
+                  <span>{selectedData?.email}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">Jalur:</span>
