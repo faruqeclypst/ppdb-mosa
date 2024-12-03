@@ -10,16 +10,16 @@ import InfoPPDBPage from './pages/InfoPPDBPage';
 import { AuthProvider } from './contexts/AuthContext';
 import Footer from './components/landingpage/Footer';
 import ScrollToTop from './components/utils/ScrollToTop';
-
+ 
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isAuthPage = ['/login', '/register'].includes(location.pathname);
-
+ 
   if (isAuthPage) {
     return <>{children}</>;
   }
-
+ 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -30,13 +30,13 @@ const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     </div>
   );
 };
-
+ 
 // Route wrapper component
 const AppRoutes: React.FC = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isPPDBFormRoute = location.pathname.startsWith('/ppdb/form');
-
+ 
   if (isAdminRoute) {
     return (
       <Routes>
@@ -44,7 +44,7 @@ const AppRoutes: React.FC = () => {
       </Routes>
     );
   }
-
+ 
   if (isPPDBFormRoute) {
     return (
       <Routes>
@@ -52,7 +52,7 @@ const AppRoutes: React.FC = () => {
       </Routes>
     );
   }
-
+ 
   return (
     <PublicLayout>
       <Routes>
@@ -66,16 +66,16 @@ const AppRoutes: React.FC = () => {
     </PublicLayout>
   );
 };
-
+ 
 const App: React.FC = () => {
   return (
-    <Router>
-      <AuthProvider>
+    <AuthProvider>
+      <Router>
         <ScrollToTop />
         <AppRoutes />
-      </AuthProvider>
-    </Router>
+      </Router>
+    </AuthProvider>
   );
 };
-
+ 
 export default App;

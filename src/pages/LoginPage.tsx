@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { ref, get } from 'firebase/database';
 import Modal from '../components/ui/Modal';
-
+ 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -24,26 +24,26 @@ const LoginPage: React.FC = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-
+ 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+ 
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth, 
         formData.email, 
         formData.password
       );
-      
+ 
       // Cek role user
       const adminRef = ref(db, `admins/${userCredential.user.uid}`);
       const ppdbRef = ref(db, `ppdb/${userCredential.user.uid}`);
-      
+ 
       const adminSnapshot = await get(adminRef);
       const ppdbSnapshot = await get(ppdbRef);
-
+ 
       if (adminSnapshot.exists()) {
         navigate('/admin');
       } else if (ppdbSnapshot.exists()) {
@@ -58,13 +58,13 @@ const LoginPage: React.FC = () => {
       setLoading(false);
     }
   };
-
+ 
   const handleResetPassword = async () => {
     if (!resetEmail) {
       setError('Masukkan email');
       return;
     }
-
+ 
     setResetLoading(true);
     try {
       const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
@@ -81,9 +81,9 @@ const LoginPage: React.FC = () => {
           }),
         }
       );
-
+ 
       if (!response.ok) throw new Error('Gagal mengirim email reset password');
-
+ 
       setSuccessMessage('Link reset password telah dikirim ke email Anda');
       setShowForgotModal(false);
       setResetEmail('');
@@ -93,7 +93,7 @@ const LoginPage: React.FC = () => {
       setResetLoading(false);
     }
   };
-
+ 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <Link
@@ -115,7 +115,7 @@ const LoginPage: React.FC = () => {
         </svg>
         <span className="font-medium">Kembali</span>
       </Link>
-
+ 
       <Container className="max-w-md w-full">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -137,7 +137,7 @@ const LoginPage: React.FC = () => {
                 />
               </motion.div>
               <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
-                Masuk ke Akun PPDB
+                Masuk ke Akun
               </h2>
               <p className="text-sm text-gray-600">
                 Atau{' '}
@@ -145,11 +145,11 @@ const LoginPage: React.FC = () => {
                   to="/register" 
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
                 >
-                  Daftar akun PPDB baru
+                  daftar akun baru
                 </Link>
               </p>
             </div>
-
+ 
             {/* Error Alert */}
             {error && (
               <motion.div
@@ -164,7 +164,7 @@ const LoginPage: React.FC = () => {
                 />
               </motion.div>
             )}
-
+ 
             {/* Success Alert */}
             {successMessage && (
               <motion.div
@@ -179,7 +179,7 @@ const LoginPage: React.FC = () => {
                 />
               </motion.div>
             )}
-
+ 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="relative">
@@ -194,7 +194,7 @@ const LoginPage: React.FC = () => {
                   className="pl-10"
                 />
               </div>
-
+ 
               <div className="relative">
                 <LockClosedIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                 <Input
@@ -207,7 +207,7 @@ const LoginPage: React.FC = () => {
                   className="pl-10"
                 />
               </div>
-
+ 
               <div className="flex items-center justify-between">
                 <button
                   type="button"
@@ -217,7 +217,7 @@ const LoginPage: React.FC = () => {
                   Lupa password?
                 </button>
               </div>
-
+ 
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
@@ -237,7 +237,7 @@ const LoginPage: React.FC = () => {
             </form>
           </Card>
         </motion.div>
-
+ 
         {/* Modal Lupa Password */}
         <Modal
           isOpen={showForgotModal}
@@ -262,7 +262,7 @@ const LoginPage: React.FC = () => {
                 placeholder="Masukkan email Anda"
                 required
               />
-
+ 
               <div className="flex gap-3">
                 <Button
                   onClick={() => setShowForgotModal(false)}
@@ -292,5 +292,5 @@ const LoginPage: React.FC = () => {
     </div>
   );
 };
-
+ 
 export default LoginPage; 

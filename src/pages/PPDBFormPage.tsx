@@ -1013,12 +1013,18 @@ const PPDBFormPage: React.FC = () => {
         { value: '', label: '-- Pilih Jalur --', disabled: true }
       ];
 
-      // Tambahkan jalur yang tersedia
-      options.push(
-        { value: 'prestasi', label: 'Prestasi', disabled: false },
-        { value: 'reguler', label: 'Reguler', disabled: false },
-        { value: 'undangan', label: 'Undangan', disabled: false }
-      );
+      // Tambahkan jalur hanya jika aktif di settings
+      if (ppdbSettings?.jalurPrestasi?.isActive) {
+        options.push({ value: 'prestasi', label: 'Prestasi', disabled: false });
+      }
+      
+      if (ppdbSettings?.jalurReguler?.isActive) {
+        options.push({ value: 'reguler', label: 'Reguler', disabled: false });
+      }
+      
+      if (ppdbSettings?.jalurUndangan?.isActive) {
+        options.push({ value: 'undangan', label: 'Undangan', disabled: false });
+      }
 
       return options;
     };
@@ -1029,15 +1035,18 @@ const PPDBFormPage: React.FC = () => {
           <SectionTitle>Data Pribadi</SectionTitle>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Select
-                label="Pilih Jalur"
-                name="jalur"
-                value={formData.jalur}
-                onChange={handleInputChange}
-                options={getAvailableJalur()}
-                required
-                className="bg-white"
-              />
+              {/* Tampilkan Select Jalur hanya jika ada jalur yang aktif */}
+              {getAvailableJalur().length > 1 && (
+                <Select
+                  label="Pilih Jalur"
+                  name="jalur"
+                  value={formData.jalur}
+                  onChange={handleInputChange}
+                  options={getAvailableJalur()}
+                  required
+                  className="bg-white"
+                />
+              )}
 
               <Input
                 label="Nama Calon Siswa"
