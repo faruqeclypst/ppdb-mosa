@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { ref, get } from 'firebase/database';
 import Modal from '../components/ui/Modal';
+import { onAuthStateChanged } from 'firebase/auth';
  
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,35 @@ const LoginPage: React.FC = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+ 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+ 
+  useEffect(() => {
+    if (user) {
+      const checkUserRole = async () => {
+        const adminRef = ref(db, `admins/${user.uid}`);
+        const ppdbRef = ref(db, `ppdb/${user.uid}`);
+        
+        const adminSnapshot = await get(adminRef);
+        const ppdbSnapshot = await get(ppdbRef);
+
+        if (adminSnapshot.exists()) {
+          navigate('/admin');
+        } else if (ppdbSnapshot.exists()) {
+          navigate('/ppdb/form');
+        }
+      };
+
+      checkUserRole();
+    }
+  }, [user, navigate]);
  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +143,7 @@ const LoginPage: React.FC = () => {
             d="M10 19l-7-7m0 0l7-7m-7 7h18" 
           />
         </svg>
-        <span className="font-medium">Kembali</span>
+        <span className="font-medium">Kembali ke Beranda</span>
       </Link>
  
       <Container className="max-w-md w-full">

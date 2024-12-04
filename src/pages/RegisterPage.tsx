@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, User, onAuthStateChanged } from 'firebase/auth';
 import { ref, set, get } from 'firebase/database';
 import { auth, db } from '../firebase/config';
 import Container from '../components/ui/Container';
@@ -34,6 +34,7 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const checkFirstAdmin = async () => {
@@ -72,6 +73,34 @@ const RegisterPage: React.FC = () => {
 
     loadPPDBSettings();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const checkUserRole = async () => {
+        const adminRef = ref(db, `admins/${user.uid}`);
+        const ppdbRef = ref(db, `ppdb/${user.uid}`);
+        
+        const adminSnapshot = await get(adminRef);
+        const ppdbSnapshot = await get(ppdbRef);
+
+        if (adminSnapshot.exists()) {
+          navigate('/admin');
+        } else if (ppdbSnapshot.exists()) {
+          navigate('/ppdb/form');
+        }
+      };
+
+      checkUserRole();
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -875,18 +875,19 @@ const DataPendaftar: React.FC = () => {
               <EyeIcon className="w-4 h-4" />
               <span>Detail</span>
             </Button>
-            {item.status === 'submitted' && (
-              <Button
-                onClick={() => {
-                  setSelectedData(item);
-                  setShowStatusModal(true);
-                }}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-sm transition-colors"
-              >
-                <CheckCircleIcon className="w-4 h-4" />
-                <span>Status</span>
-              </Button>
-            )}
+            
+            {/* Tampilkan tombol status untuk semua item */}
+            <Button
+              onClick={() => {
+                setSelectedData(item);
+                setShowStatusModal(true);
+              }}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-sm transition-colors"
+            >
+              <CheckCircleIcon className="w-4 h-4" />
+              <span>Status</span>
+            </Button>
+            
             <Button
               onClick={() => {
                 setSelectedData(item);
@@ -921,7 +922,7 @@ const DataPendaftar: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            idToken: selectedData.uid, // Gunakan ID token jika tersedia
+            idToken: selectedData.uid,
           }),
         }
       );
@@ -930,9 +931,13 @@ const DataPendaftar: React.FC = () => {
         console.error('Error deleting auth account:', await response.json());
       }
 
+      // Update state lokal setelah penghapusan berhasil
+      setPendaftar(prev => prev.filter(item => item.uid !== selectedData.uid));
+      
       showAlert('success', 'Data pendaftar berhasil dihapus');
       setShowDeleteModal(false);
-      loadData();
+      setDeleteConfirmation('');
+      setSelectedData(null);
     } catch (error) {
       console.error('Error deleting data:', error);
       showAlert('error', 'Gagal menghapus data pendaftar');
@@ -960,10 +965,8 @@ const DataPendaftar: React.FC = () => {
     setSelectedData(data);
     // Set status yang sudah ada
     setSelectedStatus(data.adminStatus || null);
-    // Set alasan penolakan yang sudah ada jika status ditolak
-    if (data.adminStatus === 'ditolak') {
-      setAlasanPenolakan(data.alasanPenolakan || '');
-    }
+    // Set alasan penolakan hanya jika data ini memiliki alasan penolakan
+    setAlasanPenolakan(data.adminStatus === 'ditolak' ? data.alasanPenolakan || '' : '');
     setShowStatusModal(true);
   };
 
@@ -971,7 +974,7 @@ const DataPendaftar: React.FC = () => {
   const handleCloseStatusModal = () => {
     setShowStatusModal(false);
     setSelectedStatus(null);
-    setAlasanPenolakan('');
+    setAlasanPenolakan(''); // Reset alasan penolakan
     setSelectedData(null);
   };
 
@@ -1153,6 +1156,9 @@ const DataPendaftar: React.FC = () => {
                   </div>,
                   <div>{item.nisn}</div>,
                   <div>{getJalurLabel(item.jalur)}</div>,
+                  <div className="truncate max-w-[150px]" title={item.asalSekolah}>
+                    {item.asalSekolah}
+                  </div>,
                   <StatusBadge 
                     key={item.uid} 
                     status={item.status}
@@ -1173,17 +1179,15 @@ const DataPendaftar: React.FC = () => {
                       <span className="hidden lg:inline">Detail</span>
                     </Button>
 
-                    {/* Tombol Ubah Status - hanya tampil jika status submitted */}
-                    {item.status === 'submitted' && (
-                      <Button
-                        onClick={() => handleOpenStatusModal(item)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg text-sm transition-colors"
-                        title="Ubah Status"
-                      >
-                        <CheckCircleIcon className="w-4 h-4" />
-                        <span className="hidden lg:inline">Status</span>
-                      </Button>
-                    )}
+                    {/* Tombol Ubah Status - tampilkan untuk semua status */}
+                    <Button
+                      onClick={() => handleOpenStatusModal(item)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg text-sm transition-colors"
+                      title="Ubah Status"
+                    >
+                      <CheckCircleIcon className="w-4 h-4" />
+                      <span className="hidden lg:inline">Status</span>
+                    </Button>
 
                     {/* Tombol Hapus */}
                     <Button

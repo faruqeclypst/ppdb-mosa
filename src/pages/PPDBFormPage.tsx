@@ -285,12 +285,26 @@ const wrapText = (text: string, maxLength: number): string[] => {
   return lines;
 };
 
-// Tambahkan fungsi untuk membuat kartu pendaftaran PDF
+// Tambahkan fungsi untuk membuat bukti pendaftaran PDF
 const generateRegistrationCard = async (formData: FormData) => {
   try {
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 size
     const { width, height } = page.getSize();
+
+    // Tambahkan border dengan margin 20 points dari tepi
+    const borderMargin = 20;
+    page.drawRectangle({
+      x: borderMargin,
+      y: borderMargin,
+      width: width - (borderMargin * 2),
+      height: height - (borderMargin * 2),
+      borderColor: rgb(0.7, 0.7, 0.7),
+      borderWidth: 1,
+    });
+
+    // Sesuaikan marginX agar konten tidak terlalu dekat dengan border
+    const marginX = 50; // Tetap 50 karena sudah cukup jauh dari border
 
     // Load fonts
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -300,11 +314,10 @@ const generateRegistrationCard = async (formData: FormData) => {
     const logoResponse = await fetch('/images/mosa.png');
     const logoArrayBuffer = await logoResponse.arrayBuffer();
     const logoImage = await pdfDoc.embedPng(logoArrayBuffer);
-    const logoDims = logoImage.scale(0.07);
+    const logoDims = logoImage.scale(0.09); // Mengubah skala dari 0.07 menjadi 0.09
 
     // Header positioning
     const headerY = height - 80; // Turunkan sedikit header
-    const marginX = 50; // Margin kiri-kanan yang konsisten
 
     // Draw logo
     page.drawImage(logoImage, {
@@ -351,10 +364,10 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: rgb(0.7, 0.7, 0.7),
     });
 
-    // Judul Kartu dengan spacing yang lebih baik
-    page.drawText('KARTU PENDAFTARAN', {
-      x: (width - helveticaBold.widthOfTextAtSize('KARTU PENDAFTARAN', 14)) / 2,
-      y: lineY - 30,
+    // Judul bukti pendaftaran dengan spacing yang lebih baik
+    page.drawText('BUKTI PENDAFTARAN', {
+      x: (width - helveticaBold.widthOfTextAtSize('BUKTI PENDAFTARAN', 14)) / 2,
+      y: lineY - 35,
       size: 14,
       font: helveticaBold,
       color: rgb(0, 0, 0),
@@ -452,9 +465,9 @@ const generateRegistrationCard = async (formData: FormData) => {
     });
 
     const notes = [
-      '1. Kartu ini sebagai bukti pendaftaran PPDB SMAN Modal Bangsa',
-      '2. Simpan kartu ini dan tunjukkan saat pendaftaran ulang',
-      '3. Pengumuman hasil seleksi dapat dilihat di website PPDB'
+      'Kartu ini sebagai bukti pendaftaran PPDB SMAN Modal Bangsa'
+      // '2. Simpan bukti ini dan tunjukkan saat pendaftaran ulang',
+      // '3. Pengumuman hasil seleksi dapat dilihat di website PPDB'
     ];
 
     notes.forEach((note) => {
@@ -539,15 +552,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: rgb(0, 0, 0),
     });
 
-    // Box tanda tangan kiri (Panitia)
-    drawSignatureBox(
-      marginX, 
-      boxStartY,
-      signatureWidth,
-      'Panitia PPDB'
-    );
-
-    // Box tanda tangan kanan (Pendaftar)
+    // Hanya tampilkan box tanda tangan pendaftar
     drawSignatureBox(
       rightColumnX,
       boxStartY,
@@ -563,7 +568,7 @@ const generateRegistrationCard = async (formData: FormData) => {
 
   } catch (error) {
     console.error('Error generating PDF:', error);
-    showAlert('error', 'Gagal membuat kartu pendaftaran');
+    showAlert('error', 'Gagal membuat bukti pendaftaran');
   }
 };
 
@@ -2085,7 +2090,7 @@ const PPDBFormPage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
                     d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Cetak Kartu Pendaftaran
+                Cetak Bukti Pendaftaran
               </Button>
               <Button
                 onClick={() => setShowSuccessModal(false)}
