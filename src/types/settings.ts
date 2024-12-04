@@ -22,6 +22,7 @@ export type PPDBSettings = {
     admin1: AdminContact;
     admin2: AdminContact;
     admin3: AdminContact;
+    admin4: AdminContact;
   };
   announcementDate?: string;
 }; 

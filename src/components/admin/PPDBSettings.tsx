@@ -46,6 +46,10 @@ const initialSettings: PPDBSettingsType = {
     admin3: {
       name: '',
       whatsapp: ''
+    },
+    admin4: {
+      name: '',
+      whatsapp: ''
     }
   }
 };
@@ -514,7 +518,7 @@ const PPDBSettings: React.FC = () => {
       {/* Kontak Admin */}
       <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Kontak Admin</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Admin 1 */}
           <div className="space-y-6">
             <Input
@@ -530,7 +534,6 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: Pak Ahmad"
               required
             />
             <Input
@@ -546,7 +549,6 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: +628116700050"
               required
             />
           </div>
@@ -566,7 +568,6 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: Bu Siti"
               required
             />
             <Input
@@ -582,7 +583,6 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: +628116700050"
               required
             />
           </div>
@@ -602,7 +602,6 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: Pak Budi"
               required
             />
             <Input
@@ -618,7 +617,40 @@ const PPDBSettings: React.FC = () => {
                   }
                 }
               }))}
-              placeholder="Contoh: +628116700050"
+              required
+            />
+          </div>
+
+          {/* Admin 4 */}
+          <div className="space-y-6">
+            <Input
+              label="Nama Admin 4"
+              value={settings.contactWhatsapp.admin4.name}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                contactWhatsapp: {
+                  ...prev.contactWhatsapp,
+                  admin4: {
+                    ...prev.contactWhatsapp.admin4,
+                    name: e.target.value
+                  }
+                }
+              }))}
+              required
+            />
+            <Input
+              label="WhatsApp Admin 4"
+              value={settings.contactWhatsapp.admin4.whatsapp}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                contactWhatsapp: {
+                  ...prev.contactWhatsapp,
+                  admin4: {
+                    ...prev.contactWhatsapp.admin4,
+                    whatsapp: e.target.value
+                  }
+                }
+              }))}
               required
             />
           </div>

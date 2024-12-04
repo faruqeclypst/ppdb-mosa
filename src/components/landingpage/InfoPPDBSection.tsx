@@ -274,52 +274,54 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                 viewport={{ once: true }}
                 className="h-full"
               >
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white h-full flex flex-col">
                   <div className="flex items-center gap-3 mb-4">
                     <DocumentCheckIcon className="w-8 h-8" />
                     <h3 className="text-xl font-bold">Pengumuman Kelulusan</h3>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 flex-1">
                     {/* Pengumuman per jalur */}
-                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                      <p className="font-medium">Jalur Prestasi</p>
-                      <p className="text-sm text-white/80">
-                        {settings?.jalurPrestasi?.announcementDate 
-                          ? formatDate(settings.jalurPrestasi.announcementDate)
-                          : 'Belum ditentukan'}
-                      </p>
-                      {!settings?.jalurPrestasi?.isActive && (
-                        <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
-                      )}
-                    </div>
+                    <div className="grid gap-4">
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <p className="font-medium">Jalur Prestasi</p>
+                        <p className="text-sm text-white/80">
+                          {settings?.jalurPrestasi?.announcementDate 
+                            ? formatDate(settings.jalurPrestasi.announcementDate)
+                            : 'Belum ditentukan'}
+                        </p>
+                        {!settings?.jalurPrestasi?.isActive && (
+                          <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
+                        )}
+                      </div>
 
-                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                      <p className="font-medium">Jalur Reguler</p>
-                      <p className="text-sm text-white/80">
-                        {settings?.jalurReguler?.announcementDate 
-                          ? formatDate(settings.jalurReguler.announcementDate)
-                          : 'Belum ditentukan'}
-                      </p>
-                      {!settings?.jalurReguler?.isActive && (
-                        <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
-                      )}
-                    </div>
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <p className="font-medium">Jalur Reguler</p>
+                        <p className="text-sm text-white/80">
+                          {settings?.jalurReguler?.announcementDate 
+                            ? formatDate(settings.jalurReguler.announcementDate)
+                            : 'Belum ditentukan'}
+                        </p>
+                        {!settings?.jalurReguler?.isActive && (
+                          <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
+                        )}
+                      </div>
 
-                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                      <p className="font-medium">Jalur Undangan</p>
-                      <p className="text-sm text-white/80">
-                        {settings?.jalurUndangan?.announcementDate 
-                          ? formatDate(settings.jalurUndangan.announcementDate)
-                          : 'Belum ditentukan'}
-                      </p>
-                      {!settings?.jalurUndangan?.isActive && (
-                        <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
-                      )}
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <p className="font-medium">Jalur Undangan</p>
+                        <p className="text-sm text-white/80">
+                          {settings?.jalurUndangan?.announcementDate 
+                            ? formatDate(settings.jalurUndangan.announcementDate)
+                            : 'Belum ditentukan'}
+                        </p>
+                        {!settings?.jalurUndangan?.isActive && (
+                          <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Info tambahan */}
-                    <div className="text-xs text-white/90 bg-white/10 backdrop-blur-sm rounded-xl p-3">
+                    <div className="text-xs text-white/90 bg-white/10 backdrop-blur-sm rounded-xl p-3 mt-auto">
                       <p className="font-medium">Catatan:</p>
                       <p>Keputusan panitia PPDB bersifat final. Peserta yang tidak melakukan daftar ulang dianggap mengundurkan diri.</p>
                     </div>
@@ -347,7 +349,8 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                         {[
                           settings.contactWhatsapp.admin1,
                           settings.contactWhatsapp.admin2,
-                          settings.contactWhatsapp.admin3
+                          settings.contactWhatsapp.admin3,
+                          settings.contactWhatsapp.admin4
                         ]
                           .filter(admin => admin?.name && admin?.whatsapp)
                           .map((admin, index) => (
