@@ -1,77 +1,111 @@
 import React from 'react';
 import classNames from 'classnames';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 type PaginationProps = {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  className?: string;
-  totalItems?: number;
-  itemsPerPage?: number;
+  totalItems: number;
+  itemsPerPage: number;
 };
 
-const Pagination: React.FC<PaginationProps> = ({ 
-  currentPage, 
-  totalPages, 
-  onPageChange, 
-  className,
-  totalItems = 0,
-  itemsPerPage = 10
+// Komponen untuk info items
+const ItemsInfo: React.FC<{
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
+}> = ({ currentPage, itemsPerPage, totalItems }) => (
+  <div className="text-sm text-gray-600 w-[280px] flex-shrink-0">
+    <span className="hidden sm:inline">Menampilkan </span>
+    <span className="font-semibold text-gray-900">
+      {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}
+    </span>
+    <span className="mx-1">-</span>
+    <span className="font-semibold text-gray-900">
+      {Math.min(currentPage * itemsPerPage, totalItems)}
+    </span>
+    <span className="mx-1">dari</span>
+    <span className="font-semibold text-gray-900">{totalItems}</span>
+    <span className="hidden sm:inline"> data</span>
+  </div>
+);
+
+// Komponen untuk tombol navigasi
+const NavigationButton: React.FC<{
+  onClick: () => void;
+  disabled: boolean;
+  direction: 'prev' | 'next';
+}> = ({ onClick, disabled, direction }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={classNames(
+      "relative inline-flex items-center justify-center w-10 flex-shrink-0",
+      "text-sm font-medium border transition-colors",
+      direction === 'prev' ? "rounded-l-lg" : "rounded-r-lg -ml-px",
+      disabled
+        ? "bg-gray-50 text-gray-400 cursor-not-allowed"
+        : "bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+    )}
+  >
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d={direction === 'prev' ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"}
+      />
+    </svg>
+  </button>
+);
+
+// Komponen untuk info halaman
+const PageInfo: React.FC<{
+  currentPage: number;
+  totalPages: number;
+}> = ({ currentPage, totalPages }) => (
+  <div className="relative inline-flex items-center justify-center w-[120px] flex-shrink-0 text-sm font-medium border-t border-b bg-white text-gray-700">
+    Pages {currentPage} of {totalPages}
+  </div>
+);
+
+const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
+  itemsPerPage,
 }) => {
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
   return (
-    <div className={classNames('flex flex-col md:flex-row items-center justify-between gap-4 pt-4', className)}>
-      {/* Info jumlah data - Disembunyikan di mobile */}
-      <p className="hidden md:block text-sm text-gray-600">
-        Menampilkan {startItem} - {endItem} dari {totalItems} data
-      </p>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white min-h-[52px] w-full">
+      <ItemsInfo 
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        totalItems={totalItems}
+      />
 
-      {/* Mobile Pagination */}
-      <div className="md:hidden flex items-center justify-center gap-2 w-full">
-        <button
+      <div className="inline-flex rounded-md shadow-sm h-10 flex-shrink-0">
+        <NavigationButton
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={classNames(
-            'p-2 rounded-lg',
-            currentPage === 1 ? 'text-gray-400 bg-gray-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
-          )}
-        >
-          <ChevronLeftIcon className="w-5 h-5" />
-        </button>
+          direction="prev"
+        />
         
-        <span className="text-sm text-gray-600">
-          {currentPage} / {totalPages}
-        </span>
-
-        <button
+        <PageInfo 
+          currentPage={currentPage}
+          totalPages={totalPages}
+        />
+        
+        <NavigationButton
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={classNames(
-            'p-2 rounded-lg',
-            currentPage === totalPages ? 'text-gray-400 bg-gray-100' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
-          )}
-        >
-          <ChevronRightIcon className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Desktop Pagination */}
-      <div className="hidden md:flex space-x-2">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            onClick={() => onPageChange(page)}
-            className={classNames(
-              'px-3 py-1 rounded',
-              page === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            )}
-          >
-            {page}
-          </button>
-        ))}
+          direction="next"
+        />
       </div>
     </div>
   );

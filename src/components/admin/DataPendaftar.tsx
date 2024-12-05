@@ -126,9 +126,9 @@ const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, className }) =
 
     switch (status) {
       case 'pending':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'text-gray-600 bg-gray-50';
       case 'submitted':
-        return 'text-blue-600 bg-blue-50';
+        return 'text-yellow-600 bg-yellow-50';
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -176,6 +176,31 @@ type SortConfig = {
   key: string;
   direction: 'asc' | 'desc';
 } | null;
+
+// Tambahkan komponen JalurBadge
+const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
+  const getJalurColor = (jalur: PPDBData['jalur']) => {
+    switch (jalur) {
+      case 'prestasi':
+        return 'text-blue-600 bg-blue-50';
+      case 'reguler':
+        return 'text-green-600 bg-green-50';
+      case 'undangan':
+        return 'text-purple-600 bg-purple-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  return (
+    <span className={classNames(
+      'px-2 py-1 rounded-full text-sm font-medium',
+      getJalurColor(jalur)
+    )}>
+      {getJalurLabel(jalur)}
+    </span>
+  );
+};
 
 const DataPendaftar: React.FC = () => {
   const [pendaftar, setPendaftar] = useState<PPDBData[]>([]);
@@ -842,7 +867,7 @@ const DataPendaftar: React.FC = () => {
         </div>
       </div>
 
-      {/* Dropdown Content */}
+      {/* Dropdown Content - Perbaiki padding dan layout */}
       {expandedRow === item.uid && (
         <div className="px-4 pb-4 space-y-3 bg-gray-50">
           {/* Info List */}
@@ -863,26 +888,25 @@ const DataPendaftar: React.FC = () => {
             </div>
           </div>
 
-          {/* Tombol Aksi */}
-          <div className="flex gap-1.5 pt-2">
+          {/* Tombol Aksi - Perbaiki layout dan spacing */}
+          <div className="grid grid-cols-3 gap-1.5 pt-2">
             <Button
               onClick={() => {
                 setSelectedData(item);
                 setShowDetailModal(true);
               }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-sm transition-colors"
+              className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-xs transition-colors"
             >
               <EyeIcon className="w-4 h-4" />
               <span>Detail</span>
             </Button>
             
-            {/* Tampilkan tombol status untuk semua item */}
             <Button
               onClick={() => {
                 setSelectedData(item);
                 setShowStatusModal(true);
               }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-sm transition-colors"
+              className="flex items-center justify-center gap-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-xs transition-colors"
             >
               <CheckCircleIcon className="w-4 h-4" />
               <span>Status</span>
@@ -893,7 +917,7 @@ const DataPendaftar: React.FC = () => {
                 setSelectedData(item);
                 setShowDeleteModal(true);
               }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-sm transition-colors"
+              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs transition-colors"
             >
               <TrashIcon className="w-4 h-4" />
               <span>Hapus</span>
@@ -1083,18 +1107,18 @@ const DataPendaftar: React.FC = () => {
             <StatCard
               label="Total Pendaftar"
               value={getFilteredData().length}
-              icon={<UserGroupIcon className="w-5 h-5 text-gray-600" />}
-              className="bg-white border"
+              icon={<UserGroupIcon className="w-5 h-5 text-blue-600" />}
+              className="bg-blue-50 border-blue-200"
+              valueColor="text-blue-600"
             />
             <StatCard
               label="Pending"
               value={getFilteredData().filter(item => 
-                // Hanya hitung sebagai pending jika status submitted dan BELUM memiliki adminStatus
                 item.status === 'submitted' && !item.adminStatus
               ).length}
-              icon={<ClockIcon className="w-5 h-5 text-blue-600" />}
-              className="bg-blue-50 border-blue-200"
-              valueColor="text-blue-600"
+              icon={<ClockIcon className="w-5 h-5 text-yellow-600" />}
+              className="bg-yellow-50 border-yellow-200"
+              valueColor="text-yellow-600"
             />
             <StatCard
               label="Diterima"
@@ -1155,7 +1179,7 @@ const DataPendaftar: React.FC = () => {
                     {item.namaSiswa}
                   </div>,
                   <div>{item.nisn}</div>,
-                  <div>{getJalurLabel(item.jalur)}</div>,
+                  <JalurBadge jalur={item.jalur} />,
                   <div className="truncate max-w-[150px]" title={item.asalSekolah}>
                     {item.asalSekolah}
                   </div>,
@@ -1165,7 +1189,7 @@ const DataPendaftar: React.FC = () => {
                     adminStatus={item.adminStatus}
                   />,
                   <span>{formatDateTime(item.submittedAt || item.createdAt)}</span>,
-                  <div key={item.uid} className="flex items-center gap-1.5 justify-end">
+                  <div key={item.uid} className="flex items-center gap-1.5">
                     {/* Tombol Lihat Detail */}
                     <Button
                       onClick={() => {
@@ -1179,7 +1203,7 @@ const DataPendaftar: React.FC = () => {
                       <span className="hidden lg:inline">Detail</span>
                     </Button>
 
-                    {/* Tombol Ubah Status - tampilkan untuk semua status */}
+                    {/* Tombol Ubah Status */}
                     <Button
                       onClick={() => handleOpenStatusModal(item)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg text-sm transition-colors"
@@ -1412,7 +1436,7 @@ const DataPendaftar: React.FC = () => {
                     )
                   },
                   {
-                    label: "Data Orang Tua",
+                    label: "Orang Tua",
                     content: (
                       <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
                         <div className={`grid ${isMobile() ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
