@@ -491,10 +491,10 @@ const DashboardPage: React.FC = () => {
               {/* Value & Progress */}
               <div className="space-y-2 md:space-y-3">
                 <div className="flex items-baseline gap-1 md:gap-2">
-                  <p className="text-base md:text-lg lg:text-xl font-extrabold text-gray-900">
+                  <p className="text-sm md:text-lg lg:text-xl font-extrabold text-gray-900">
                     {stat.value}
                   </p>
-                  <p className="text-[10px] md:text-xs text-gray-500">
+                  <p className="text-xs md:text-xs text-gray-500">
                     dari {stats.totalPendaftar} total
                   </p>
                 </div>
@@ -532,55 +532,55 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Secondary Stats & Recent Pendaftar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Jalur Stats */}
-        <Card className="lg:col-span-1 p-5">
-          <div className="flex items-center justify-between mb-6">
+        <Card className="lg:col-span-1 p-3 md:p-5">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ChartBarIcon className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-gray-900">Statistik Pendaftar</h3>
+              <ChartBarIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">Statistik Pendaftar</h3>
             </div>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[
               { 
                 label: 'Prestasi', 
                 value: stats.jalurPrestasi, 
-                icon: <AcademicCapIcon className="w-5 h-5" />, 
+                icon: <AcademicCapIcon className="w-4 h-4 md:w-5 md:h-5" />, 
                 colors: JALUR_COLORS.prestasi 
               },
               { 
                 label: 'Reguler', 
                 value: stats.jalurReguler, 
-                icon: <UserGroupIcon className="w-5 h-5" />, 
+                icon: <UserGroupIcon className="w-4 h-4 md:w-5 md:h-5" />, 
                 colors: JALUR_COLORS.reguler 
               },
               { 
                 label: 'Undangan', 
                 value: stats.jalurUndangan, 
-                icon: <DocumentTextIcon className="w-5 h-5" />, 
+                icon: <DocumentTextIcon className="w-4 h-4 md:w-5 md:h-5" />, 
                 colors: JALUR_COLORS.undangan 
               }
             ].map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg">
-                    <div className={`p-2 ${item.colors.bg} rounded-lg`}>
+              <div key={idx} className="flex items-center justify-between p-2 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 md:p-2 bg-white rounded-lg">
+                    <div className={`p-1.5 md:p-2 ${item.colors.bg} rounded-lg`}>
                       {React.cloneElement(item.icon as React.ReactElement, {
-                        className: `w-5 h-5 ${item.colors.text}`
+                        className: `w-4 h-4 md:w-5 md:h-5 ${item.colors.text}`
                       })}
                     </div>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Jalur {item.label}</p>
-                    <p className="text-sm text-gray-600">{item.value} Pendaftar</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-900">Jalur {item.label}</p>
+                    <p className="text-xs text-gray-600">{item.value} Pendaftar</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-lg font-bold ${item.colors.text}`}>
+                  <p className={`text-sm md:text-lg font-bold ${item.colors.text}`}>
                     {((item.value / stats.totalPendaftar) * 100).toFixed(1)}%
                   </p>
-                  <p className="text-sm text-gray-500">Persentase</p>
+                  <p className="text-xs text-gray-500">Persentase</p>
                 </div>
               </div>
             ))}
@@ -588,63 +588,58 @@ const DashboardPage: React.FC = () => {
         </Card>
 
         {/* Recent Pendaftar */}
-        <Card className="lg:col-span-2 p-5">
-          <div className="flex items-center justify-between mb-6">
+        <Card className="lg:col-span-2 p-3 md:p-5">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ArrowTrendingUpIcon className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-gray-900">Pendaftar Terbaru</h3>
+              <ArrowTrendingUpIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">Pendaftar Terbaru</h3>
             </div>
             <Link 
               to="/admin/pendaftar"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-xs md:text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               Lihat Semua
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {stats.recentPendaftar.map((pendaftar: RecentPendaftar, idx: number) => (
               <div 
                 key={idx} 
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-2 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 md:p-2 bg-white rounded-lg">
                     {getJalurIcon(pendaftar?.jalur)}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{pendaftar?.namaSiswa || 'Nama tidak tersedia'}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs md:text-sm font-medium text-gray-900">{pendaftar?.namaSiswa || 'Nama tidak tersedia'}</p>
+                    <p className="text-xs text-gray-600">
                       Jalur {pendaftar?.jalur ? 
                         pendaftar.jalur.charAt(0).toUpperCase() + pendaftar.jalur.slice(1) 
                         : 'Tidak tersedia'}
                     </p>
                   </div>
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-xs text-gray-500">
                   {pendaftar?.submittedAt ? 
                     new Date(pendaftar.submittedAt).toLocaleDateString() 
                     : '-'}
                 </span>
               </div>
             ))}
-            {stats.recentPendaftar.length === 0 && (
-              <div className="text-center py-8 text-gray-500 col-span-2">
-                Belum ada pendaftar
-              </div>
-            )}
           </div>
         </Card>
       </div>
 
       {/* Rata-rata Nilai Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Rata-rata Nilai per Mapel */}
-        <Card className="p-4 lg:p-6 h-full flex flex-col">
-          <div className="flex items-center gap-2 mb-6">
-            <AcademicCapIcon className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold text-gray-900">Rata-rata Nilai Per Mapel</h3>
+        <Card className="p-3 md:p-4 lg:p-6 h-full flex flex-col">
+          <div className="flex items-center gap-2 mb-4">
+            <AcademicCapIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+            <h3 className="text-sm md:text-base font-semibold text-gray-900">Rata-rata Nilai Per Mapel</h3>
           </div>
-          <div className="space-y-4 flex-1">
+          <div className="space-y-3 flex-1">
             {[
               { label: 'Agama', avg: calculateAverage(data, 'nilaiAgama') },
               { label: 'B. Indonesia', avg: calculateAverage(data, 'nilaiBindo') },
@@ -652,19 +647,19 @@ const DashboardPage: React.FC = () => {
               { label: 'Matematika', avg: calculateAverage(data, 'nilaiMtk') },
               { label: 'IPA', avg: calculateAverage(data, 'nilaiIpa') }
             ].map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="font-medium text-gray-700">{item.label}</span>
+              <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <span className="text-xs md:text-sm font-medium text-gray-700">{item.label}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-20 md:w-32 bg-gray-200 rounded-full h-1.5">
                     <div 
                       className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
                       style={{ width: `${(item.avg / 100) * 100}%` }}
                     />
                   </div>
-                  <span className="text-lg font-bold text-blue-600 min-w-[40px] text-right">
+                  <span className="text-sm md:text-lg font-bold text-blue-600 min-w-[40px] text-right">
                     {item.avg.toFixed(1)}
                   </span>
                 </div>
@@ -674,55 +669,55 @@ const DashboardPage: React.FC = () => {
         </Card>
 
         {/* Rata-rata Nilai per Jalur */}
-        <Card className="p-4 lg:p-6 h-full flex flex-col">
-          <div className="flex items-center justify-between mb-6">
+        <Card className="p-3 md:p-4 lg:p-6 h-full flex flex-col">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ChartBarIcon className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-gray-900">Rata-rata Nilai Per Jalur</h3>
+              <ChartBarIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">Rata-rata Nilai Per Jalur</h3>
             </div>
           </div>
-          <div className="space-y-4 flex-1">
+          <div className="space-y-3 flex-1">
             {[
               { 
                 label: 'Prestasi', 
                 avg: calculateJalurAverage(data, 'prestasi'),
                 colors: JALUR_COLORS.prestasi,
-                icon: <AcademicCapIcon className="w-5 h-5" />
+                icon: <AcademicCapIcon className="w-4 h-4 md:w-5 md:h-5" />
               },
               { 
                 label: 'Reguler', 
                 avg: calculateJalurAverage(data, 'reguler'),
                 colors: JALUR_COLORS.reguler,
-                icon: <UserGroupIcon className="w-5 h-5" />
+                icon: <UserGroupIcon className="w-4 h-4 md:w-5 md:h-5" />
               },
               { 
                 label: 'Undangan', 
                 avg: calculateJalurAverage(data, 'undangan'),
                 colors: JALUR_COLORS.undangan,
-                icon: <DocumentTextIcon className="w-5 h-5" />
+                icon: <DocumentTextIcon className="w-4 h-4 md:w-5 md:h-5" />
               }
             ].map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 bg-white rounded-lg`}>
-                    <div className={`p-2 ${item.colors.bg} rounded-lg`}>
+              <div key={idx} className="flex items-center justify-between p-2 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 md:p-2 bg-white rounded-lg`}>
+                    <div className={`p-1.5 md:p-2 ${item.colors.bg} rounded-lg`}>
                       {React.cloneElement(item.icon as React.ReactElement, {
-                        className: `w-5 h-5 ${item.colors.text}`
+                        className: `w-4 h-4 md:w-5 md:h-5 ${item.colors.text}`
                       })}
                     </div>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Jalur {item.label}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs md:text-sm font-medium text-gray-900">Jalur {item.label}</p>
+                    <p className="text-xs text-gray-600">
                       {data.filter(d => d.jalur === item.label.toLowerCase()).length} Pendaftar
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-lg font-bold ${item.colors.text}`}>
+                  <p className={`text-sm md:text-lg font-bold ${item.colors.text}`}>
                     {item.avg.toFixed(1)}
                   </p>
-                  <p className="text-sm text-gray-500">Rata-rata</p>
+                  <p className="text-xs text-gray-500">Rata-rata</p>
                 </div>
               </div>
             ))}
@@ -731,43 +726,43 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Detail Nilai per Jalur dan Mapel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         {[
           { 
             label: 'Prestasi', 
             jalur: 'prestasi',
             colors: JALUR_COLORS.prestasi,
-            icon: <AcademicCapIcon className="w-5 h-5" />
+            icon: <AcademicCapIcon className="w-4 h-4" />
           },
           { 
             label: 'Reguler', 
             jalur: 'reguler',
             colors: JALUR_COLORS.reguler,
-            icon: <UserGroupIcon className="w-5 h-5" />
+            icon: <UserGroupIcon className="w-4 h-4" />
           },
           { 
             label: 'Undangan', 
             jalur: 'undangan',
             colors: JALUR_COLORS.undangan,
-            icon: <DocumentTextIcon className="w-5 h-5" />
+            icon: <DocumentTextIcon className="w-4 h-4" />
           }
         ].map((jalurItem, idx) => (
-          <Card key={idx} className="p-4 lg:p-6 h-full flex flex-col">
-            <div className="flex items-center gap-3 mb-6">
-              <div className={`p-2 ${jalurItem.colors.bg} rounded-lg`}>
+          <Card key={idx} className="p-2 md:p-4 lg:p-6 h-full flex flex-col">
+            <div className="flex items-center gap-2 mb-3 md:mb-6">
+              <div className={`p-1.5 md:p-2 ${jalurItem.colors.bg} rounded-lg`}>
                 {React.cloneElement(jalurItem.icon as React.ReactElement, {
-                  className: `w-5 h-5 ${jalurItem.colors.text}`
+                  className: `w-4 h-4 md:w-5 md:h-5 ${jalurItem.colors.text}`
                 })}
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Jalur {jalurItem.label}</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="text-sm md:text-base font-semibold text-gray-900">Jalur {jalurItem.label}</h3>
+                <p className="text-xs md:text-sm text-gray-600">
                   {data.filter(d => d.jalur === jalurItem.jalur).length} Pendaftar
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4 flex-1">
+            <div className="space-y-2 md:space-y-4 flex-1">
               {[
                 { label: 'Agama', field: 'nilaiAgama' },
                 { label: 'B. Indonesia', field: 'nilaiBindo' },
@@ -787,20 +782,20 @@ const DashboardPage: React.FC = () => {
 
                 return (
                   <div key={mapelIdx} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${jalurItem.colors.accent}`} />
-                      <span className="text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                      <div className={`w-1 h-1 md:w-2 md:h-2 rounded-full ${jalurItem.colors.accent}`} />
+                      <span className="text-xs md:text-sm font-medium text-gray-700">
                         {mapel.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 bg-gray-100 rounded-full h-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 md:w-32 bg-gray-100 rounded-full h-1">
                         <div 
-                          className={`${jalurItem.colors.accent} h-1.5 rounded-full transition-all duration-500`}
+                          className={`${jalurItem.colors.accent} h-1 rounded-full transition-all duration-500`}
                           style={{ width: `${(mapelAvg / 100) * 100}%` }}
                         />
                       </div>
-                      <span className={`text-sm font-semibold ${jalurItem.colors.text} min-w-[40px] text-right`}>
+                      <span className={`text-xs md:text-sm font-semibold ${jalurItem.colors.text} min-w-[32px] text-right`}>
                         {mapelAvg.toFixed(1)}
                       </span>
                     </div>
@@ -809,10 +804,10 @@ const DashboardPage: React.FC = () => {
               })}
             </div>
 
-            <div className="mt-4 pt-4 border-t">
+            <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Rata-rata Keseluruhan</span>
-                <span className={`text-lg font-bold ${jalurItem.colors.text}`}>
+                <span className="text-xs md:text-sm text-gray-600">Rata-rata Keseluruhan</span>
+                <span className={`text-sm md:text-lg font-bold ${jalurItem.colors.text}`}>
                   {calculateJalurAverage(data, jalurItem.jalur).toFixed(1)}
                 </span>
               </div>

@@ -258,16 +258,16 @@ const PPDBSettings: React.FC = () => {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Status PPDB */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 md:p-6 rounded-xl border border-blue-200">
+      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-6 rounded-xl border border-blue-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-blue-900">Status PPDB</h3>
-            <p className="text-sm text-blue-700 mt-1">
+            <h3 className="text-base md:text-lg font-semibold text-blue-900">Status PPDB</h3>
+            <p className="text-xs md:text-sm text-blue-700 mt-1">
               {settings.isActive ? 'PPDB sedang berlangsung' : 'PPDB belum dimulai'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className={`px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
               settings.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}>
               {settings.isActive ? 'Aktif' : 'Nonaktif'}
@@ -299,11 +299,11 @@ const PPDBSettings: React.FC = () => {
       {/* Jalur Pendaftaran - Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Jalur Prestasi */}
-        <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
+        <div className="bg-white rounded-xl p-3 md:p-6 border shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Jalur Prestasi</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Jalur Prestasi</h3>
             <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
                 settings.jalurPrestasi.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {settings.jalurPrestasi.isActive ? 'Aktif' : 'Nonaktif'}
@@ -371,11 +371,11 @@ const PPDBSettings: React.FC = () => {
         </div>
 
         {/* Jalur Reguler */}
-        <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
+        <div className="bg-white rounded-xl p-3 md:p-6 border shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Jalur Reguler</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Jalur Reguler</h3>
             <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
                 settings.jalurReguler.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {settings.jalurReguler.isActive ? 'Aktif' : 'Nonaktif'}
@@ -443,11 +443,11 @@ const PPDBSettings: React.FC = () => {
         </div>
 
         {/* Jalur Undangan */}
-        <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
+        <div className="bg-white rounded-xl p-3 md:p-6 border shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Jalur Undangan</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Jalur Undangan</h3>
             <div className="flex items-center gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
                 settings.jalurUndangan.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {settings.jalurUndangan.isActive ? 'Aktif' : 'Nonaktif'}

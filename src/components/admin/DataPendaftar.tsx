@@ -742,7 +742,11 @@ const DataPendaftar: React.FC = () => {
     const semesters = ['2', '3', '4'];
 
     return (
-      <div className="bg-white shadow-sm border rounded-xl p-4 h-[300px] overflow-y-auto">
+      <div className={classNames(
+        "bg-white shadow-sm border rounded-xl p-4",
+        // Hapus h-[300px] dan overflow-y-auto untuk mencegah double scrolling
+        "h-auto"
+      )}>
         <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-4'}`}>
           {/* Kolom 1: Dokumen Wajib */}
           <div>
@@ -844,13 +848,13 @@ const DataPendaftar: React.FC = () => {
       <div 
         onClick={() => setExpandedRow(expandedRow === item.uid ? null : item.uid)}
         className={classNames(
-          "flex items-center justify-between p-4 cursor-pointer",
+          "flex items-center justify-between p-3 cursor-pointer",
           expandedRow === item.uid ? "bg-gray-50" : "hover:bg-gray-50"
         )}
       >
         <div>
-          <p className="font-medium text-gray-900">{item.namaSiswa}</p>
-          <p className="text-sm text-gray-500">{item.nisn}</p>
+          <p className="font-medium text-gray-900 text-sm mb-1">{item.namaSiswa}</p>
+          <p className="text-xs text-gray-500">{item.nisn}</p>
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge 
@@ -860,36 +864,36 @@ const DataPendaftar: React.FC = () => {
           />
           <ChevronDownIcon 
             className={classNames(
-              "w-5 h-5 text-gray-400 transition-transform",
+              "w-4 h-4 text-gray-400 transition-transform",
               expandedRow === item.uid ? "transform rotate-180" : ""
             )}
           />
         </div>
       </div>
 
-      {/* Dropdown Content - Perbaiki padding dan layout */}
+      {/* Dropdown Content */}
       {expandedRow === item.uid && (
-        <div className="px-4 pb-4 space-y-3 bg-gray-50">
+        <div className="px-3 pb-3 space-y-3 bg-gray-50">
           {/* Info List */}
-          <div className="space-y-3 pt-3">
+          <div className="space-y-2">
             <div>
               <p className="text-xs text-gray-500">Jalur</p>
-              <p className="text-sm text-gray-900 font-medium">{getJalurLabel(item.jalur)}</p>
+              <JalurBadge jalur={item.jalur} />
             </div>
             <div>
               <p className="text-xs text-gray-500">Asal Sekolah</p>
-              <p className="text-sm text-gray-900 font-medium">{item.asalSekolah}</p>
+              <p className="text-sm text-gray-900">{item.asalSekolah}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Tanggal Submit</p>
-              <p className="text-sm text-gray-900 font-medium">
+              <p className="text-sm text-gray-900">
                 {formatDateTime(item.submittedAt || item.createdAt)}
               </p>
             </div>
           </div>
 
-          {/* Tombol Aksi - Perbaiki layout dan spacing */}
-          <div className="grid grid-cols-3 gap-1.5 pt-2">
+          {/* Tombol Aksi */}
+          <div className="grid grid-cols-3 gap-1.5">
             <Button
               onClick={() => {
                 setSelectedData(item);
@@ -1019,21 +1023,21 @@ const DataPendaftar: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="Cari Nama Siswa, NISN atau Sekolah..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-4 py-2.5 text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-full pl-10 pr-4 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <Button
               onClick={exportToExcel}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2.5 px-4 md:w-auto"
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 px-4 text-sm"
             >
-              <DocumentArrowDownIcon className="w-5 h-5" />
+              <DocumentArrowDownIcon className="w-4 h-4" />
               <span className="hidden md:inline">Export Excel</span>
               <span className="md:hidden">Export</span>
             </Button>
@@ -1047,7 +1051,7 @@ const DataPendaftar: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 >
                   <option value="all">Semua Status</option>
                   <option value="pending">Pending</option>
@@ -1067,7 +1071,7 @@ const DataPendaftar: React.FC = () => {
                 <select
                   value={jalurFilter}
                   onChange={(e) => setJalurFilter(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 >
                   <option value="all">Semua Jalur</option>
                   <option value="prestasi">Prestasi</option>
@@ -1087,7 +1091,7 @@ const DataPendaftar: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 >
                   <option value="newest">Terbaru</option>
                   <option value="oldest">Terlama</option>
@@ -1266,7 +1270,21 @@ const DataPendaftar: React.FC = () => {
                   <h3 className={`${isMobile() ? 'text-base' : 'text-xl'} font-bold text-gray-900`}>
                     {selectedData?.namaSiswa}
                   </h3>
-                  <StatusBadge status={selectedData?.status || 'pending'} className="text-xs" />
+                  {/* Update tampilan status dengan warna */}
+                  {selectedData?.adminStatus ? (
+                    <span className={classNames(
+                      'px-2 py-1 rounded-full text-xs font-medium',
+                      selectedData.adminStatus === 'diterima' 
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    )}>
+                      {selectedData.adminStatus === 'diterima' ? 'Diterima' : 'Ditolak'}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Pending
+                    </span>
+                  )}
                 </div>
                 
                 {!isMobile() && (
@@ -1292,7 +1310,16 @@ const DataPendaftar: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">Jalur:</span>
-                  <span>{getJalurLabel(selectedData?.jalur || 'reguler')}</span>
+                  <span className={classNames(
+                    'px-2 py-1 rounded-full text-xs font-medium',
+                    selectedData?.jalur === 'prestasi' 
+                      ? 'bg-blue-100 text-blue-800'
+                      : selectedData?.jalur === 'reguler'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-purple-100 text-purple-800'
+                  )}>
+                    {getJalurLabel(selectedData?.jalur || 'reguler')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">Tanggal Daftar:</span>

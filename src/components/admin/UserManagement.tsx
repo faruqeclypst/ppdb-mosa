@@ -181,36 +181,36 @@ const UserManagement: React.FC = () => {
       {/* Data Admin Table - Mobile Optimized */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <div className="p-4 md:p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Daftar Admin</h3>
+          <div className="flex justify-between items-center mb-3 md:mb-4">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Daftar Admin</h3>
             <Button
               onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+              className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1.5 py-1.5 md:py-2 px-3 md:px-4 text-xs md:text-sm"
             >
-              <UserPlusIcon className="w-5 h-5" />
+              <UserPlusIcon className="w-4 h-4" />
               <span className="hidden md:inline">Tambah Admin</span>
             </Button>
           </div>
           
           {/* Mobile View */}
-          <div className="md:hidden space-y-4">
+          <div className="md:hidden space-y-3">
             {admins.map(admin => (
               <div 
                 key={admin.uid}
-                className="bg-gray-50 rounded-lg p-4 space-y-2"
+                className="bg-gray-50 rounded-lg p-3 space-y-2"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium text-gray-900">{admin.fullName}</h4>
-                    <p className="text-sm text-gray-600">{admin.email}</p>
+                    <h4 className="text-sm font-medium text-gray-900">{admin.fullName}</h4>
+                    <p className="text-xs text-gray-600">{admin.email}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <button
                       onClick={() => {
                         setSelectedAdmin(admin);
                         setShowResetModal(true);
                       }}
-                      className="p-2 bg-yellow-500 text-white rounded-lg"
+                      className="p-1.5 bg-yellow-500 text-white rounded-lg"
                     >
                       <KeyIcon className="w-4 h-4" />
                     </button>
@@ -219,7 +219,7 @@ const UserManagement: React.FC = () => {
                         setSelectedAdmin(admin);
                         setShowDeleteModal(true);
                       }}
-                      className="p-2 bg-red-500 text-white rounded-lg"
+                      className="p-1.5 bg-red-500 text-white rounded-lg"
                     >
                       <TrashIcon className="w-4 h-4" />
                     </button>
@@ -244,15 +244,15 @@ const UserManagement: React.FC = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
       >
-        <div className="p-4 md:p-6">
+        <div className="p-3 md:p-6">
           <div className="text-center mb-4">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-              <UserPlusIcon className="w-6 h-6 text-blue-600" />
+            <div className="mx-auto w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+              <UserPlusIcon className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">
               Tambah Admin Baru
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-xs md:text-sm text-gray-600 mt-1">
               Lengkapi data untuk membuat akun admin baru
             </p>
           </div>
