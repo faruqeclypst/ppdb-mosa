@@ -11,7 +11,7 @@ type ModalProps = {
 };
 
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md', className = '' }) => {
-  // Handle escape key
+  // Handle escape key dan body scrolling
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -19,12 +19,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, size = 'md', c
     
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
+      // Simpan posisi scroll sebelum modal dibuka
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
     }
     
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
+      if (isOpen) {
+        // Kembalikan posisi scroll saat modal ditutup
+        const scrollY = document.body.style.top;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
     };
   }, [isOpen, onClose]);
 

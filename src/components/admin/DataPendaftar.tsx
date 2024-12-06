@@ -154,20 +154,14 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
   return labels[jalur];
 };
 
+// Update customScrollbarStyles
 const customScrollbarStyles = `
+  .custom-scrollbar {
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  }
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 3px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 3px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #666;
+    display: none; /* WebKit */
   }
 `;
 
@@ -694,13 +688,13 @@ const DataPendaftar: React.FC = () => {
     ];
 
     return (
-      <div className="bg-white shadow-sm border rounded-xl p-4 h-[300px]">
-        <table className="w-full">
+      <div className="bg-white shadow-sm border rounded-xl p-5 h-[300px]"> {/* Sesuaikan padding */}
+        <table className="w-full mb-4"> {/* Tambah margin bottom */}
           <thead>
             <tr>
-              <th className="text-left text-sm font-medium text-gray-500 pb-3">Mapel</th>
+              <th className="text-left text-sm font-medium text-gray-500 pb-4">Mapel</th> {/* Sesuaikan padding */}
               {semesters.map(semester => (
-                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-3">
+                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-4">
                   Sem {semester}
                 </th>
               ))}
@@ -709,7 +703,7 @@ const DataPendaftar: React.FC = () => {
           <tbody>
             {mapelList.map(({ label, key }) => (
               <tr key={key} className="border-t">
-                <td className="py-2 text-sm font-medium text-gray-600">{label}</td>
+                <td className="py-3 text-sm font-medium text-gray-600">{label}</td> {/* Sesuaikan padding */}
                 {semesters.map(semester => {
                   const nilai = Number(data[`${key}${semester}` as keyof PPDBData]);
                   return (
@@ -729,7 +723,7 @@ const DataPendaftar: React.FC = () => {
             ))}
           </tbody>
         </table>
-        <div className="mt-3 text-right">
+        <div className="mt-auto pt-2"> {/* Gunakan mt-auto untuk posisi bottom */}
           <span className="text-sm text-gray-500">
             Nilai Minimum: <span className="font-medium text-gray-700">83</span>
           </span>
@@ -743,15 +737,14 @@ const DataPendaftar: React.FC = () => {
 
     return (
       <div className={classNames(
-        "bg-white shadow-sm border rounded-xl p-4",
-        // Hapus h-[300px] dan overflow-y-auto untuk mencegah double scrolling
-        "h-auto"
+        "bg-white shadow-sm border rounded-xl p-5", // Sesuaikan padding
+        isMobile() ? 'h-auto' : 'h-[300px]'
       )}>
-        <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-4'}`}>
+        <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-6 h-full'}`}> {/* Sesuaikan gap */}
           {/* Kolom 1: Dokumen Wajib */}
-          <div>
-            <h4 className="font-medium text-gray-900 mb-3 text-sm sm:text-base">Dokumen Wajib</h4>
-            <div className="space-y-2">
+          <div className="flex flex-col h-full">
+            <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Wajib</h4> {/* Sesuaikan margin */}
+            <div className="space-y-3 flex-1"> {/* Sesuaikan spacing */}
               {data.photo && (
                 <a
                   href={data.photo}
@@ -795,9 +788,9 @@ const DataPendaftar: React.FC = () => {
           </div>
 
           {/* Kolom 2: Dokumen Raport */}
-          <div className={isMobile() ? 'mt-4' : ''}>
-            <h4 className="font-medium text-gray-900 mb-3 text-sm sm:text-base">Dokumen Raport</h4>
-            <div className={`${isMobile() ? 'grid grid-cols-2 gap-2' : 'space-y-2'}`}>
+          <div className={`${isMobile() ? 'mt-4' : ''} flex flex-col h-full`}>
+            <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Raport</h4> {/* Sesuaikan margin */}
+            <div className={`${isMobile() ? 'grid grid-cols-2 gap-3' : 'space-y-3'} flex-1`}> {/* Sesuaikan spacing */}
               {semesters.map((semester) => {
                 const raportKey = `raport${semester}` as keyof PPDBData;
                 if (data[raportKey]) {
@@ -906,10 +899,7 @@ const DataPendaftar: React.FC = () => {
             </Button>
             
             <Button
-              onClick={() => {
-                setSelectedData(item);
-                setShowStatusModal(true);
-              }}
+              onClick={() => handleOpenStatusModal(item)}
               className="flex items-center justify-center gap-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-xs transition-colors"
             >
               <CheckCircleIcon className="w-4 h-4" />
@@ -991,10 +981,10 @@ const DataPendaftar: React.FC = () => {
   // Update saat membuka modal status
   const handleOpenStatusModal = (data: PPDBData) => {
     setSelectedData(data);
-    // Set status yang sudah ada
+    // Pre-select existing admin status if exists
     setSelectedStatus(data.adminStatus || null);
-    // Set alasan penolakan hanya jika data ini memiliki alasan penolakan
-    setAlasanPenolakan(data.adminStatus === 'ditolak' ? data.alasanPenolakan || '' : '');
+    // Pre-fill rejection reason if exists
+    setAlasanPenolakan(data.alasanPenolakan || '');
     setShowStatusModal(true);
   };
 
@@ -1002,7 +992,7 @@ const DataPendaftar: React.FC = () => {
   const handleCloseStatusModal = () => {
     setShowStatusModal(false);
     setSelectedStatus(null);
-    setAlasanPenolakan(''); // Reset alasan penolakan
+    setAlasanPenolakan('');
     setSelectedData(null);
   };
 
@@ -1265,12 +1255,12 @@ const DataPendaftar: React.FC = () => {
           {/* Header Modal */}
           <div className={`flex flex-col ${isMobile() ? 'gap-2' : 'justify-between items-start'} mb-4 pb-3 border-b`}>
             <div className="w-full">
-              <div className={`flex ${isMobile() ? 'flex-col gap-1.5' : 'items-center justify-between'}`}>
+              <div className={`flex ${isMobile() ? 'items-center' : 'items-center justify-between'}`}>
                 <div className="flex items-center gap-2">
                   <h3 className={`${isMobile() ? 'text-base' : 'text-xl'} font-bold text-gray-900`}>
                     {selectedData?.namaSiswa}
                   </h3>
-                  {/* Update tampilan status dengan warna */}
+                  {/* Status badge */}
                   {selectedData?.adminStatus ? (
                     <span className={classNames(
                       'px-2 py-1 rounded-full text-xs font-medium',
@@ -1287,15 +1277,14 @@ const DataPendaftar: React.FC = () => {
                   )}
                 </div>
                 
+                {/* Tombol tutup hanya tampil di desktop */}
                 {!isMobile() && (
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setShowDetailModal(false)}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4"
-                    >
-                      Tutup
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => setShowDetailModal(false)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 text-sm"
+                  >
+                    Tutup
+                  </Button>
                 )}
               </div>
               
@@ -1328,6 +1317,7 @@ const DataPendaftar: React.FC = () => {
               </div>
             </div>
 
+            {/* Tombol tutup untuk mobile di bagian bawah */}
             {isMobile() && (
               <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t z-10">
                 <div className="flex gap-2">
@@ -1346,7 +1336,7 @@ const DataPendaftar: React.FC = () => {
           {selectedData && (
             <div className={`
               ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[calc(100vh-280px)]'} 
-              overflow-y-auto custom-scrollbar
+              overflow-y-auto hide-scrollbar
             `}>
               <Tabs
                 tabs={[
@@ -1382,14 +1372,16 @@ const DataPendaftar: React.FC = () => {
 
                           {/* Info Utama */}
                           <div className="flex-1">
-                            <div className={`grid ${isMobile() ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-x-8 gap-y-4'}`}>
-                              <InfoItem label="NIK" value={selectedData?.nik} />
-                              <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
-                              <InfoItem 
-                                label="Tempat, Tanggal Lahir" 
-                                value={`${selectedData?.tempatLahir}, ${new Date(selectedData?.tanggalLahir || '').toLocaleDateString('id-ID')}`}
-                              />
-                              <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData?.anakKe} dari ${selectedData?.jumlahSaudara}`} />
+                            <div className="bg-gray-50 p-4 rounded-lg"> {/* Tambah background dan padding */}
+                              <div className={`grid ${isMobile() ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-x-8 gap-y-4'}`}>
+                                <InfoItem label="NIK" value={selectedData?.nik} />
+                                <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
+                                <InfoItem 
+                                  label="Tempat, Tanggal Lahir" 
+                                  value={`${selectedData?.tempatLahir}, ${new Date(selectedData?.tanggalLahir || '').toLocaleDateString('id-ID')}`}
+                                />
+                                <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData?.anakKe} dari ${selectedData?.jumlahSaudara}`} />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1500,6 +1492,7 @@ const DataPendaftar: React.FC = () => {
                 ]}
                 activeTab={activeTab}
                 onChange={setActiveTab}
+                className={isMobile() ? "flex-nowrap overflow-x-auto whitespace-nowrap hide-scrollbar" : ""}
               />
             </div>
           )}
@@ -1509,7 +1502,7 @@ const DataPendaftar: React.FC = () => {
       {/* Modal Update Status */}
       <Modal
         isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
+        onClose={handleCloseStatusModal}
         className="z-[60]"
       >
         <div className="p-6">
@@ -1565,8 +1558,8 @@ const DataPendaftar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Input alasan penolakan - hanya tampil jika status Tolak dipilih */}
-              {selectedStatus === 'ditolak' && (
+              {/* Input alasan penolakan - tampil jika status Tolak dipilih atau ada alasan penolakan */}
+              {(selectedStatus === 'ditolak' || alasanPenolakan) && (
                 <div className="px-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Alasan Penolakan <span className="text-red-500">*</span>
@@ -1579,7 +1572,7 @@ const DataPendaftar: React.FC = () => {
                     className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     rows={3}
                   />
-                  {!alasanPenolakan.trim() && (
+                  {selectedStatus === 'ditolak' && !alasanPenolakan.trim() && (
                     <p className="mt-1 text-sm text-red-500">
                       Alasan penolakan wajib diisi
                     </p>
