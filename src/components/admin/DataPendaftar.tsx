@@ -18,7 +18,8 @@ import {
   XCircleIcon,
   ChevronDownIcon,
   TrashIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
@@ -112,6 +113,8 @@ const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, className }) =
         return 'Draft';
       case 'submitted':
         return 'Pending';
+      case 'draft':
+        return 'Reset'; // Ubah label draft menjadi reset
       default:
         return status;
     }
@@ -129,6 +132,8 @@ const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, className }) =
         return 'text-gray-600 bg-gray-50';
       case 'submitted':
         return 'text-yellow-600 bg-yellow-50';
+      case 'draft':
+        return 'text-purple-600 bg-purple-50'; // Ubah warna untuk status reset
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -217,6 +222,7 @@ const DataPendaftar: React.FC = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [alasanPenolakan, setAlasanPenolakan] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'diterima' | 'ditolak' | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -265,11 +271,21 @@ const DataPendaftar: React.FC = () => {
 
     setModalLoading(true);
     try {
-      await update(ref(db, `ppdb/${selectedData.uid}`), {
+      // Jika status draft/reset, ubah juga status menjadi submitted
+      const updateData: any = {
         adminStatus: status,
-        alasanPenolakan: status === 'ditolak' ? alasanPenolakan : null, // Hapus alasan jika status diterima
+        alasanPenolakan: status === 'ditolak' ? alasanPenolakan : null,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      // Jika status masih draft (setelah reset), ubah menjadi submitted
+      if (selectedData.status === 'draft') {
+        updateData.status = 'submitted';
+        updateData.wasReset = false; // Hapus flag wasReset
+        updateData.submittedAt = new Date().toISOString();
+      }
+
+      await update(ref(db, `ppdb/${selectedData.uid}`), updateData);
 
       showAlert('success', `Status pendaftar berhasil diubah menjadi ${status}`);
       setShowStatusModal(false);
@@ -412,6 +428,7 @@ const DataPendaftar: React.FC = () => {
           { header: 'No', key: 'no', width: 5 },
           { header: 'NISN', key: 'nisn', width: 15 },
           { header: 'Nama Lengkap', key: 'namaSiswa', width: 40 },
+          { header: 'Email', key: 'email', width: 35 }, // Tambah kolom email
           { header: 'Jalur', key: 'jalur', width: 15 },
           { header: 'Status Keputusan', key: 'adminStatus', width: 18 },
           { header: 'Alasan Penolakan', key: 'alasanPenolakan', width: 50 },
@@ -470,7 +487,7 @@ const DataPendaftar: React.FC = () => {
         // Freeze panes
         worksheet.views = [{ 
           state: 'frozen', 
-          xSplit: 5, // Freeze 5 kolom pertama
+          xSplit: 6, // Update dari 5 ke 6 untuk mencakup kolom email
           ySplit: 1, 
           activeCell: 'A2' 
         }];
@@ -480,6 +497,7 @@ const DataPendaftar: React.FC = () => {
           no: index + 1,
           nisn: item.nisn,
           namaSiswa: item.namaSiswa,
+          email: item.email, // Tambah email
           jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
           // Format status keputusan admin
           adminStatus: item.adminStatus ? 
@@ -573,19 +591,19 @@ const DataPendaftar: React.FC = () => {
               // Center alignment untuk kolom tertentu
               const centerColumns = [
                 1,  // No
-                4,  // Jalur
-                5,  // Status Keputusan
-                8,  // Jenis Kelamin
-                11, // Anak Ke
-                12, // Jumlah Saudara
-                // Nilai semester (18-32)
-                ...Array.from({length: 15}, (_, i) => i + 18),
-                // Dokumen (43-47)
-                43, // Foto
-                44, // Rekomendasi
-                45, // Raport 2
-                46, // Raport 3
-                47  // Raport 4
+                5,  // Jalur
+                6,  // Status Keputusan
+                9,  // Jenis Kelamin
+                12, // Anak Ke
+                13, // Jumlah Saudara
+                // Nilai semester (19-33)
+                ...Array.from({length: 15}, (_, i) => i + 19),
+                // Dokumen (44-48)
+                44, // Foto
+                45, // Rekomendasi
+                46, // Raport 2
+                47, // Raport 3
+                48  // Raport 4
               ];
 
               if (centerColumns.includes(colNumber)) {
@@ -595,41 +613,38 @@ const DataPendaftar: React.FC = () => {
                 };
               }
 
-              // Style untuk jalur
-              if (colNumber === 4) { // Kolom Jalur
+              // Style untuk jalur (kolom 5)
+              if (colNumber === 5) {
                 const jalurValue = cell.value as string;
                 if (jalurValue === 'Prestasi') {
                   cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DBEAFE' } }; // Light blue
-                  cell.font = { color: { argb: '1E40AF' } }; // Dark blue
+                  cell.font = { color: { argb: '1E40AF' }, bold: true }; // Dark blue + bold
                 } else if (jalurValue === 'Reguler') {
                   cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DCFCE7' } }; // Light green
-                  cell.font = { color: { argb: '166534' } }; // Dark green
+                  cell.font = { color: { argb: '166534' }, bold: true }; // Dark green + bold
                 } else if (jalurValue === 'Undangan') {
                   cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'F3E8FF' } }; // Light purple
-                  cell.font = { color: { argb: '6B21A8' } }; // Dark purple
+                  cell.font = { color: { argb: '6B21A8' }, bold: true }; // Dark purple + bold
                 }
               }
 
-              // Style untuk status
-              if (colNumber === 4) { // Status Pendaftaran
-                if (cell.value === 'TERKIRIM') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE699' } };
-                }
-              }
-              
-              // Style untuk status keputusan
-              if (colNumber === 5) { // Status Keputusan
-                if (cell.value === 'DITERIMA') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'C6E0B4' } };
-                } else if (cell.value === 'DITOLAK') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFB6C1' } };
-                } else if (cell.value === 'PENDING') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFE699' } };
+              // Style untuk status admin (kolom 6)
+              if (colNumber === 6) {
+                const statusValue = cell.value as string;
+                if (statusValue === 'DITERIMA') {
+                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DCFCE7' } }; // Light green
+                  cell.font = { color: { argb: '166534' }, bold: true }; // Dark green
+                } else if (statusValue === 'DITOLAK') {
+                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FEE2E2' } }; // Light red
+                  cell.font = { color: { argb: 'B91C1C' }, bold: true }; // Dark red
+                } else if (statusValue === 'PENDING') {
+                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FEF3C7' } }; // Light yellow
+                  cell.font = { color: { argb: 'B45309' }, bold: true }; // Dark yellow
                 }
               }
 
-              // Style untuk alasan penolakan
-              if (colNumber === 6) { // Alasan Penolakan
+              // Style untuk alasan penolakan (kolom 7)
+              if (colNumber === 7) {
                 cell.alignment = { 
                   vertical: 'middle' as const,
                   wrapText: true // Enable text wrapping
@@ -637,7 +652,7 @@ const DataPendaftar: React.FC = () => {
               }
 
               // Style untuk dokumen
-              if (colNumber >= 44 && colNumber <= 48) { // Kolom dokumen
+              if (colNumber >= 44 && colNumber <= 48) {
                 const cellValue = cell.value as any;
                 if (cellValue && typeof cellValue === 'object' && 'hyperlink' in cellValue) {
                   cell.font = { 
@@ -996,6 +1011,32 @@ const DataPendaftar: React.FC = () => {
     setSelectedData(null);
   };
 
+  const handleResetData = async () => {
+    if (!selectedData || modalLoading) return;
+
+    setModalLoading(true);
+    try {
+      // Update status pendaftar menjadi draft dan hapus status admin
+      await update(ref(db, `ppdb/${selectedData.uid}`), {
+        status: 'draft',
+        adminStatus: null,
+        alasanPenolakan: null,
+        lastUpdated: new Date().toISOString(),
+        isReset: true, // Tambahkan flag untuk menandai akun di reset
+        resetAt: new Date().toISOString()
+      });
+
+      showAlert('success', 'Data pendaftar berhasil direset');
+      setShowResetModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error resetting data:', error);
+      showAlert('error', 'Gagal mereset data pendaftar');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -1218,6 +1259,19 @@ const DataPendaftar: React.FC = () => {
                     >
                       <TrashIcon className="w-4 h-4" />
                       <span className="hidden lg:inline">Hapus</span>
+                    </Button>
+
+                    {/* Tombol Reset */}
+                    <Button
+                      onClick={() => {
+                        setSelectedData(item);
+                        setShowResetModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg text-sm transition-colors"
+                      title="Reset Data"
+                    >
+                      <ArrowPathIcon className="w-4 h-4" />
+                      <span className="hidden lg:inline">Reset</span>
                     </Button>
                   </div>
                 ])}
@@ -1712,6 +1766,55 @@ const DataPendaftar: React.FC = () => {
               ) : (
                 'Hapus'
               )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Reset */}
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+              <ArrowPathIcon className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Reset Data Pendaftar
+            </h3>
+            <p className="text-gray-600">
+              Pendaftar: <span className="font-medium">{selectedData?.namaSiswa}</span>
+              <br />
+              NISN: <span className="font-medium">{selectedData?.nisn}</span>
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+            <p className="text-sm text-yellow-800">
+              Tindakan ini akan:
+            </p>
+            <ul className="list-disc ml-4 mt-2 text-sm text-yellow-700">
+              <li>Mengubah status pendaftar menjadi reset / draft</li>
+              <li>Menghapus status keputusan admin</li>
+              <li>Memungkinkan pendaftar untuk mengirim ulang formulir</li>
+            </ul>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowResetModal(false)}
+              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetData}
+              className="flex-1 bg-purple-600 text-white hover:bg-purple-700"
+              disabled={modalLoading}
+            >
+              {modalLoading ? 'Memproses...' : 'Ya, Reset Data'}
             </Button>
           </div>
         </div>
