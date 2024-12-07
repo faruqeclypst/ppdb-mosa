@@ -22,6 +22,7 @@ import { getPPDBStatus } from '../utils/ppdbStatus';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { query, orderByChild, equalTo, get as getDb } from 'firebase/database';
 
 // Types
 export type JalurPeriod = {
@@ -231,7 +232,10 @@ const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?
 
   const minNilai = VALIDATION_CONFIG.MIN_NILAI[jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
   if (nilaiNum < minNilai) {
-    return { isValid: false, error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}` };
+    return { 
+      isValid: false, 
+      error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}. Nilai ${nilaiNum} tidak memenuhi syarat.` 
+    };
   }
 
   return { isValid: true };
@@ -573,6 +577,38 @@ const generateRegistrationCard = async (formData: FormData) => {
   }
 };
 
+// Add this validation function after other helper functions
+const checkDuplicateNIK = async (nik: string, currentUid?: string): Promise<boolean> => {
+  try {
+    // Skip check if NIK is '-'
+    if (nik === '-') return false;
+
+    // Query PPDB data where NIK matches
+    const ppdbRef = ref(db, 'ppdb');
+    const nikQuery = query(ppdbRef, orderByChild('nik'), equalTo(nik));
+    const snapshot = await getDb(nikQuery);
+
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      // Check if the NIK belongs to another user
+      const entries = Object.entries(data);
+      for (const [uid, entry] of entries) {
+        // Skip if this is the current user's entry
+        if (uid === currentUid) continue;
+        // If entry is found with submitted status, it's a duplicate
+        if ((entry as any).status === 'submitted') {
+          console.log('Duplicate NIK found:', nik, 'from user:', uid);
+          return true;
+        }
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking duplicate NIK:', error);
+    return false;
+  }
+};
+
 const PPDBFormPage: React.FC = () => {
   // Pindahkan hooks ke dalam komponen
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
@@ -593,6 +629,8 @@ const PPDBFormPage: React.FC = () => {
   const [newJalurValue, setNewJalurValue] = useState('');
   const [showGuideModal, setShowGuideModal] = useState(true);
   const [isReset, setIsReset] = useState(false);
+  // Tambahkan state untuk melacak status duplikasi NIK
+  const [isDuplicateNIK, setIsDuplicateNIK] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -686,6 +724,39 @@ const PPDBFormPage: React.FC = () => {
           jalur: value
         }));
       }
+      return;
+    }
+
+    if (name === 'nik') {
+      // Only allow numbers and '-'
+      const sanitizedValue = value.replace(/[^0-9-]/g, '');
+      
+      // Check NIK format
+      if (sanitizedValue !== '-') {
+        if (sanitizedValue.length === 16) {
+          // Check for duplicate NIK when a valid NIK is entered
+          checkDuplicateNIK(sanitizedValue, formData.uid).then(isDuplicate => {
+            if (isDuplicate) {
+              setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
+              setIsDuplicateNIK(true);
+            } else {
+              setError('');
+              setIsDuplicateNIK(false);
+            }
+          });
+        } else if (sanitizedValue.length > 16) {
+          setError('NIK tidak boleh lebih dari 16 digit');
+          setIsDuplicateNIK(true);
+        } else if (sanitizedValue.length < 16 && sanitizedValue.length > 0) {
+          setError('NIK harus 16 digit');
+          setIsDuplicateNIK(true);
+        }
+      } else {
+        setError('');
+        setIsDuplicateNIK(false);
+      }
+      
+      setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
       return;
     }
 
@@ -815,7 +886,7 @@ const PPDBFormPage: React.FC = () => {
   };
 
   // Update fungsi validateForm
-  const validateForm = () => {
+  const validateForm = async () => {
     // 1. Validasi informasi siswa
     const missingInfoSiswa = VALIDATION_CONFIG.REQUIRED_FIELDS.SISWA.filter(field => {
       const value = formData[field as keyof FormData];
@@ -836,6 +907,13 @@ const PPDBFormPage: React.FC = () => {
       return false;
     }
 
+    // Check duplicate NIK
+    const isDuplicateNIK = await checkDuplicateNIK(formData.nik, formData.uid);
+    if (isDuplicateNIK) {
+      setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
+      return false;
+    }
+
     // 3. Validasi nilai akademik
     const semesters = getRequiredSemesters(formData.jalur);
     const nilaiFields = getNilaiFields(semesters);
@@ -846,9 +924,21 @@ const PPDBFormPage: React.FC = () => {
         setError(`Nilai akademik ${field.replace('nilai', '')} belum diisi`);
         return false;
       }
+      
+      // Tambahkan log untuk debugging
+      console.log(`Validating ${field}: ${nilaiStr}`);
+      
       const validation = validateNilai(nilaiStr as string, formData.jalur);
       if (!validation.isValid) {
-        setError(validation.error || 'Error validasi nilai');
+        setError(`${field.replace('nilai', '')}: ${validation.error}`);
+        return false;
+      }
+
+      // Tambahkan validasi eksplisit untuk nilai minimum
+      const nilaiNum = parseFloat(nilaiStr as string);
+      const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
+      if (nilaiNum < minNilai) {
+        setError(`Nilai ${field.replace('nilai', '')} (${nilaiNum}) kurang dari nilai minimal ${minNilai} untuk jalur ${formData.jalur}`);
         return false;
       }
     }
@@ -898,11 +988,19 @@ const PPDBFormPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
 
-    // Jika menyimpan draft, langsung proses tanpa modal konfirmasi
+    // If saving as draft, process without confirmation modal
     if (isDraft) {
       await submitForm(isDraft);
       return;
     }
+
+    // For final submission, validate NIK first
+    const isValid = await validateForm();
+    if (!isValid) {
+      return;
+    }
+
+    setShowConfirmModal(true);
   };
 
   // Tambahkan type untuk data yang akan disimpan
@@ -2028,9 +2126,10 @@ const PPDBFormPage: React.FC = () => {
                     <Button
                       type="button"
                       className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
-                      disabled={loading || !canAccessTab(currentStep)}
-                      onClick={() => {
-                        if (!validateForm()) {
+                      disabled={loading || !canAccessTab(currentStep) || isDuplicateNIK}
+                      onClick={async () => {
+                        const isValid = await validateForm();
+                        if (!isValid) {
                           return;
                         }
                         setShowConfirmModal(true);

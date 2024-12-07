@@ -1262,7 +1262,7 @@ const DataPendaftar: React.FC = () => {
                     </Button>
 
                     {/* Tombol Reset */}
-                    <Button
+                    {/* <Button
                       onClick={() => {
                         setSelectedData(item);
                         setShowResetModal(true);
@@ -1272,7 +1272,7 @@ const DataPendaftar: React.FC = () => {
                     >
                       <ArrowPathIcon className="w-4 h-4" />
                       <span className="hidden lg:inline">Reset</span>
-                    </Button>
+                    </Button> */}
                   </div>
                 ])}
               />
