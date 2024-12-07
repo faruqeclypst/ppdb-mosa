@@ -52,6 +52,12 @@ type StatItem = {
   color: string;
 };
 
+type RecentPendaftar = {
+  namaSiswa: string;
+  jalur: string;
+  submittedAt: string | undefined;
+};
+
 type DashboardStats = {
   totalPendaftar: number;
   pendaftarBaru: number;
@@ -60,17 +66,7 @@ type DashboardStats = {
   jalurPrestasi: number;
   jalurReguler: number;
   jalurUndangan: number;
-  recentPendaftar: Array<{
-    namaSiswa: string;
-    jalur: string;
-    submittedAt: string;
-  }>;
-};
-
-type RecentPendaftar = {
-  namaSiswa: string;
-  jalur: string;
-  submittedAt: string;
+  recentPendaftar: RecentPendaftar[];
 };
 
 type StudentWithAverage = PPDBData & {
@@ -238,29 +234,35 @@ const DashboardPage: React.FC = () => {
         const snapshot = await get(ppdbRef);
         
         if (snapshot.exists()) {
-          const data = Object.values(snapshot.val()) as any[];
+          const data = Object.values(snapshot.val()) as PPDBData[];
           
           // Filter hanya pendaftar yang sudah submit
           const submittedData = data.filter(item => item.submittedAt);
           
           // Get recent pendaftar - sort berdasarkan submittedAt
           const recentPendaftar = submittedData
-            .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
-            .slice(0, 6) // Tampilkan 6 data terbaru
+            .sort((a, b) => new Date(b.submittedAt || '').getTime() - new Date(a.submittedAt || '').getTime())
+            .slice(0, 6)
             .map(item => ({
               namaSiswa: item.namaSiswa,
               jalur: item.jalur,
-              submittedAt: item.submittedAt // Gunakan submittedAt
+              submittedAt: item.submittedAt || new Date().toISOString()
             }));
 
           setStats({
             totalPendaftar: submittedData.length,
+            // Hitung pendaftar baru/pending: yang sudah submit tapi belum ada adminStatus
             pendaftarBaru: submittedData.filter(item => 
-              // Hitung pendaftar baru berdasarkan yang baru submit dan belum ada adminStatus
               item.status === 'submitted' && !item.adminStatus
             ).length,
-            pendaftarDiterima: submittedData.filter(item => item.status === 'diterima').length,
-            pendaftarDitolak: submittedData.filter(item => item.status === 'ditolak').length,
+            // Hitung yang diterima berdasarkan adminStatus
+            pendaftarDiterima: submittedData.filter(item => 
+              item.adminStatus === 'diterima'
+            ).length,
+            // Hitung yang ditolak berdasarkan adminStatus  
+            pendaftarDitolak: submittedData.filter(item => 
+              item.adminStatus === 'ditolak'
+            ).length,
             jalurPrestasi: submittedData.filter(item => item.jalur === 'prestasi').length,
             jalurReguler: submittedData.filter(item => item.jalur === 'reguler').length,
             jalurUndangan: submittedData.filter(item => item.jalur === 'undangan').length,
@@ -495,7 +497,7 @@ const DashboardPage: React.FC = () => {
                     {stat.value}
                   </p>
                   <p className="text-xs md:text-xs text-gray-500">
-                    dari {stats.totalPendaftar} total
+                    dari {stats.totalPendaftar}
                   </p>
                 </div>
 

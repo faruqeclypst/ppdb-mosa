@@ -11,49 +11,34 @@ type TabsProps = {
   className?: string;
 };
 
-// Tambahkan styles untuk hide scrollbar
-const hideScrollbarStyles = `
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-`;
-
 const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => {
-  // Tambahkan style ke head saat komponen dimount
-  React.useEffect(() => {
-    const styleSheet = document.createElement("style");
-    styleSheet.innerText = hideScrollbarStyles;
-    document.head.appendChild(styleSheet);
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, []);
-
   return (
     <div>
       <div className={`border-b border-gray-200 ${className}`}>
-        <nav className="-mb-px flex" aria-label="Tabs">
+        <nav className="grid grid-cols-2 gap-1.5 -mb-px" aria-label="Tabs">
           {tabs.map((tab, index) => (
             <button
               key={index}
               onClick={() => onChange(index)}
               className={classNames(
-                'whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm',
+                'py-2 px-2 md:px-4 md:py-3',
+                'border-b-2 font-medium',
+                'text-[13px] md:text-sm',
+                'flex items-center justify-center text-center min-h-[44px]',
+                'transition-colors duration-200',
                 activeTab === index
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-blue-500 text-blue-600 bg-blue-50/50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               )}
             >
-              {tab.label}
+              <span className="line-clamp-2">
+                {tab.label}
+              </span>
             </button>
           ))}
         </nav>
       </div>
-      <div>{tabs[activeTab].content}</div>
+      <div className="mt-4">{tabs[activeTab].content}</div>
     </div>
   );
 };

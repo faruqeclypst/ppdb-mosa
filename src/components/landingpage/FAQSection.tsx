@@ -51,9 +51,9 @@ const FAQ_ITEMS: FAQItem[] = [
     category: "biaya"
   },
   {
-    question: "Berapa biaya daftar ulang?",
-    answer: "Biaya daftar ulang meliputi:\n\n• Seragam sekolah\n• Seragam olahraga\n• Buku pelajaran\n• Biaya asrama 1 semester\n\nRincian biaya akan diinformasikan saat pengumuman kelulusan.",
-    category: "biaya"
+    question: "Bagaimana cara melakukan perubahan data?",
+    answer: "Anda dapat menghubungi panitia PPDB SMAN Modal Bangsa untuk melakukan perubahan data.",
+    category: "pendaftaran"
   },
   {
     question: "Bagaimana tahapan tes seleksi?",

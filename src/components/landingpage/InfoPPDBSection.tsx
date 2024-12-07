@@ -51,6 +51,8 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
   const getActiveJalur = () => {
     if (!settings) return [];
 
+    const now = new Date();
+
     const jalur = [
       {
         name: 'Prestasi',
@@ -64,7 +66,9 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-blue-500',
         requirements: settings?.jalurPrestasi?.requirements || [],
         semester: 'Semester 2-4',
-        isActive: settings?.jalurPrestasi?.isActive || false
+        isActive: settings?.jalurPrestasi?.isActive || false,
+        isClosed: settings?.jalurPrestasi?.end ? new Date(settings.jalurPrestasi.end) < now : false,
+        hasNotStarted: settings?.jalurPrestasi?.start ? new Date(settings.jalurPrestasi.start) > now : false
       },
       {
         name: 'Reguler',
@@ -78,7 +82,9 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-green-500',
         requirements: settings?.jalurReguler?.requirements || [],
         semester: 'Semester 2-4',
-        isActive: settings?.jalurReguler?.isActive || false
+        isActive: settings?.jalurReguler?.isActive || false,
+        isClosed: settings?.jalurReguler?.end ? new Date(settings.jalurReguler.end) < now : false,
+        hasNotStarted: settings?.jalurReguler?.start ? new Date(settings.jalurReguler.start) > now : false
       },
       {
         name: 'Undangan',
@@ -92,7 +98,9 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         bgColor: 'bg-purple-500',
         requirements: settings?.jalurUndangan?.requirements || [],
         semester: 'Semester 2-4',
-        isActive: settings?.jalurUndangan?.isActive || false
+        isActive: settings?.jalurUndangan?.isActive || false,
+        isClosed: settings?.jalurUndangan?.end ? new Date(settings.jalurUndangan.end) < now : false,
+        hasNotStarted: settings?.jalurUndangan?.start ? new Date(settings.jalurUndangan.start) > now : false
       }
     ];
 
@@ -142,8 +150,8 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                 >
                   <div className={`${jalur.bgColor} rounded-2xl shadow-lg overflow-hidden 
                                   transform transition-all duration-300 hover:scale-[1.02] 
-                                  hover:shadow-xl h-full flex flex-col 
-                                  ${!jalur.isActive && 'grayscale'}`}>
+                                  hover:shadow-xl h-full flex flex-col
+                                  ${!jalur.isActive && 'grayscale opacity-75'}`}>
                     {/* Card Header */}
                     <div className="p-8 text-white">
                       <div className="flex items-center justify-between mb-6">
@@ -209,30 +217,42 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                           className={classNames(
                             'w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl',
                             'font-medium transition-all duration-300',
-                            jalur.isActive 
+                            jalur.isActive && !jalur.isClosed && !jalur.hasNotStarted
                               ? `${jalur.bgColor} text-white hover:opacity-90` 
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed',
+                              : !jalur.isActive 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed',
                             'group relative overflow-hidden'
                           )}
-                          disabled={!jalur.isActive}
+                          disabled={!jalur.isActive || jalur.isClosed || jalur.hasNotStarted}
                         >
                           {/* Background Hover Effect */}
                           <div className={classNames(
                             'absolute inset-0 w-full h-full transition-transform duration-300',
                             'bg-black/10 translate-x-full group-hover:translate-x-0',
-                            !jalur.isActive && 'hidden'
+                            (!jalur.isActive || jalur.isClosed || jalur.hasNotStarted) && 'hidden'
                           )} />
                           
                           {/* Button Content */}
                           <div className="relative flex items-center gap-2">
-                            {jalur.isActive ? (
+                            {jalur.isActive && !jalur.isClosed && !jalur.hasNotStarted ? (
                               <>
                                 <span>Daftar Sekarang</span>
                                 <ArrowLongRightIcon className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                               </>
-                            ) : (
+                            ) : jalur.isClosed ? (
+                              <>
+                                <span>Sudah Ditutup</span>
+                                <ClockIcon className="w-5 h-5" />
+                              </>
+                            ) : jalur.hasNotStarted ? (
                               <>
                                 <span>Belum Dibuka</span>
+                                <ClockIcon className="w-5 h-5" />
+                              </>
+                            ) : (
+                              <>
+                                <span>Belum Aktif</span>
                                 <ClockIcon className="w-5 h-5" />
                               </>
                             )}
