@@ -1140,7 +1140,7 @@ const DataPendaftar: React.FC = () => {
           {/* Summary Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
-              label="Total Pendaftar"
+              label="Pendaftar"
               value={getFilteredData().length}
               icon={<UserGroupIcon className="w-5 h-5 text-blue-600" />}
               className="bg-blue-50 border-blue-200"
