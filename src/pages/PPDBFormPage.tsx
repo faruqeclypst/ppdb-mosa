@@ -21,6 +21,7 @@ import { signOut } from 'firebase/auth';
 import { getPPDBStatus } from '../utils/ppdbStatus';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 // Types
 export type JalurPeriod = {
@@ -591,6 +592,7 @@ const PPDBFormPage: React.FC = () => {
   const [showChangeJalurModal, setShowChangeJalurModal] = useState(false);
   const [newJalurValue, setNewJalurValue] = useState('');
   const [showGuideModal, setShowGuideModal] = useState(true);
+  const [isReset, setIsReset] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -606,15 +608,26 @@ const PPDBFormPage: React.FC = () => {
         const snapshot = await get(ppdbRef);
         if (snapshot.exists()) {
           const data = snapshot.val();
+          
+          // Set state isReset jika akun di reset atau status masih draft setelah reset
+          if (data.isReset || (data.wasReset && data.status === 'draft')) {
+            setIsReset(true);
+            
+            // Update flag reset
+            await update(ref(db, `ppdb/${user.uid}`), {
+              isReset: null,
+              wasReset: true // Flag baru untuk tracking status reset
+            });
+          }
+          
           setFormData({
             ...INITIAL_FORM_DATA,
             ...data,
-            uid: user.uid // Pastikan uid selalu terisi saat load data
+            uid: user.uid
           });
           setFormStatus(data.status || 'draft');
           setLastUpdated(data.lastUpdated || '');
         } else {
-          // Jika belum ada data, set uid dari user
           setFormData({
             ...INITIAL_FORM_DATA,
             uid: user.uid
@@ -932,7 +945,8 @@ const PPDBFormPage: React.FC = () => {
         uid: user.uid,
         status: isDraft ? 'draft' : 'submitted',
         lastUpdated: new Date().toISOString(),
-        submittedAt: isDraft ? null : new Date().toISOString()
+        submittedAt: isDraft ? null : new Date().toISOString(),
+        wasReset: isDraft // Hapus flag wasReset jika bukan draft
       };
 
       // Hapus undefined values sebelum menyimpan ke Firebase
@@ -947,6 +961,11 @@ const PPDBFormPage: React.FC = () => {
 
       setFormStatus(isDraft ? 'draft' : 'submitted');
       setLastUpdated(new Date().toISOString());
+      
+      // Reset state isReset jika formulir dikirim
+      if (!isDraft) {
+        setIsReset(false);
+      }
 
       if (isDraft) {
         showAlert('success', 'Draft berhasil disimpan!', 3000);
@@ -1014,67 +1033,21 @@ const PPDBFormPage: React.FC = () => {
 
   const renderInformasiSiswa = () => {
     const getAvailableJalur = () => {
-      const now = new Date();
       const options = [
         { value: '', label: '-- Pilih Jalur --', disabled: true }
       ];
 
-      // Tambahkan semua jalur dengan status yang sesuai
+      // Tambahkan jalur hanya jika aktif di settings
       if (ppdbSettings?.jalurPrestasi?.isActive) {
-        const isExpired = ppdbSettings.jalurPrestasi.end ? 
-                         new Date(ppdbSettings.jalurPrestasi.end) < now : 
-                         false;
-        const hasNotStarted = ppdbSettings.jalurPrestasi.start ? 
-                         new Date(ppdbSettings.jalurPrestasi.start) > now :
-                         false;
-        
-        let status = '';
-        if (isExpired) status = ' (Sudah Ditutup)';
-        else if (hasNotStarted) status = ' (Belum Dimulai)';
-        
-        options.push({ 
-          value: 'prestasi', 
-          label: `Prestasi${status}`, 
-          disabled: Boolean(isExpired || hasNotStarted)
-        });
+        options.push({ value: 'prestasi', label: 'Prestasi', disabled: false });
       }
       
       if (ppdbSettings?.jalurReguler?.isActive) {
-        const isExpired = ppdbSettings.jalurReguler.end ? 
-                         new Date(ppdbSettings.jalurReguler.end) < now :
-                         false;
-        const hasNotStarted = ppdbSettings.jalurReguler.start ? 
-                         new Date(ppdbSettings.jalurReguler.start) > now :
-                         false;
-        
-        let status = '';
-        if (isExpired) status = ' (Sudah Ditutup)';
-        else if (hasNotStarted) status = ' (Belum Dimulai)';
-        
-        options.push({ 
-          value: 'reguler', 
-          label: `Reguler${status}`, 
-          disabled: Boolean(isExpired || hasNotStarted)
-        });
+        options.push({ value: 'reguler', label: 'Reguler', disabled: false });
       }
       
       if (ppdbSettings?.jalurUndangan?.isActive) {
-        const isExpired = ppdbSettings.jalurUndangan.end ? 
-                         new Date(ppdbSettings.jalurUndangan.end) < now :
-                         false;
-        const hasNotStarted = ppdbSettings.jalurUndangan.start ? 
-                         new Date(ppdbSettings.jalurUndangan.start) > now :
-                         false;
-        
-        let status = '';
-        if (isExpired) status = ' (Sudah Ditutup)';
-        else if (hasNotStarted) status = ' (Belum Dimulai)';
-        
-        options.push({ 
-          value: 'undangan', 
-          label: `Undangan${status}`, 
-          disabled: Boolean(isExpired || hasNotStarted)
-        });
+        options.push({ value: 'undangan', label: 'Undangan', disabled: false });
       }
 
       return options;
@@ -1791,7 +1764,6 @@ const PPDBFormPage: React.FC = () => {
   return (
     <Container className="max-w-full md:max-w-6xl px-2 md:px-6">
       <div className="py-4 md:py-10">
-        {/* Render GuideModal */}
         <GuideModal />
         
         <Card className="max-w-full md:max-w-4xl mx-auto relative">
@@ -1805,24 +1777,8 @@ const PPDBFormPage: React.FC = () => {
                   <h2 className="text-base md:text-lg text-gray-600">
                     SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}
                   </h2>
-                  
-                  {/* Grid untuk info periode - Stack di mobile */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
-                      <p className="font-medium text-gray-700">
-                        {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Pengumuman:</p>
-                      <p className="font-medium text-gray-700">
-                        {getAnnouncementDate()}
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Status badges - Wrap di mobile */}
+                  {/* Status badges */}
                   <div className="flex flex-wrap gap-2 text-sm">
                     {formData.jalur && (
                       <div className="bg-blue-100 px-3 py-1 rounded-full">
@@ -1856,15 +1812,26 @@ const PPDBFormPage: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {/* <div className="bg-blue-50 px-3 py-1 rounded-full">
-                      <span className="text-blue-600 font-medium">
-                        Harap isi data dengan benar
-                      </span>
-                    </div> */}
+                  </div>
+                  
+                  {/* Grid untuk info periode - Stack di mobile */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
+                      <p className="font-medium text-gray-700">
+                        {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Pengumuman:</p>
+                      <p className="font-medium text-gray-700">
+                        {getAnnouncementDate()}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Photo upload section - Adjust size for mobile */}
+                {/* Photo upload section */}
                 <div className="w-full md:w-auto flex justify-center md:justify-end">
                   <div className="relative group">
                     <input
@@ -1925,6 +1892,25 @@ const PPDBFormPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Info reset - tampilkan jika isReset true dan status bukan submitted */}
+            {isReset && formStatus !== 'submitted' && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 w-full">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-full flex-shrink-0">
+                    <ArrowPathIcon className="w-5 h-5 text-yellow-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-yellow-800">
+                      Data Anda telah direset oleh admin
+                    </p>
+                    <p className="text-sm text-yellow-700">
+                      Silakan perbarui dan kirim ulang formulir PPDB Anda
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {error && (
               <Alert 
                 type="error" 
@@ -1935,7 +1921,7 @@ const PPDBFormPage: React.FC = () => {
             )}
 
             <form onSubmit={(e) => {
-              e.preventDefault(); // Mencegah form submit
+              e.preventDefault();
             }}>
               {formStatus === 'submitted' && (
                 <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
@@ -1963,17 +1949,10 @@ const PPDBFormPage: React.FC = () => {
 
               <div className="mt-4 min-h-[400px]">
                 <Tabs 
-                  tabs={tabs.map(tab => ({
-                    ...tab,
-                    content: formStatus === 'submitted' ? (
-                      <div className="relative opacity-60 pointer-events-none">
-                        {tab.content}
-                      </div>
-                    ) : tab.content
-                  }))} 
+                  tabs={tabs} 
                   activeTab={currentStep}
                   onChange={handleTabChange}
-                  className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0" // Tambahkan padding horizontal di mobile
+                  className="space-y-4 md:space-y-6"
                 />
               </div>
 
