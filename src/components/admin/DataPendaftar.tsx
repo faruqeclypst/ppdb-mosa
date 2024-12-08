@@ -16,19 +16,25 @@ import {
   UserGroupIcon,
   ClockIcon,
   XCircleIcon,
-  ChevronDownIcon,
   TrashIcon,
   ChevronUpIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import classNames from 'classnames';
 import Pagination from '../ui/Pagination';
+import { useAuth } from '../../contexts/AuthContext';
+
+// Di bagian atas file, tambahkan type untuk school
+type School = 'mosa' | 'fajar';
+type SchoolFilter = School | 'all';
 
 type PPDBData = {
   uid: string;
+  school: 'mosa' | 'fajar';
   email: string;
   // Informasi Siswa
   jalur: 'prestasi' | 'reguler' | 'undangan';
@@ -50,23 +56,18 @@ type PPDBData = {
   nilaiAgama2: string;
   nilaiAgama3: string;
   nilaiAgama4: string;
-  nilaiAgama5: string;
   nilaiBindo2: string;
   nilaiBindo3: string;
   nilaiBindo4: string;
-  nilaiBindo5: string;
   nilaiBing2: string;
   nilaiBing3: string;
   nilaiBing4: string;
-  nilaiBing5: string;
   nilaiMtk2: string;
   nilaiMtk3: string;
   nilaiMtk4: string;
-  nilaiMtk5: string;
   nilaiIpa2: string;
   nilaiIpa3: string;
   nilaiIpa4: string;
-  nilaiIpa5: string;
 
   // Informasi Orang Tua
   namaAyah: string;
@@ -83,9 +84,8 @@ type PPDBData = {
   raport2?: string;
   raport3?: string;
   raport4?: string;
-  raport5?: string;
   photo?: string;
-  sertifikat?: string;
+  sertifikat?: string; // Tambahkan field sertifikat
 
   // Status dan Metadata
   status: 'pending' | 'submitted' | 'draft';
@@ -201,9 +201,43 @@ const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
   );
 };
 
+const SchoolBadge: React.FC<{ school: PPDBData['school'] }> = ({ school }) => {
+  const getSchoolColor = (school: PPDBData['school']) => {
+    switch (school) {
+      case 'mosa':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'fajar':
+        return 'text-green-600 bg-green-50 border-green-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getSchoolLabel = (school: PPDBData['school']) => {
+    switch (school) {
+      case 'mosa':
+        return 'SMAN Modal Bangsa';
+      case 'fajar':
+        return 'SMAN 10 Fajar Harapan';
+      default:
+        return school;
+    }
+  };
+
+  return (
+    <span className={classNames(
+      'px-2 py-1 rounded-full text-xs font-medium border',
+      getSchoolColor(school)
+    )}>
+      {getSchoolLabel(school)}
+    </span>
+  );
+};
+
 const DataPendaftar: React.FC = () => {
+  const { userRole } = useAuth();
+  
   const [pendaftar, setPendaftar] = useState<PPDBData[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedData, setSelectedData] = useState<PPDBData | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -216,13 +250,14 @@ const DataPendaftar: React.FC = () => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Jumlah item per halaman
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [alasanPenolakan, setAlasanPenolakan] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'diterima' | 'ditolak' | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
 
   useEffect(() => {
     loadData();
@@ -240,52 +275,74 @@ const DataPendaftar: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const ppdbRef = ref(db, 'ppdb');
-      const snapshot = await get(ppdbRef);
-      
-      if (snapshot.exists()) {
-        const data = Object.entries(snapshot.val())
-          .map(([uid, value]) => ({
+      if (!userRole) return;
+
+      if (userRole.isMaster) {
+        // Load data dari kedua sekolah
+        const mosaRef = ref(db, 'ppdb_mosa');
+        const fajarRef = ref(db, 'ppdb_fajar');
+        
+        const [mosaSnapshot, fajarSnapshot] = await Promise.all([
+          get(mosaRef),
+          get(fajarRef)
+        ]);
+        
+        // Untuk data MOSA
+        const mosaData: PPDBData[] = mosaSnapshot.exists() ? 
+          Object.entries(mosaSnapshot.val()).map(([uid, value]) => ({
             uid,
-            ...(value as Omit<PPDBData, 'uid'>)
-          }))
-          .filter(entry => entry.submittedAt); // Only include entries that have been submitted
-        setPendaftar(data);
+            school: 'mosa' as const,
+            ...(value as Omit<PPDBData, 'uid' | 'school'>)
+          })) : [];
+        
+        // Untuk data Fajar Harapan
+        const fajarData: PPDBData[] = fajarSnapshot.exists() ? 
+          Object.entries(fajarSnapshot.val()).map(([uid, value]) => ({
+            uid,
+            school: 'fajar' as const,
+            ...(value as Omit<PPDBData, 'uid' | 'school'>)
+          })) : [];
+        
+        setPendaftar([...mosaData, ...fajarData]);
+      } else {
+        // Load data sesuai sekolah admin
+        const ppdbRef = ref(db, `ppdb_${userRole.school}`);
+        const snapshot = await get(ppdbRef);
+        
+        if (snapshot.exists()) {
+          const data: PPDBData[] = Object.entries(snapshot.val())
+            .map(([uid, value]) => ({
+              uid,
+              school: userRole.school as 'mosa' | 'fajar', // Explicit type casting
+              ...(value as Omit<PPDBData, 'uid' | 'school'>)
+            }));
+          setPendaftar(data);
+        } else {
+          setPendaftar([]);
+        }
       }
+
+      console.log('User Role:', userRole);
+      console.log('Loaded Data:', pendaftar);
     } catch (error) {
       console.error('Error loading data:', error);
       showAlert('error', 'Gagal memuat data pendaftar');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleUpdateStatus = async (status: 'diterima' | 'ditolak', alasanPenolakan?: string) => {
     if (!selectedData || modalLoading) return;
 
-    // Validasi alasan penolakan
-    if (status === 'ditolak' && !alasanPenolakan?.trim()) {
-      showAlert('error', 'Mohon isi alasan penolakan');
-      return;
-    }
-
     setModalLoading(true);
     try {
-      // Jika status draft/reset, ubah juga status menjadi submitted
-      const updateData: any = {
+      const updateData = {
         adminStatus: status,
         alasanPenolakan: status === 'ditolak' ? alasanPenolakan : null,
         updatedAt: new Date().toISOString()
       };
 
-      // Jika status masih draft (setelah reset), ubah menjadi submitted
-      if (selectedData.status === 'draft') {
-        updateData.status = 'submitted';
-        updateData.wasReset = false; // Hapus flag wasReset
-        updateData.submittedAt = new Date().toISOString();
-      }
-
-      await update(ref(db, `ppdb/${selectedData.uid}`), updateData);
+      // Update data sesuai sekolah
+      await update(ref(db, `ppdb_${selectedData.school}/${selectedData.uid}`), updateData);
 
       showAlert('success', `Status pendaftar berhasil diubah menjadi ${status}`);
       setShowStatusModal(false);
@@ -299,77 +356,27 @@ const DataPendaftar: React.FC = () => {
   };
 
   const getFilteredData = () => {
-    let filtered = [...pendaftar];
+    return pendaftar
+      .filter(item => item.status === 'submitted') // Hanya tampilkan yang sudah submit
+      .filter(item => {
+        const matchSearch = 
+          (item.namaSiswa?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+          (item.nisn || '').includes(searchQuery) ||
+          (item.asalSekolah?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+        
+        const matchStatus = 
+          statusFilter === 'all' ? true : 
+          statusFilter === 'pending' ? !item.adminStatus :
+          statusFilter === 'diterima' ? item.adminStatus === 'diterima' :
+          statusFilter === 'ditolak' ? item.adminStatus === 'ditolak' : true;
 
-    // Filter berdasarkan search query
-    if (searchQuery) {
-      filtered = filtered.filter(item => 
-        item.namaSiswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.nisn.includes(searchQuery) ||
-        item.asalSekolah.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Filter berdasarkan status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => {
-        if (statusFilter === 'pending') {
-          return item.status === 'submitted' && !item.adminStatus;
-        }
-        return item.adminStatus === statusFilter;
+        const matchJalur = 
+          jalurFilter === 'all' ? true : item.jalur === jalurFilter;
+        const matchSchool = 
+          schoolFilter === 'all' ? true : item.school === schoolFilter;
+        
+        return matchSearch && matchStatus && matchJalur && matchSchool;
       });
-    }
-
-    // Filter berdasarkan jalur
-    if (jalurFilter !== 'all') {
-      filtered = filtered.filter(item => item.jalur === jalurFilter);
-    }
-
-    // Terapkan sorting dari sortConfig
-    if (sortConfig) {
-      filtered.sort((a, b) => {
-        if (sortConfig.key === 'namaSiswa') {
-          return sortConfig.direction === 'asc' 
-            ? a.namaSiswa.localeCompare(b.namaSiswa)
-            : b.namaSiswa.localeCompare(a.namaSiswa);
-        }
-        if (sortConfig.key === 'nisn') {
-          return sortConfig.direction === 'asc'
-            ? a.nisn.localeCompare(b.nisn)
-            : b.nisn.localeCompare(a.nisn);
-        }
-        if (sortConfig.key === 'jalur') {
-          return sortConfig.direction === 'asc'
-            ? a.jalur.localeCompare(b.jalur)
-            : b.jalur.localeCompare(a.jalur);
-        }
-        if (sortConfig.key === 'asalSekolah') {
-          return sortConfig.direction === 'asc'
-            ? a.asalSekolah.localeCompare(b.asalSekolah)
-            : b.asalSekolah.localeCompare(a.asalSekolah);
-        }
-        if (sortConfig.key === 'status') {
-          return sortConfig.direction === 'asc'
-            ? a.status.localeCompare(b.status)
-            : b.status.localeCompare(a.status);
-        }
-        if (sortConfig.key === 'submittedAt') {
-          return sortConfig.direction === 'asc'
-            ? new Date(a.submittedAt || a.createdAt).getTime() - new Date(b.submittedAt || b.createdAt).getTime()
-            : new Date(b.submittedAt || b.createdAt).getTime() - new Date(a.submittedAt || a.createdAt).getTime();
-        }
-        return 0;
-      });
-    } else {
-      // Sort default berdasarkan tanggal submit
-      filtered.sort((a, b) => {
-        const dateA = new Date(a.submittedAt || a.createdAt).getTime();
-        const dateB = new Date(b.submittedAt || b.createdAt).getTime();
-        return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
-      });
-    }
-
-    return filtered;
   };
 
   // Tambahkan fungsi untuk sorting
@@ -385,14 +392,13 @@ const DataPendaftar: React.FC = () => {
 
   // Modifikasi headers untuk menambahkan sorting
   const headers = [
-    { label: 'No', key: '' },
-    { label: 'Nama', key: 'namaSiswa' },
-    { label: 'NISN', key: 'nisn' },
-    { label: 'Jalur', key: 'jalur' },
-    { label: 'Asal Sekolah', key: 'asalSekolah' },
-    { label: 'Status', key: 'status' },
-    { label: 'Tanggal Daftar PPDB', key: 'submittedAt' },
-    { label: 'Aksi', key: '' }
+    'No',
+    'Nama',
+    ...(userRole?.isMaster ? ['Sekolah'] : []), // Tampilkan kolom sekolah hanya untuk master admin
+    'Jalur',
+    'Asal Sekolah',
+    'Status',
+    'Aksi'
   ];
 
   // Tambahkan fungsi export Excel
@@ -851,118 +857,13 @@ const DataPendaftar: React.FC = () => {
     return window.innerWidth <= 640; // Menggunakan breakpoint sm
   };
 
-  const renderMobileRow = (item: PPDBData) => (
-    <div key={item.uid} className="border-b last:border-b-0">
-      <div 
-        onClick={() => setExpandedRow(expandedRow === item.uid ? null : item.uid)}
-        className={classNames(
-          "flex items-center justify-between p-3 cursor-pointer",
-          expandedRow === item.uid ? "bg-gray-50" : "hover:bg-gray-50"
-        )}
-      >
-        <div>
-          <p className="font-medium text-gray-900 text-sm mb-1">{item.namaSiswa}</p>
-          <p className="text-xs text-gray-500">{item.nisn}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge 
-            status={item.status}
-            adminStatus={item.adminStatus}
-            className="text-xs"
-          />
-          <ChevronDownIcon 
-            className={classNames(
-              "w-4 h-4 text-gray-400 transition-transform",
-              expandedRow === item.uid ? "transform rotate-180" : ""
-            )}
-          />
-        </div>
-      </div>
-
-      {/* Dropdown Content */}
-      {expandedRow === item.uid && (
-        <div className="px-3 pb-3 space-y-3 bg-gray-50">
-          {/* Info List */}
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-gray-500">Jalur</p>
-              <JalurBadge jalur={item.jalur} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Asal Sekolah</p>
-              <p className="text-sm text-gray-900">{item.asalSekolah}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Tanggal Submit</p>
-              <p className="text-sm text-gray-900">
-                {formatDateTime(item.submittedAt || item.createdAt)}
-              </p>
-            </div>
-          </div>
-
-          {/* Tombol Aksi */}
-          <div className="grid grid-cols-3 gap-1.5">
-            <Button
-              onClick={() => {
-                setSelectedData(item);
-                setShowDetailModal(true);
-              }}
-              className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-xs transition-colors"
-            >
-              <EyeIcon className="w-4 h-4" />
-              <span>Detail</span>
-            </Button>
-            
-            <Button
-              onClick={() => handleOpenStatusModal(item)}
-              className="flex items-center justify-center gap-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-xs transition-colors"
-            >
-              <CheckCircleIcon className="w-4 h-4" />
-              <span>Status</span>
-            </Button>
-            
-            <Button
-              onClick={() => {
-                setSelectedData(item);
-                setShowDeleteModal(true);
-              }}
-              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs transition-colors"
-            >
-              <TrashIcon className="w-4 h-4" />
-              <span>Hapus</span>
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const handleDeleteData = async () => {
     if (!selectedData || modalLoading) return;
 
     setModalLoading(true);
     try {
-      // Hapus data dari Realtime Database
-      await remove(ref(db, `ppdb/${selectedData.uid}`));
-
-      // Hapus akun dari Firebase Auth
-      const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
-      const response = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${API_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            idToken: selectedData.uid,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        console.error('Error deleting auth account:', await response.json());
-      }
+      // Hapus data dari Realtime Database sesuai sekolah
+      await remove(ref(db, `ppdb_${selectedData.school}/${selectedData.uid}`));
 
       // Update state lokal setelah penghapusan berhasil
       setPendaftar(prev => prev.filter(item => item.uid !== selectedData.uid));
@@ -979,18 +880,31 @@ const DataPendaftar: React.FC = () => {
     }
   };
 
-  // Tambahkan fungsi formatDateTime untuk menampilkan tanggal dan waktu
-  const formatDateTime = (dateStr: string) => {
-    const options: Intl.DateTimeFormatOptions = {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Jakarta'
-    };
+  // Update fungsi formatDateTime untuk menangani tanggal yang tidak valid
+  const formatDateTime = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    
+    try {
+      const options: Intl.DateTimeFormatOptions = {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta'
+      };
 
-    return new Date(dateStr).toLocaleString('id-ID', options);
+      const date = new Date(dateStr);
+      // Cek apakah tanggal valid
+      if (isNaN(date.getTime())) {
+        return '-';
+      }
+
+      return date.toLocaleString('id-ID', options);
+    } catch (error) {
+      console.error('Error formatting date:', dateStr, error);
+      return '-';
+    }
   };
 
   // Update saat membuka modal status
@@ -1037,10 +951,25 @@ const DataPendaftar: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (pendaftar.length === 0) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="p-4 md:p-6">
+        <div className="bg-white rounded-xl p-8 border shadow-sm">
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <UserGroupIcon className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Belum Ada Data Pendaftar
+            </h3>
+            <p className="text-gray-500 max-w-sm mx-auto">
+              {userRole?.isMaster 
+                ? "Belum ada pendaftar di kedua sekolah"
+                : `Belum ada pendaftar di ${userRole?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}`
+              }
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1178,24 +1107,54 @@ const DataPendaftar: React.FC = () => {
         {getFilteredData().length > 0 ? (
           <>
             {/* Mobile View */}
-            <div className="md:hidden">
-              <div className="divide-y">
-                {getPaginatedData().map(renderMobileRow)}
-              </div>
+            <div className="md:hidden space-y-3">
+              {getFilteredData().map((item) => (
+                <div key={item.uid} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{item.namaSiswa}</h3>
+                      {userRole?.isMaster && (
+                        <div className="mt-1">
+                          <SchoolBadge school={item.school} />
+                        </div>
+                      )}
+                    </div>
+                    <StatusBadge 
+                      status={item.status}
+                      adminStatus={item.adminStatus}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Jalur</span>
+                      <JalurBadge jalur={item.jalur} />
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Asal Sekolah</span>
+                      <span className="text-gray-900">{item.asalSekolah}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end gap-2">
+                    {/* Action buttons... */}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Desktop View */}
             <div className="hidden md:block">
               <Table 
                 headers={headers.map(header => 
-                  header.key ? {
+                  header ? {
                     content: (
                       <button
-                        onClick={() => header.key && handleSort(header.key)}
+                        onClick={() => header && handleSort(header)}
                         className="flex items-center gap-1 hover:text-blue-600"
                       >
-                        {header.label}
-                        {sortConfig?.key === header.key && (
+                        {header}
+                        {sortConfig?.key === header && (
                           <ChevronUpIcon 
                             className={`w-4 h-4 transition-transform ${
                               sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
@@ -1204,7 +1163,7 @@ const DataPendaftar: React.FC = () => {
                         )}
                       </button>
                     )
-                  } : header.label
+                  } : header
                 )}
                 data={getPaginatedData().map((item, index) => [
                   <span className="text-gray-600">
@@ -1213,13 +1172,12 @@ const DataPendaftar: React.FC = () => {
                   <div className="truncate max-w-[150px]" title={item.namaSiswa}>
                     {item.namaSiswa}
                   </div>,
-                  <div>{item.nisn}</div>,
-                  <JalurBadge jalur={item.jalur} />,
+                  ...(userRole?.isMaster ? [<SchoolBadge key={item.uid} school={item.school} />] : []),
+                  <JalurBadge key={item.uid} jalur={item.jalur} />,
                   <div className="truncate max-w-[150px]" title={item.asalSekolah}>
                     {item.asalSekolah}
                   </div>,
                   <StatusBadge 
-                    key={item.uid} 
                     status={item.status}
                     adminStatus={item.adminStatus}
                   />,
@@ -1287,12 +1245,28 @@ const DataPendaftar: React.FC = () => {
             />
           </>
         ) : (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center">
             <div className="max-w-sm mx-auto">
-              <p className="mb-2">Tidak ada data yang sesuai dengan filter</p>
-              <p className="text-sm text-gray-400">
-                Coba ubah filter atau kata kunci pencarian
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <MagnifyingGlassIcon className="w-6 h-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Data Tidak Ditemukan
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Tidak ada data yang sesuai dengan filter yang dipilih
               </p>
+              <Button
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('all');
+                  setJalurFilter('all');
+                  setSchoolFilter('all');
+                }}
+                className="text-sm bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Reset Filter
+              </Button>
             </div>
           </div>
         )}
@@ -1366,7 +1340,9 @@ const DataPendaftar: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">Tanggal Daftar:</span>
-                  <span>{new Date(selectedData?.createdAt || '').toLocaleDateString('id-ID')}</span>
+                  <span>
+                    {formatDateTime(selectedData?.submittedAt || selectedData?.createdAt)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1819,6 +1795,27 @@ const DataPendaftar: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Filter Section */}
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        {/* Existing filters... */}
+
+        {/* School Filter - Only show for master admin */}
+        {userRole?.isMaster && (
+          <div className="relative">
+            <select
+              value={schoolFilter}
+              onChange={(e) => setSchoolFilter(e.target.value as SchoolFilter)}
+              className="w-full md:w-48 pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">Semua Sekolah</option>
+              <option value="mosa">SMAN Modal Bangsa</option>
+              <option value="fajar">SMAN 10 Fajar Harapan</option>
+            </select>
+            <BuildingOfficeIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

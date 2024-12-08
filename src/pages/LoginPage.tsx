@@ -39,14 +39,18 @@ const LoginPage: React.FC = () => {
     if (user) {
       const checkUserRole = async () => {
         const adminRef = ref(db, `admins/${user.uid}`);
-        const ppdbRef = ref(db, `ppdb/${user.uid}`);
+        const ppdbMosaRef = ref(db, `ppdb_mosa/${user.uid}`);
+        const ppdbFajarRef = ref(db, `ppdb_fajar/${user.uid}`);
         
-        const adminSnapshot = await get(adminRef);
-        const ppdbSnapshot = await get(ppdbRef);
+        const [adminSnapshot, ppdbMosaSnapshot, ppdbFajarSnapshot] = await Promise.all([
+          get(adminRef),
+          get(ppdbMosaRef),
+          get(ppdbFajarRef)
+        ]);
 
         if (adminSnapshot.exists()) {
           navigate('/admin');
-        } else if (ppdbSnapshot.exists()) {
+        } else if (ppdbMosaSnapshot.exists() || ppdbFajarSnapshot.exists()) {
           navigate('/ppdb/form');
         }
       };
@@ -69,14 +73,18 @@ const LoginPage: React.FC = () => {
  
       // Cek role user
       const adminRef = ref(db, `admins/${userCredential.user.uid}`);
-      const ppdbRef = ref(db, `ppdb/${userCredential.user.uid}`);
+      const ppdbMosaRef = ref(db, `ppdb_mosa/${userCredential.user.uid}`);
+      const ppdbFajarRef = ref(db, `ppdb_fajar/${userCredential.user.uid}`);
  
-      const adminSnapshot = await get(adminRef);
-      const ppdbSnapshot = await get(ppdbRef);
+      const [adminSnapshot, ppdbMosaSnapshot, ppdbFajarSnapshot] = await Promise.all([
+        get(adminRef),
+        get(ppdbMosaRef),
+        get(ppdbFajarRef)
+      ]);
  
       if (adminSnapshot.exists()) {
         navigate('/admin');
-      } else if (ppdbSnapshot.exists()) {
+      } else if (ppdbMosaSnapshot.exists() || ppdbFajarSnapshot.exists()) {
         navigate('/ppdb/form');
       } else {
         setError('Akun tidak valid');

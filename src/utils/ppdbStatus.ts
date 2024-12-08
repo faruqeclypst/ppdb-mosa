@@ -3,7 +3,7 @@ import { db } from '../firebase/config';
 import type { PPDBSettings } from '../types/settings';
 
 export const getPPDBStatus = async (): Promise<boolean> => {
-  // return false;
+  return true;
    //hapus baris return false; untuk aktif ppdb 
   
   try {

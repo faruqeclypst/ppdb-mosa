@@ -7,15 +7,19 @@ import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import { showAlert } from '../ui/Alert';
 import { KeyIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Admin = {
   uid: string;
   fullName: string;
   email: string;
   createdAt: string;
+  school: 'mosa' | 'fajar';
+  isMaster?: boolean;
 };
 
 const UserManagement: React.FC = () => {
+  const { userRole } = useAuth();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,8 +30,11 @@ const UserManagement: React.FC = () => {
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    school: '',
+    isMaster: false
   });
+  const [schoolFilter, setSchoolFilter] = useState<'all' | 'mosa' | 'fajar'>('all');
 
   useEffect(() => {
     loadAdmins();
@@ -39,10 +46,18 @@ const UserManagement: React.FC = () => {
       const snapshot = await get(adminsRef);
       
       if (snapshot.exists()) {
-        const adminsData = Object.entries(snapshot.val()).map(([uid, data]) => ({
-          uid,
-          ...(data as Omit<Admin, 'uid'>)
-        }));
+        const adminsData = Object.entries(snapshot.val())
+          .map(([uid, data]) => ({
+            uid,
+            ...(data as Omit<Admin, 'uid'>)
+          }))
+          .filter(admin => {
+            if (userRole?.isMaster) {
+              if (schoolFilter === 'all') return true;
+              return admin.school === schoolFilter;
+            }
+            return admin.school === userRole?.school;
+          });
         setAdmins(adminsData);
       }
     } catch (error) {
@@ -83,12 +98,21 @@ const UserManagement: React.FC = () => {
         fullName: formData.fullName,
         email: formData.email,
         createdAt: new Date().toISOString(),
+        school: formData.school || userRole?.school,
+        isMaster: userRole?.isMaster ? formData.isMaster : false,
         role: 'admin'
       });
 
       showAlert('success', 'Admin berhasil ditambahkan');
       setShowAddModal(false);
-      setFormData({ fullName: '', email: '', password: '', confirmPassword: '' });
+      setFormData({ 
+        fullName: '', 
+        email: '', 
+        password: '', 
+        confirmPassword: '', 
+        school: '',
+        isMaster: false 
+      });
       loadAdmins();
     } catch (error) {
       console.error('Error adding admin:', error);
@@ -139,103 +163,183 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const headers = ['Nama', 'Email', 'Tanggal Dibuat', 'Aksi'];
-  const data = admins.map(admin => [
-    admin.fullName,
-    admin.email,
-    new Date(admin.createdAt).toLocaleDateString('id-ID'),
-    <div key={admin.uid} className="flex gap-2">
-      <Button
-        onClick={() => {
-          setSelectedAdmin(admin);
-          setShowResetModal(true);
-        }}
-        className="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-lg"
-        title="Reset Password"
-      >
-        <KeyIcon className="w-4 h-4" />
-      </Button>
-      <Button
-        onClick={() => {
-          setSelectedAdmin(admin);
-          setShowDeleteModal(true);
-        }}
-        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
-        title="Hapus Admin"
-      >
-        <TrashIcon className="w-4 h-4" />
-      </Button>
-    </div>
-  ]);
+  const renderAddAdminForm = () => (
+    <div className="space-y-4">
+      <Input
+        label="Nama Lengkap"
+        value={formData.fullName}
+        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+        placeholder="Masukkan nama lengkap"
+        required
+      />
+      <Input
+        label="Email"
+        type="email"
+        value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        placeholder="Masukkan email"
+        required
+      />
+      
+      {/* Pilih sekolah - selalu tampil untuk admin master */}
+      {userRole?.isMaster && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Sekolah <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.school}
+            onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="">Pilih Sekolah</option>
+            <option value="mosa">SMAN Modal Bangsa</option>
+            <option value="fajar">SMAN 10 Fajar Harapan</option>
+          </select>
+        </div>
+      )}
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      {/* Checkbox admin master - hanya untuk admin master */}
+      {userRole?.isMaster && (
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="isMaster"
+            checked={formData.isMaster}
+            onChange={(e) => setFormData({ ...formData, isMaster: e.target.checked })}
+            className="rounded border-gray-300"
+          />
+          <label htmlFor="isMaster" className="text-sm text-gray-700">
+            Admin Master (dapat mengakses kedua sekolah)
+          </label>
+        </div>
+      )}
+
+      <Input
+        label="Password"
+        type="password"
+        value={formData.password}
+        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+        placeholder="Masukkan password"
+        required
+      />
+      <Input
+        label="Konfirmasi Password"
+        type="password"
+        value={formData.confirmPassword}
+        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+        placeholder="Konfirmasi password"
+        required
+      />
+    </div>
+  );
+
+  const renderAdminTable = () => {
+    const headers = [
+      'Nama',
+      'Email',
+      'Sekolah',
+      ...(userRole?.isMaster ? ['Tipe Admin'] : []),
+      'Tanggal Dibuat',
+      'Aksi'
+    ];
+
+    const getSchoolLabel = (school: string) => {
+      switch (school) {
+        case 'mosa':
+          return 'SMAN Modal Bangsa';
+        case 'fajar':
+          return 'SMAN 10 Fajar Harapan';
+        case 'all':
+          return 'Semua Sekolah'; // Untuk admin master
+        default:
+          return school;
+      }
+    };
+
+    const data = admins.map(admin => [
+      admin.fullName,
+      admin.email,
+      getSchoolLabel(admin.school), // Gunakan fungsi helper untuk menampilkan nama sekolah
+      ...(userRole?.isMaster ? [admin.isMaster ? 'Admin Master' : 'Admin Sekolah'] : []),
+      new Date(admin.createdAt).toLocaleDateString('id-ID'),
+      <div className="flex gap-2">
+        <Button
+          onClick={() => {
+            setSelectedAdmin(admin);
+            setShowResetModal(true);
+          }}
+          className="bg-yellow-500 hover:bg-yellow-600 text-white p-2 rounded-lg"
+          title="Reset Password"
+        >
+          <KeyIcon className="w-4 h-4" />
+        </Button>
+        <Button
+          onClick={() => {
+            setSelectedAdmin(admin);
+            setShowDeleteModal(true);
+          }}
+          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg"
+          title="Hapus Admin"
+        >
+          <TrashIcon className="w-4 h-4" />
+        </Button>
       </div>
-    );
-  }
+    ]);
+
+    return <Table headers={headers} data={data} />;
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Data Admin Table - Mobile Optimized */}
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
         <div className="p-4 md:p-6">
-          <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Daftar Admin</h3>
-            <Button
-              onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1.5 py-1.5 md:py-2 px-3 md:px-4 text-xs md:text-sm"
-            >
-              <UserPlusIcon className="w-4 h-4" />
-              <span className="hidden md:inline">Tambah Admin</span>
-            </Button>
-          </div>
-          
-          {/* Mobile View */}
-          <div className="md:hidden space-y-3">
-            {admins.map(admin => (
-              <div 
-                key={admin.uid}
-                className="bg-gray-50 rounded-lg p-3 space-y-2"
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {userRole?.isMaster 
+                  ? 'Manajemen Admin' 
+                  : `Admin ${userRole?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}`}
+              </h3>
+              {userRole?.isMaster && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Kelola admin untuk kedua sekolah
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-3">
+              {/* Filter Sekolah untuk Admin Master */}
+              {userRole?.isMaster && (
+                <select
+                  value={schoolFilter}
+                  onChange={(e) => setSchoolFilter(e.target.value as 'all' | 'mosa' | 'fajar')}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  <option value="all">Semua Sekolah</option>
+                  <option value="mosa">SMAN Modal Bangsa</option>
+                  <option value="fajar">SMAN 10 Fajar Harapan</option>
+                </select>
+              )}
+
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-600 text-white hover:bg-blue-700"
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">{admin.fullName}</h4>
-                    <p className="text-xs text-gray-600">{admin.email}</p>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => {
-                        setSelectedAdmin(admin);
-                        setShowResetModal(true);
-                      }}
-                      className="p-1.5 bg-yellow-500 text-white rounded-lg"
-                    >
-                      <KeyIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedAdmin(admin);
-                        setShowDeleteModal(true);
-                      }}
-                      className="p-1.5 bg-red-500 text-white rounded-lg"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Terdaftar: {new Date(admin.createdAt).toLocaleDateString('id-ID')}
-                </div>
-              </div>
-            ))}
+                <UserPlusIcon className="w-5 h-5 mr-2" />
+                Tambah Admin
+              </Button>
+            </div>
           </div>
 
-          {/* Desktop View */}
-          <div className="hidden md:block">
-            <Table headers={headers} data={data} />
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : (
+            renderAdminTable()
+          )}
         </div>
       </div>
 
@@ -258,37 +362,7 @@ const UserManagement: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <Input
-              label="Nama Lengkap"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              placeholder="Masukkan nama lengkap"
-              required
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="Masukkan email"
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Masukkan password"
-              required
-            />
-            <Input
-              label="Konfirmasi Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              placeholder="Konfirmasi password"
-              required
-            />
+            {renderAddAdminForm()}
 
             <div className="flex flex-col md:flex-row gap-3 pt-4">
               <Button

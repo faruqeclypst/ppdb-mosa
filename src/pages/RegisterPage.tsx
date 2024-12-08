@@ -15,20 +15,31 @@ import {
   LockClosedIcon,
   KeyIcon,
   ArrowRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { getPPDBStatus } from '../utils/ppdbStatus';
 import Modal from '../components/ui/Modal';
 import type { PPDBSettings } from '../types/settings';
+import Select from '../components/ui/Select';
+
+interface FormData {
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  school: 'mosa' | 'fajar' | '';
+}
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [isFirstAdmin, setIsFirstAdmin] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    school: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -107,6 +118,12 @@ const RegisterPage: React.FC = () => {
     setError('');
     setLoading(true);
     
+    if (!formData.school && !isFirstAdmin) {
+      setError('Silakan pilih sekolah');
+      setLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Password tidak cocok');
       setLoading(false);
@@ -129,22 +146,25 @@ const RegisterPage: React.FC = () => {
       if (isFirstAdmin) {
         await set(ref(db, `admins/${userCredential.user.uid}`), {
           ...userData,
-          role: 'admin'
+          role: 'admin',
+          isMaster: true,
+          school: 'all'
         });
         navigate('/admin');
       } else {
-        await set(ref(db, `ppdb/${userCredential.user.uid}`), {
+        await set(ref(db, `ppdb_${formData.school}/${userCredential.user.uid}`), {
           ...userData,
-          status: 'pending'
+          school: formData.school,
+          status: 'draft'
         });
         navigate('/ppdb/form');
       }
 
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        setError('Email telah digunakan. Silakan gunakan email lain atau login.');
+        setError('Email telah digunakan');
       } else {
-        setError('Gagal membuat akun. Silakan coba lagi.');
+        setError('Gagal membuat akun');
       }
       console.error(err);
     } finally {
@@ -282,6 +302,24 @@ const RegisterPage: React.FC = () => {
 
               {/* Register Form - Spacing lebih kecil di mobile */}
               <form onSubmit={handleSubmit} className="space-y-3 md:space-y-5">
+                {!isFirstAdmin && (
+                  <div className="relative">
+                    <BuildingOfficeIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                    <Select
+                      label="Pilih Sekolah"
+                      required
+                      value={formData.school}
+                      onChange={(e) => setFormData({...formData, school: e.target.value as 'mosa' | 'fajar'})}
+                      options={[
+                        { value: '', label: '-- Pilih Sekolah --', disabled: true },
+                        { value: 'mosa', label: 'SMAN Modal Bangsa' },
+                        { value: 'fajar', label: 'SMAN 10 Fajar Harapan' }
+                      ]}
+                      className="pl-8 md:pl-10"
+                    />
+                  </div>
+                )}
+
                 <div className="relative">
                   <UserIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input

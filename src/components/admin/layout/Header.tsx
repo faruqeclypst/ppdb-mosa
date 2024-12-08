@@ -10,6 +10,14 @@ import { ref, update, get } from 'firebase/database';
 import { showAlert } from '../../ui/Alert';
 import Sidebar from '../layout/Sidebar';
 import classNames from 'classnames';
+import { useAuth } from '../../../contexts/AuthContext';
+
+type AdminData = {
+  fullName: string;
+  role: string;
+  school: 'mosa' | 'fajar' | 'all';
+  isMaster?: boolean;
+};
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +27,9 @@ const Header: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const { userRole } = useAuth();
+  const [adminData, setAdminData] = useState<AdminData | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -30,8 +41,14 @@ const Header: React.FC = () => {
         const snapshot = await get(adminRef);
         
         if (snapshot.exists()) {
-          const adminData = snapshot.val();
-          setNewName(adminData.fullName);
+          const data = snapshot.val();
+          setAdminData({
+            fullName: data.fullName,
+            role: data.role,
+            school: data.school,
+            isMaster: data.isMaster
+          });
+          setNewName(data.fullName);
         }
       } catch (error) {
         console.error('Error loading admin data:', error);
@@ -117,26 +134,76 @@ const Header: React.FC = () => {
         </h1>
         
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowProfileModal(true)}
-            className={classNames(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
-              'text-gray-700 hover:bg-gray-100 transition-colors'
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className={classNames(
+                "flex items-center gap-2 px-3 py-2 rounded-lg transition-colors",
+                "hover:bg-gray-100"
+              )}
+            >
+              <UserCircleIcon className="w-5 h-5 text-gray-600" />
+              <div className="hidden md:block text-left">
+                <p className={classNames(
+                  "text-sm font-medium text-gray-900"
+                )}>
+                  {adminData?.fullName || 'Admin'}
+                </p>
+                <p className={classNames(
+                  "text-xs text-gray-500"
+                )}>
+                  {userRole?.isMaster 
+                    ? 'Master Admin'
+                    : `Admin ${userRole?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}`
+                  }
+                </p>
+              </div>
+              <svg 
+                className={classNames(
+                  "w-4 h-4 text-gray-500 transition-transform",
+                  showProfileMenu ? 'rotate-180' : ''
+                )}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showProfileMenu && (
+              <div className={classNames(
+                "absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-50"
+              )}>
+                <button
+                  onClick={() => {
+                    setShowProfileModal(true);
+                    setShowProfileMenu(false);
+                  }}
+                  className={classNames(
+                    "w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50",
+                    "flex items-center gap-2"
+                  )}
+                >
+                  <UserCircleIcon className="w-4 h-4" />
+                  Edit Profil
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutModal(true);
+                    setShowProfileMenu(false);
+                  }}
+                  className={classNames(
+                    "w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50",
+                    "flex items-center gap-2"
+                  )}
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  Keluar
+                </button>
+              </div>
             )}
-          >
-            <UserCircleIcon className="w-5 h-5" />
-            <span className="hidden md:inline">Profil</span>
-          </button>
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            className={classNames(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
-              'text-red-600 hover:bg-red-50 transition-colors'
-            )}
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            <span className="hidden md:inline">Keluar</span>
-          </button>
+          </div>
         </div>
       </div>
 

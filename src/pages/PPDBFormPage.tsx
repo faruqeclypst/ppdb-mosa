@@ -43,8 +43,9 @@ export type PPDBSettings = {
 
 // Tambahkan di bagian atas file, setelah imports
 type FormData = {
-  // Tambahkan uid
+  // Tambahkan uid dan school
   uid?: string;
+  school: 'mosa' | 'fajar';
   
   // Informasi Siswa
   jalur: string;
@@ -100,6 +101,7 @@ type FormData = {
 // Tambahkan INITIAL_FORM_DATA
 const INITIAL_FORM_DATA: FormData = {
   uid: undefined,
+  school: 'mosa', // Default value, will be overwritten when loading data
   jalur: '',
   namaSiswa: '',
   nik: '',
@@ -577,25 +579,21 @@ const generateRegistrationCard = async (formData: FormData) => {
   }
 };
 
-// Add this validation function after other helper functions
-const checkDuplicateNIK = async (nik: string, currentUid?: string): Promise<boolean> => {
+// Update fungsi checkDuplicateNIK
+const checkDuplicateNIK = async (nik: string, currentUid?: string, school?: string): Promise<boolean> => {
   try {
-    // Skip check if NIK is '-'
     if (nik === '-') return false;
 
-    // Query PPDB data where NIK matches
-    const ppdbRef = ref(db, 'ppdb');
+    // Cek di database sesuai sekolah yang dipilih
+    const ppdbRef = ref(db, `ppdb_${school}`);
     const nikQuery = query(ppdbRef, orderByChild('nik'), equalTo(nik));
     const snapshot = await getDb(nikQuery);
 
     if (snapshot.exists()) {
       const data = snapshot.val();
-      // Check if the NIK belongs to another user
       const entries = Object.entries(data);
       for (const [uid, entry] of entries) {
-        // Skip if this is the current user's entry
         if (uid === currentUid) continue;
-        // If entry is found with submitted status, it's a duplicate
         if ((entry as any).status === 'submitted') {
           console.log('Duplicate NIK found:', nik, 'from user:', uid);
           return true;
@@ -608,6 +606,68 @@ const checkDuplicateNIK = async (nik: string, currentUid?: string): Promise<bool
     return false;
   }
 };
+
+// Update interface SavedData dan gunakan di submitForm
+interface SavedData {
+  // Metadata
+  uid: string;
+  email: string | null;
+  status: 'draft' | 'submitted';
+  lastUpdated: string;
+  submittedAt: string | null;
+  createdAt: string;
+  wasReset: boolean;
+
+  // Data siswa
+  jalur: string;
+  namaSiswa: string;
+  nik: string;
+  nisn: string;
+  jenisKelamin: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  anakKe: string;
+  jumlahSaudara: string;
+  alamat: string;
+  kecamatan: string;
+  kabupaten: string;
+  asalSekolah: string;
+  kabupatenAsalSekolah: string;
+
+  // Data akademik
+  nilaiAgama2: string;
+  nilaiAgama3: string;
+  nilaiAgama4: string;
+  nilaiBindo2: string;
+  nilaiBindo3: string;
+  nilaiBindo4: string;
+  nilaiBing2: string;
+  nilaiBing3: string;
+  nilaiBing4: string;
+  nilaiMtk2: string;
+  nilaiMtk3: string;
+  nilaiMtk4: string;
+  nilaiIpa2: string;
+  nilaiIpa3: string;
+  nilaiIpa4: string;
+
+  // Data orang tua
+  namaAyah: string;
+  pekerjaanAyah: string;
+  instansiAyah: string;
+  hpAyah: string;
+  namaIbu: string;
+  pekerjaanIbu: string;
+  instansiIbu: string;
+  hpIbu: string;
+
+  // File URLs
+  photo?: string;
+  rekomendasi?: string;
+  raport2?: string;
+  raport3?: string;
+  raport4?: string;
+}
 
 const PPDBFormPage: React.FC = () => {
   // Pindahkan hooks ke dalam komponen
@@ -642,34 +702,31 @@ const PPDBFormPage: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const ppdbRef = ref(db, `ppdb/${user.uid}`);
-        const snapshot = await get(ppdbRef);
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          
-          // Set state isReset jika akun di reset atau status masih draft setelah reset
-          if (data.isReset || (data.wasReset && data.status === 'draft')) {
-            setIsReset(true);
-            
-            // Update flag reset
-            await update(ref(db, `ppdb/${user.uid}`), {
-              isReset: null,
-              wasReset: true // Flag baru untuk tracking status reset
-            });
-          }
-          
+        // Cek di kedua database untuk menentukan sekolah user
+        const mosaRef = ref(db, `ppdb_mosa/${user.uid}`);
+        const fajarRef = ref(db, `ppdb_fajar/${user.uid}`);
+        
+        const [mosaSnapshot, fajarSnapshot] = await Promise.all([
+          get(mosaRef),
+          get(fajarRef)
+        ]);
+
+        let userData = null;
+
+        if (mosaSnapshot.exists()) {
+          userData = { ...mosaSnapshot.val(), school: 'mosa' as const };
+        } else if (fajarSnapshot.exists()) {
+          userData = { ...fajarSnapshot.val(), school: 'fajar' as const };
+        }
+
+        if (userData) {
           setFormData({
             ...INITIAL_FORM_DATA,
-            ...data,
+            ...userData,
             uid: user.uid
           });
-          setFormStatus(data.status || 'draft');
-          setLastUpdated(data.lastUpdated || '');
-        } else {
-          setFormData({
-            ...INITIAL_FORM_DATA,
-            uid: user.uid
-          });
+          setFormStatus(userData.status || 'draft');
+          setLastUpdated(userData.lastUpdated || '');
         }
       } catch (err) {
         setError('Gagal memuat data');
@@ -735,7 +792,7 @@ const PPDBFormPage: React.FC = () => {
       if (sanitizedValue !== '-') {
         if (sanitizedValue.length === 16) {
           // Check for duplicate NIK when a valid NIK is entered
-          checkDuplicateNIK(sanitizedValue, formData.uid).then(isDuplicate => {
+          checkDuplicateNIK(sanitizedValue, formData.uid, formData.school).then(isDuplicate => {
             if (isDuplicate) {
               setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
               setIsDuplicateNIK(true);
@@ -908,7 +965,7 @@ const PPDBFormPage: React.FC = () => {
     }
 
     // Check duplicate NIK
-    const isDuplicateNIK = await checkDuplicateNIK(formData.nik, formData.uid);
+    const isDuplicateNIK = await checkDuplicateNIK(formData.nik, formData.uid, formData.school);
     if (isDuplicateNIK) {
       setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
       return false;
@@ -1003,14 +1060,7 @@ const PPDBFormPage: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  // Tambahkan type untuk data yang akan disimpan
-  type SavedData = FormData & {
-    status: string;
-    lastUpdated: string;
-    submittedAt: string | null;
-    [key: string]: any; // Tambahkan index signature
-  };
-
+  // Update fungsi submitForm
   const submitForm = async (isDraft: boolean = false) => {
     setError('');
     setLoading(true);
@@ -1020,13 +1070,21 @@ const PPDBFormPage: React.FC = () => {
         throw new Error('User tidak ditemukan');
       }
 
-      // Upload files
+      // Tentukan path berdasarkan sekolah yang dipilih saat register
+      const userRef = ref(db, `ppdb_${formData.school}/${user.uid}`);
+      const userSnapshot = await get(userRef);
+      
+      if (!userSnapshot.exists()) {
+        throw new Error('Data pendaftar tidak ditemukan');
+      }
+
+      // Upload files dengan path yang sesuai
       const uploadPromises = [];
       const fileUrls: Record<string, string> = {};
 
       for (const [key, file] of Object.entries(formData)) {
         if (file instanceof File) {
-          const fileRef = storageRef(storage, `ppdb/${user.uid}/${key}`);
+          const fileRef = storageRef(storage, `ppdb_${formData.school}/${user.uid}/${key}`);
           uploadPromises.push(
             uploadBytes(fileRef, file).then(() => getDownloadURL(fileRef))
               .then(url => { fileUrls[key] = url; })
@@ -1038,29 +1096,68 @@ const PPDBFormPage: React.FC = () => {
 
       // Prepare data untuk disimpan
       const dataToSave: SavedData = {
-        ...formData,
-        ...fileUrls,
+        // Metadata
         uid: user.uid,
+        email: user.email,
         status: isDraft ? 'draft' : 'submitted',
         lastUpdated: new Date().toISOString(),
         submittedAt: isDraft ? null : new Date().toISOString(),
-        wasReset: isDraft // Hapus flag wasReset jika bukan draft
+        createdAt: new Date().toISOString(), // Tambahkan ini
+        wasReset: isDraft,
+
+        // Data siswa
+        jalur: String(formData.jalur || ''),
+        namaSiswa: String(formData.namaSiswa || ''),
+        nik: String(formData.nik || ''),
+        nisn: String(formData.nisn || ''),
+        jenisKelamin: String(formData.jenisKelamin || ''),
+        tempatLahir: String(formData.tempatLahir || ''),
+        tanggalLahir: String(formData.tanggalLahir || ''),
+        anakKe: String(formData.anakKe || ''),
+        jumlahSaudara: String(formData.jumlahSaudara || ''),
+        alamat: String(formData.alamat || ''),
+        kecamatan: String(formData.kecamatan || ''),
+        kabupaten: String(formData.kabupaten || ''),
+        asalSekolah: String(formData.asalSekolah || ''),
+        kabupatenAsalSekolah: String(formData.kabupatenAsalSekolah || ''),
+
+        // Data akademik
+        nilaiAgama2: String(formData.nilaiAgama2 || ''),
+        nilaiAgama3: String(formData.nilaiAgama3 || ''),
+        nilaiAgama4: String(formData.nilaiAgama4 || ''),
+        nilaiBindo2: String(formData.nilaiBindo2 || ''),
+        nilaiBindo3: String(formData.nilaiBindo3 || ''),
+        nilaiBindo4: String(formData.nilaiBindo4 || ''),
+        nilaiBing2: String(formData.nilaiBing2 || ''),
+        nilaiBing3: String(formData.nilaiBing3 || ''),
+        nilaiBing4: String(formData.nilaiBing4 || ''),
+        nilaiMtk2: String(formData.nilaiMtk2 || ''),
+        nilaiMtk3: String(formData.nilaiMtk3 || ''),
+        nilaiMtk4: String(formData.nilaiMtk4 || ''),
+        nilaiIpa2: String(formData.nilaiIpa2 || ''),
+        nilaiIpa3: String(formData.nilaiIpa3 || ''),
+        nilaiIpa4: String(formData.nilaiIpa4 || ''),
+
+        // Data orang tua
+        namaAyah: String(formData.namaAyah || ''),
+        pekerjaanAyah: String(formData.pekerjaanAyah || ''),
+        instansiAyah: String(formData.instansiAyah || ''),
+        hpAyah: String(formData.hpAyah || ''),
+        namaIbu: String(formData.namaIbu || ''),
+        pekerjaanIbu: String(formData.pekerjaanIbu || ''),
+        instansiIbu: String(formData.instansiIbu || ''),
+        hpIbu: String(formData.hpIbu || ''),
+
+        // URL files yang sudah diupload
+        ...fileUrls,
       };
 
-      // Hapus undefined values sebelum menyimpan ke Firebase
-      Object.keys(dataToSave).forEach(key => {
-        if (dataToSave[key] === undefined) {
-          delete dataToSave[key];
-        }
-      });
-
-      // Save form data
-      await update(ref(db, `ppdb/${user.uid}`), dataToSave);
+      // Simpan ke database yang sesuai
+      await update(userRef, dataToSave);
 
       setFormStatus(isDraft ? 'draft' : 'submitted');
       setLastUpdated(new Date().toISOString());
       
-      // Reset state isReset jika formulir dikirim
       if (!isDraft) {
         setIsReset(false);
       }
@@ -1070,8 +1167,10 @@ const PPDBFormPage: React.FC = () => {
       } else {
         setShowSuccessModal(true);
       }
+
     } catch (err: any) {
-      setError(err.message);
+      console.error('Error submitting form:', err);
+      setError(`Gagal menyimpan data: ${err.message}`);
     } finally {
       setLoading(false);
       setShowConfirmModal(false);
