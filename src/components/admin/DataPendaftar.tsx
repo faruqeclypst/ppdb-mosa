@@ -19,7 +19,8 @@ import {
   TrashIcon,
   ChevronUpIcon,
   ArrowPathIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
@@ -27,6 +28,7 @@ import { saveAs } from 'file-saver';
 import classNames from 'classnames';
 import Pagination from '../ui/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
+import { auth } from '../../firebase/config';
 
 // Di bagian atas file, tambahkan type untuk school
 type School = 'mosa' | 'fajar';
@@ -94,6 +96,13 @@ type PPDBData = {
   lastUpdated?: string;
   submittedAt?: string;
   alasanPenolakan?: string;
+  // Tambah field untuk tracking admin
+  updatedBy?: {
+    email: string;
+    name?: string;
+    school: 'mosa' | 'fajar';
+    timestamp: string;
+  };
 };
 
 type BadgeProps = {
@@ -258,6 +267,7 @@ const DataPendaftar: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<'diterima' | 'ditolak' | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
   const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -331,17 +341,40 @@ const DataPendaftar: React.FC = () => {
   };
 
   const handleUpdateStatus = async (status: 'diterima' | 'ditolak', alasanPenolakan?: string) => {
-    if (!selectedData || modalLoading) return;
+    if (!selectedData || modalLoading || !userRole) return;
 
     setModalLoading(true);
     try {
+      const currentUser = auth.currentUser;
+      
+      // Ambil data admin dari database
+      const adminRef = ref(db, `admins/${currentUser?.uid}`);
+      const adminSnapshot = await get(adminRef);
+      const adminData = adminSnapshot.val();
+
+      // Define the type for updatedBy
+      type UpdatedByData = {
+        email: string;
+        school: 'mosa' | 'fajar';
+        timestamp: string;
+        name: string;
+      };
+
+      // Create updatedBy object with the correct type
+      const updatedBy: UpdatedByData = {
+        email: currentUser?.email || 'unknown',
+        school: userRole.school as 'mosa' | 'fajar',
+        timestamp: new Date().toISOString(),
+        name: adminData?.fullName || adminData?.name || currentUser?.email?.split('@')[0] || 'Admin'
+      };
+
       const updateData = {
         adminStatus: status,
         alasanPenolakan: status === 'ditolak' ? alasanPenolakan : null,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        updatedBy
       };
 
-      // Update data sesuai sekolah
       await update(ref(db, `ppdb_${selectedData.school}/${selectedData.uid}`), updateData);
 
       showAlert('success', `Status pendaftar berhasil diubah menjadi ${status}`);
@@ -390,311 +423,458 @@ const DataPendaftar: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // Modifikasi headers untuk menambahkan sorting
+  // Modifikasi headers untuk alignment kiri
   const headers = [
     'No',
     'Nama',
-    ...(userRole?.isMaster ? ['Sekolah'] : []), // Tampilkan kolom sekolah hanya untuk master admin
+    ...(userRole?.isMaster ? ['Sekolah'] : []), 
     'Jalur',
     'Asal Sekolah',
     'Status',
+    'Pemeriksa', // Ganti dari 'Admin'
+    'Tanggal Kirim', // Ganti dari 'Tanggal Submit'
     'Aksi'
-  ];
+  ].map(header => ({
+    content: (
+      <div className="text-left">
+        <button
+          onClick={() => header && handleSort(header)}
+          className="flex items-center gap-1 hover:text-blue-600"
+        >
+          {header}
+          {sortConfig?.key === header && (
+            <ChevronUpIcon 
+              className={`w-4 h-4 transition-transform ${
+                sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
+              }`}
+            />
+          )}
+        </button>
+      </div>
+    )
+  }));
 
-  // Tambahkan fungsi export Excel
+  // Update fungsi exportToExcel
   const exportToExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
       
-      // Pisahkan data berdasarkan jalur
+      // Pisahkan data berdasarkan sekolah dan jalur
       const allData = getFilteredData();
-      const dataPrestasi = allData.filter(item => item.jalur === 'prestasi');
-      const dataReguler = allData.filter(item => item.jalur === 'reguler');
-      const dataUndangan = allData.filter(item => item.jalur === 'undangan');
 
-      // Fungsi helper untuk setup worksheet
-      const setupWorksheet = (name: string, data: PPDBData[]) => {
-        const worksheet = workbook.addWorksheet(name);
+      if (userRole?.isMaster) {
+        // Master admin - export semua data
+        const dataMosa = allData.filter(item => item.school === 'mosa');
+        const dataFajar = allData.filter(item => item.school === 'fajar');
 
-        // Styling untuk header
-        const headerStyle = {
-          font: { bold: true, color: { argb: 'FFFFFF' } },
-          fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '4B5563' } },
-          alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
-          border: {
-            top: { style: 'thin' as const },
-            left: { style: 'thin' as const },
-            bottom: { style: 'thin' as const },
-            right: { style: 'thin' as const }
-          }
-        };
+        // Data per jalur untuk MOSA
+        const dataMosaPrestasi = dataMosa.filter(item => item.jalur === 'prestasi');
+        const dataMosaReguler = dataMosa.filter(item => item.jalur === 'reguler');
+        const dataMosaUndangan = dataMosa.filter(item => item.jalur === 'undangan');
 
-        // Definisi kolom dengan width yang lebih proporsional
-        worksheet.columns = [
-          { header: 'No', key: 'no', width: 5 },
-          { header: 'NISN', key: 'nisn', width: 15 },
-          { header: 'Nama Lengkap', key: 'namaSiswa', width: 40 },
-          { header: 'Email', key: 'email', width: 35 }, // Tambah kolom email
-          { header: 'Jalur', key: 'jalur', width: 15 },
-          { header: 'Status Keputusan', key: 'adminStatus', width: 18 },
-          { header: 'Alasan Penolakan', key: 'alasanPenolakan', width: 50 },
-          { header: 'NIK', key: 'nik', width: 20 },
-          { header: 'Jenis Kelamin', key: 'jenisKelamin', width: 15 },
-          { header: 'Tempat Lahir', key: 'tempatLahir', width: 30 },
-          { header: 'Tanggal Lahir', key: 'tanggalLahir', width: 15 },
-          { header: 'Anak Ke', key: 'anakKe', width: 10 },
-          { header: 'Jumlah Saudara', key: 'jumlahSaudara', width: 18 },
-          { header: 'Alamat', key: 'alamat', width: 50 },
-          { header: 'Kecamatan', key: 'kecamatan', width: 25 },
-          { header: 'Kabupaten', key: 'kabupaten', width: 25 },
-          { header: 'Asal Sekolah', key: 'asalSekolah', width: 40 },
-          { header: 'Kabupaten Sekolah', key: 'kabupatenAsalSekolah', width: 25 },
-          // Nilai Akademik - Seragamkan lebar kolom nilai
-          { header: 'Agama Sem 2', key: 'nilaiAgama2', width: 14 },
-          { header: 'Agama Sem 3', key: 'nilaiAgama3', width: 14 },
-          { header: 'Agama Sem 4', key: 'nilaiAgama4', width: 14 },
-          { header: 'B.Indo Sem 2', key: 'nilaiBindo2', width: 14 },
-          { header: 'B.Indo Sem 3', key: 'nilaiBindo3', width: 14 },
-          { header: 'B.Indo Sem 4', key: 'nilaiBindo4', width: 14 },
-          { header: 'B.Ing Sem 2', key: 'nilaiBing2', width: 14 },
-          { header: 'B.Ing Sem 3', key: 'nilaiBing3', width: 14 },
-          { header: 'B.Ing Sem 4', key: 'nilaiBing4', width: 14 },
-          { header: 'MTK Sem 2', key: 'nilaiMtk2', width: 14 },
-          { header: 'MTK Sem 3', key: 'nilaiMtk3', width: 14 },
-          { header: 'MTK Sem 4', key: 'nilaiMtk4', width: 14 },
-          { header: 'IPA Sem 2', key: 'nilaiIpa2', width: 14 },
-          { header: 'IPA Sem 3', key: 'nilaiIpa3', width: 14 },
-          { header: 'IPA Sem 4', key: 'nilaiIpa4', width: 14 },
-          // Data Orang Tua
-          { header: 'Nama Ayah', key: 'namaAyah', width: 40 },
-          { header: 'Pekerjaan Ayah', key: 'pekerjaanAyah', width: 30 },
-          { header: 'Instansi Ayah', key: 'instansiAyah', width: 40 },
-          { header: 'No HP Ayah', key: 'hpAyah', width: 18 },
-          { header: 'Nama Ibu', key: 'namaIbu', width: 40 },
-          { header: 'Pekerjaan Ibu', key: 'pekerjaanIbu', width: 30 },
-          { header: 'Instansi Ibu', key: 'instansiIbu', width: 40 },
-          { header: 'No HP Ibu', key: 'hpIbu', width: 18 },
-          // Dokumen
-          { header: 'Foto', key: 'photo', width: 15 },
-          { header: 'Rekomendasi', key: 'rekomendasi', width: 15 },
-          { header: 'Raport 2', key: 'raport2', width: 15 },
-          { header: 'Raport 3', key: 'raport3', width: 15 },
-          { header: 'Raport 4', key: 'raport4', width: 15 },
-          // Metadata
-          { header: 'Tanggal Daftar', key: 'createdAt', width: 20 },
-          { header: 'Terakhir Diupdate', key: 'lastUpdated', width: 20 }
-        ];
+        // Data per jalur untuk FAJAR
+        const dataFajarPrestasi = dataFajar.filter(item => item.jalur === 'prestasi');
+        const dataFajarReguler = dataFajar.filter(item => item.jalur === 'reguler');
+        const dataFajarUndangan = dataFajar.filter(item => item.jalur === 'undangan');
 
-        // Apply header styling
-        worksheet.getRow(1).eachCell((cell) => {
-          cell.style = headerStyle;
-        });
+        // Setup worksheet untuk semua data
+        setupWorksheet(workbook, 'Semua Data', allData);
 
-        // Freeze panes
-        worksheet.views = [{ 
-          state: 'frozen', 
-          xSplit: 6, // Update dari 5 ke 6 untuk mencakup kolom email
-          ySplit: 1, 
-          activeCell: 'A2' 
-        }];
+        // Setup worksheet untuk MOSA
+        setupWorksheet(workbook, 'MOSA - Semua', dataMosa);
+        setupWorksheet(workbook, 'MOSA - Prestasi', dataMosaPrestasi);
+        setupWorksheet(workbook, 'MOSA - Reguler', dataMosaReguler);
+        setupWorksheet(workbook, 'MOSA - Undangan', dataMosaUndangan);
 
-        // Add data dengan format dokumen yang disingkat dan link aktif
-        const rowData = data.map((item, index) => ({
-          no: index + 1,
-          nisn: item.nisn,
-          namaSiswa: item.namaSiswa,
-          email: item.email, // Tambah email
-          jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
-          // Format status keputusan admin
-          adminStatus: item.adminStatus ? 
-                      item.adminStatus === 'diterima' ? 'DITERIMA' : 'DITOLAK' : 
-                      'PENDING',
-          // Tambahkan alasan penolakan
-          alasanPenolakan: item.alasanPenolakan || '-',
-          nik: item.nik,
-          jenisKelamin: item.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
-          tempatLahir: item.tempatLahir,
-          tanggalLahir: new Date(item.tanggalLahir).toLocaleDateString('id-ID'),
-          anakKe: item.anakKe,
-          jumlahSaudara: item.jumlahSaudara,
-          alamat: item.alamat,
-          kecamatan: item.kecamatan,
-          kabupaten: item.kabupaten,
-          asalSekolah: item.asalSekolah,
-          kabupatenAsalSekolah: item.kabupatenAsalSekolah,
-          // Nilai Akademik
-          nilaiAgama2: item.nilaiAgama2,
-          nilaiAgama3: item.nilaiAgama3,
-          nilaiAgama4: item.nilaiAgama4,
-          nilaiBindo2: item.nilaiBindo2,
-          nilaiBindo3: item.nilaiBindo3,
-          nilaiBindo4: item.nilaiBindo4,
-          nilaiBing2: item.nilaiBing2,
-          nilaiBing3: item.nilaiBing3,
-          nilaiBing4: item.nilaiBing4,
-          nilaiMtk2: item.nilaiMtk2,
-          nilaiMtk3: item.nilaiMtk3,
-          nilaiMtk4: item.nilaiMtk4,
-          nilaiIpa2: item.nilaiIpa2,
-          nilaiIpa3: item.nilaiIpa3,
-          nilaiIpa4: item.nilaiIpa4,
-          // Data Orang Tua
-          namaAyah: item.namaAyah,
-          pekerjaanAyah: item.pekerjaanAyah,
-          instansiAyah: item.instansiAyah,
-          hpAyah: item.hpAyah,
-          namaIbu: item.namaIbu,
-          pekerjaanIbu: item.pekerjaanIbu,
-          instansiIbu: item.instansiIbu,
-          hpIbu: item.hpIbu,
-          // Dokumen dengan link aktif
-          photo: {
-            text: item.photo ? 'Lihat Dokumen' : '-',
-            hyperlink: item.photo || '',
-            tooltip: 'Klik untuk melihat dokumen'
-          },
-          rekomendasi: {
-            text: item.rekomendasi ? 'Lihat Dokumen' : '-',
-            hyperlink: item.rekomendasi || '',
-            tooltip: 'Klik untuk melihat dokumen'
-          },
-          raport2: {
-            text: item.raport2 ? 'Lihat Dokumen' : '-',
-            hyperlink: item.raport2 || '',
-            tooltip: 'Klik untuk melihat dokumen'
-          },
-          raport3: {
-            text: item.raport3 ? 'Lihat Dokumen' : '-',
-            hyperlink: item.raport3 || '',
-            tooltip: 'Klik untuk melihat dokumen'
-          },
-          raport4: {
-            text: item.raport4 ? 'Lihat Dokumen' : '-',
-            hyperlink: item.raport4 || '',
-            tooltip: 'Klik untuk melihat dokumen'
-          },
-          // Metadata
-          createdAt: new Date(item.createdAt).toLocaleString('id-ID'),
-          lastUpdated: item.lastUpdated ? new Date(item.lastUpdated).toLocaleString('id-ID') : '-'
-        }));
+        // Setup worksheet untuk FAJAR
+        setupWorksheet(workbook, 'FAJAR - Semua', dataFajar);
+        setupWorksheet(workbook, 'FAJAR - Prestasi', dataFajarPrestasi);
+        setupWorksheet(workbook, 'FAJAR - Reguler', dataFajarReguler);
+        setupWorksheet(workbook, 'FAJAR - Undangan', dataFajarUndangan);
+      } else {
+        // Admin biasa - export hanya data sekolahnya
+        const schoolName = userRole?.school === 'mosa' ? 'MOSA' : 'FAJAR';
+        
+        // Data per jalur
+        const dataPrestasi = allData.filter(item => item.jalur === 'prestasi');
+        const dataReguler = allData.filter(item => item.jalur === 'reguler');
+        const dataUndangan = allData.filter(item => item.jalur === 'undangan');
 
-        worksheet.addRows(rowData);
+        // Setup worksheet
+        setupWorksheet(workbook, 'Semua Data', allData);
+        setupWorksheet(workbook, `${schoolName} - Prestasi`, dataPrestasi);
+        setupWorksheet(workbook, `${schoolName} - Reguler`, dataReguler);
+        setupWorksheet(workbook, `${schoolName} - Undangan`, dataUndangan);
+      }
 
-        // Style untuk seluruh cell
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber > 1) { // Skip header row
-            row.eachCell((cell, colNumber) => {
-              cell.border = {
-                top: { style: 'thin' as const },
-                left: { style: 'thin' as const },
-                bottom: { style: 'thin' as const },
-                right: { style: 'thin' as const }
-              };
-
-              // Default alignment
-              cell.alignment = { vertical: 'middle' as const };
-
-              // Center alignment untuk kolom tertentu
-              const centerColumns = [
-                1,  // No
-                5,  // Jalur
-                6,  // Status Keputusan
-                9,  // Jenis Kelamin
-                12, // Anak Ke
-                13, // Jumlah Saudara
-                // Nilai semester (19-33)
-                ...Array.from({length: 15}, (_, i) => i + 19),
-                // Dokumen (44-48)
-                44, // Foto
-                45, // Rekomendasi
-                46, // Raport 2
-                47, // Raport 3
-                48  // Raport 4
-              ];
-
-              if (centerColumns.includes(colNumber)) {
-                cell.alignment = {
-                  vertical: 'middle' as const,
-                  horizontal: 'center' as const
-                };
-              }
-
-              // Style untuk jalur (kolom 5)
-              if (colNumber === 5) {
-                const jalurValue = cell.value as string;
-                if (jalurValue === 'Prestasi') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DBEAFE' } }; // Light blue
-                  cell.font = { color: { argb: '1E40AF' }, bold: true }; // Dark blue + bold
-                } else if (jalurValue === 'Reguler') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DCFCE7' } }; // Light green
-                  cell.font = { color: { argb: '166534' }, bold: true }; // Dark green + bold
-                } else if (jalurValue === 'Undangan') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'F3E8FF' } }; // Light purple
-                  cell.font = { color: { argb: '6B21A8' }, bold: true }; // Dark purple + bold
-                }
-              }
-
-              // Style untuk status admin (kolom 6)
-              if (colNumber === 6) {
-                const statusValue = cell.value as string;
-                if (statusValue === 'DITERIMA') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'DCFCE7' } }; // Light green
-                  cell.font = { color: { argb: '166534' }, bold: true }; // Dark green
-                } else if (statusValue === 'DITOLAK') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FEE2E2' } }; // Light red
-                  cell.font = { color: { argb: 'B91C1C' }, bold: true }; // Dark red
-                } else if (statusValue === 'PENDING') {
-                  cell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FEF3C7' } }; // Light yellow
-                  cell.font = { color: { argb: 'B45309' }, bold: true }; // Dark yellow
-                }
-              }
-
-              // Style untuk alasan penolakan (kolom 7)
-              if (colNumber === 7) {
-                cell.alignment = { 
-                  vertical: 'middle' as const,
-                  wrapText: true // Enable text wrapping
-                };
-              }
-
-              // Style untuk dokumen
-              if (colNumber >= 44 && colNumber <= 48) {
-                const cellValue = cell.value as any;
-                if (cellValue && typeof cellValue === 'object' && 'hyperlink' in cellValue) {
-                  cell.font = { 
-                    color: { argb: '0000FF' }, 
-                    underline: true 
-                  };
-                }
-              }
-            });
-          }
-        });
-
-        // Add summary at the bottom
-        const lastRow = worksheet.lastRow!.number + 2;
-        worksheet.addRow(['Total Data:', data.length]);
-        worksheet.getRow(lastRow).font = { bold: true };
-      };
-
-      // Setup worksheet untuk semua jalur
-      setupWorksheet('Semua Jalur', allData);
-      setupWorksheet('Jalur Prestasi', dataPrestasi);
-      setupWorksheet('Jalur Reguler', dataReguler);
-      setupWorksheet('Jalur Undangan', dataUndangan);
-
-      // Generate Excel file
+      // Generate Excel file dengan nama yang sesuai
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { 
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });
-      saveAs(blob, `Data_Pendaftar_PPDB_${new Date().toLocaleDateString('id-ID')}.xlsx`);
 
+      // Nama file yang berbeda untuk master dan admin biasa
+      const fileName = userRole?.isMaster 
+        ? `Data_Pendaftar_PPDB_Semua_Sekolah_${new Date().toLocaleDateString('id-ID')}.xlsx`
+        : `Data_Pendaftar_PPDB_${userRole?.school === 'mosa' ? 'MOSA' : 'FAJAR'}_${new Date().toLocaleDateString('id-ID')}.xlsx`;
+
+      saveAs(blob, fileName);
       showAlert('success', 'Data berhasil diexport ke Excel');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
       showAlert('error', 'Gagal mengexport data ke Excel');
     }
+  };
+
+  // Update setupWorksheet untuk menambahkan kolom admin info di Excel
+  const setupWorksheet = (workbook: ExcelJS.Workbook, name: string, data: PPDBData[]) => {
+    const worksheet = workbook.addWorksheet(name);
+
+    // Styling untuk header
+    const headerStyle = {
+      font: { bold: true, color: { argb: 'FFFFFF' } },
+      fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '4B5563' } },
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
+      border: {
+        top: { style: 'thin' as const },
+        left: { style: 'thin' as const },
+        bottom: { style: 'thin' as const },
+        right: { style: 'thin' as const }
+      }
+    };
+
+    // Definisi kolom - sesuaikan berdasarkan role
+    const columns = [
+      { header: 'No', key: 'no', width: 5 },
+      { header: 'NISN', key: 'nisn', width: 15 },
+      { header: 'Nama Lengkap', key: 'namaSiswa', width: 40 },
+      { header: 'Email', key: 'email', width: 35 },
+      // Kolom sekolah hanya ditampilkan untuk master admin
+      ...(userRole?.isMaster ? [{ header: 'Sekolah', key: 'school', width: 25 }] : []),
+      { header: 'Jalur', key: 'jalur', width: 15 },
+      { header: 'Status Keputusan', key: 'adminStatus', width: 18 },
+      { header: 'Alasan Penolakan', key: 'alasanPenolakan', width: 50 },
+      { header: 'NIK', key: 'nik', width: 20 },
+      { header: 'Jenis Kelamin', key: 'jenisKelamin', width: 15 },
+      { header: 'Tempat Lahir', key: 'tempatLahir', width: 30 },
+      { header: 'Tanggal Lahir', key: 'tanggalLahir', width: 15 },
+      { header: 'Anak Ke', key: 'anakKe', width: 10 },
+      { header: 'Jumlah Saudara', key: 'jumlahSaudara', width: 18 },
+      { header: 'Alamat', key: 'alamat', width: 50 },
+      { header: 'Kecamatan', key: 'kecamatan', width: 25 },
+      { header: 'Kabupaten', key: 'kabupaten', width: 25 },
+      { header: 'Asal Sekolah', key: 'asalSekolah', width: 40 },
+      { header: 'Kabupaten Sekolah', key: 'kabupatenAsalSekolah', width: 25 },
+      // Nilai Akademik - Seragamkan lebar kolom nilai
+      { header: 'Agama Sem 2', key: 'nilaiAgama2', width: 14 },
+      { header: 'Agama Sem 3', key: 'nilaiAgama3', width: 14 },
+      { header: 'Agama Sem 4', key: 'nilaiAgama4', width: 14 },
+      { header: 'B.Indo Sem 2', key: 'nilaiBindo2', width: 14 },
+      { header: 'B.Indo Sem 3', key: 'nilaiBindo3', width: 14 },
+      { header: 'B.Indo Sem 4', key: 'nilaiBindo4', width: 14 },
+      { header: 'B.Ing Sem 2', key: 'nilaiBing2', width: 14 },
+      { header: 'B.Ing Sem 3', key: 'nilaiBing3', width: 14 },
+      { header: 'B.Ing Sem 4', key: 'nilaiBing4', width: 14 },
+      { header: 'MTK Sem 2', key: 'nilaiMtk2', width: 14 },
+      { header: 'MTK Sem 3', key: 'nilaiMtk3', width: 14 },
+      { header: 'MTK Sem 4', key: 'nilaiMtk4', width: 14 },
+      { header: 'IPA Sem 2', key: 'nilaiIpa2', width: 14 },
+      { header: 'IPA Sem 3', key: 'nilaiIpa3', width: 14 },
+      { header: 'IPA Sem 4', key: 'nilaiIpa4', width: 14 },
+      // Data Orang Tua
+      { header: 'Nama Ayah', key: 'namaAyah', width: 40 },
+      { header: 'Pekerjaan Ayah', key: 'pekerjaanAyah', width: 30 },
+      { header: 'Instansi Ayah', key: 'instansiAyah', width: 40 },
+      { header: 'No HP Ayah', key: 'hpAyah', width: 18 },
+      { header: 'Nama Ibu', key: 'namaIbu', width: 40 },
+      { header: 'Pekerjaan Ibu', key: 'pekerjaanIbu', width: 30 },
+      { header: 'Instansi Ibu', key: 'instansiIbu', width: 40 },
+      { header: 'No HP Ibu', key: 'hpIbu', width: 18 },
+      // Dokumen
+      { header: 'Foto', key: 'photo', width: 15 },
+      { header: 'Rekomendasi', key: 'rekomendasi', width: 15 },
+      { header: 'Raport 2', key: 'raport2', width: 15 },
+      { header: 'Raport 3', key: 'raport3', width: 15 },
+      { header: 'Raport 4', key: 'raport4', width: 15 },
+      // Metadata
+      { header: 'Tanggal Daftar', key: 'createdAt', width: 20 },
+      { header: 'Terakhir Diupdate', key: 'lastUpdated', width: 20 },
+      // Tambah kolom untuk info admin
+      { header: 'Diupdate Oleh', key: 'updatedByEmail', width: 30 },
+      { header: 'Admin Sekolah', key: 'updatedBySchool', width: 25 },
+      { header: 'Waktu Update', key: 'updatedByTime', width: 20 },
+    ];
+
+    worksheet.columns = columns;
+
+    // Apply header styling
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+
+    // Sesuaikan freeze panes berdasarkan role
+    worksheet.views = [{ 
+      state: 'frozen', 
+      xSplit: userRole?.isMaster ? 7 : 6, // Kurangi 1 jika bukan master admin
+      ySplit: 1, 
+      activeCell: 'A2' 
+    }];
+
+    // Add data dengan format yang sesuai role
+    const rowData = data.map((item, index) => ({
+      no: index + 1,
+      nisn: item.nisn,
+      namaSiswa: item.namaSiswa,
+      email: item.email,
+      // Hanya tambahkan kolom sekolah jika master admin
+      ...(userRole?.isMaster ? {
+        school: item.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'
+      } : {}),
+      jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
+      // Format status keputusan admin
+      adminStatus: item.adminStatus ? 
+                    `${item.adminStatus === 'diterima' ? 'DITERIMA' : 'DITOLAK'} (${item.updatedBy?.email.split('@')[0] || 'unknown'})` : 
+                    'PENDING',
+      // Tambahkan alasan penolakan
+      alasanPenolakan: item.alasanPenolakan || '-',
+      nik: item.nik,
+      jenisKelamin: item.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+      tempatLahir: item.tempatLahir,
+      tanggalLahir: new Date(item.tanggalLahir).toLocaleDateString('id-ID'),
+      anakKe: item.anakKe,
+      jumlahSaudara: item.jumlahSaudara,
+      alamat: item.alamat,
+      kecamatan: item.kecamatan,
+      kabupaten: item.kabupaten,
+      asalSekolah: item.asalSekolah,
+      kabupatenAsalSekolah: item.kabupatenAsalSekolah,
+      // Nilai Akademik
+      nilaiAgama2: item.nilaiAgama2,
+      nilaiAgama3: item.nilaiAgama3,
+      nilaiAgama4: item.nilaiAgama4,
+      nilaiBindo2: item.nilaiBindo2,
+      nilaiBindo3: item.nilaiBindo3,
+      nilaiBindo4: item.nilaiBindo4,
+      nilaiBing2: item.nilaiBing2,
+      nilaiBing3: item.nilaiBing3,
+      nilaiBing4: item.nilaiBing4,
+      nilaiMtk2: item.nilaiMtk2,
+      nilaiMtk3: item.nilaiMtk3,
+      nilaiMtk4: item.nilaiMtk4,
+      nilaiIpa2: item.nilaiIpa2,
+      nilaiIpa3: item.nilaiIpa3,
+      nilaiIpa4: item.nilaiIpa4,
+      // Data Orang Tua
+      namaAyah: item.namaAyah,
+      pekerjaanAyah: item.pekerjaanAyah,
+      instansiAyah: item.instansiAyah,
+      hpAyah: item.hpAyah,
+      namaIbu: item.namaIbu,
+      pekerjaanIbu: item.pekerjaanIbu,
+      instansiIbu: item.instansiIbu,
+      hpIbu: item.hpIbu,
+      // Dokumen dengan link aktif
+      photo: {
+        text: item.photo ? 'Lihat Dokumen' : '-',
+        hyperlink: item.photo || '',
+        tooltip: 'Klik untuk melihat dokumen'
+      },
+      rekomendasi: {
+        text: item.rekomendasi ? 'Lihat Dokumen' : '-',
+        hyperlink: item.rekomendasi || '',
+        tooltip: 'Klik untuk melihat dokumen'
+      },
+      raport2: {
+        text: item.raport2 ? 'Lihat Dokumen' : '-',
+        hyperlink: item.raport2 || '',
+        tooltip: 'Klik untuk melihat dokumen'
+      },
+      raport3: {
+        text: item.raport3 ? 'Lihat Dokumen' : '-',
+        hyperlink: item.raport3 || '',
+        tooltip: 'Klik untuk melihat dokumen'
+      },
+      raport4: {
+        text: item.raport4 ? 'Lihat Dokumen' : '-',
+        hyperlink: item.raport4 || '',
+        tooltip: 'Klik untuk melihat dokumen'
+      },
+      // Metadata
+      createdAt: new Date(item.createdAt).toLocaleString('id-ID'),
+      lastUpdated: item.lastUpdated ? new Date(item.lastUpdated).toLocaleString('id-ID') : '-',
+      // Tambah info admin
+      updatedByEmail: item.updatedBy?.name || item.updatedBy?.email.split('@')[0] || '-',
+      updatedBySchool: item.updatedBy?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan',
+      updatedByTime: item.updatedBy?.timestamp ? 
+        new Date(item.updatedBy.timestamp).toLocaleString('id-ID') : '-',
+    }));
+
+    worksheet.addRows(rowData);
+
+    // Style untuk seluruh cell
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) { // Skip header row
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' as const },
+            left: { style: 'thin' as const },
+            bottom: { style: 'thin' as const },
+            right: { style: 'thin' as const }
+          };
+
+          // Default alignment
+          cell.alignment = { vertical: 'middle' as const };
+
+          // Style untuk jalur (kolom 6)
+          if (colNumber === 6) {
+            const jalurValue = cell.value as string;
+            if (jalurValue === 'Prestasi') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'DBEAFE' } // Light blue
+              };
+              cell.font = { 
+                color: { argb: '1E40AF' }, // Dark blue
+                bold: true 
+              };
+            } else if (jalurValue === 'Reguler') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'DCFCE7' } // Light green
+              };
+              cell.font = { 
+                color: { argb: '166534' }, // Dark green
+                bold: true 
+              };
+            } else if (jalurValue === 'Undangan') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'F3E8FF' } // Light purple
+              };
+              cell.font = { 
+                color: { argb: '6B21A8' }, // Dark purple
+                bold: true 
+              };
+            }
+          }
+
+          // Style untuk status keputusan (kolom 7)
+          if (colNumber === 7) {
+            const statusValue = cell.value as string;
+            if (statusValue === 'DITERIMA') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'DCFCE7' } // Light green
+              };
+              cell.font = { 
+                color: { argb: '166534' }, // Dark green
+                bold: true 
+              };
+            } else if (statusValue === 'DITOLAK') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'FEE2E2' } // Light red
+              };
+              cell.font = { 
+                color: { argb: 'B91C1C' }, // Dark red
+                bold: true 
+              };
+            } else if (statusValue === 'PENDING') {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'FEF3C7' } // Light yellow
+              };
+              cell.font = { 
+                color: { argb: 'B45309' }, // Dark yellow
+                bold: true 
+              };
+            }
+          }
+
+          // Style untuk sekolah (kolom 5)
+          if (colNumber === 5) {
+            const schoolValue = cell.value as string;
+            if (schoolValue.includes('Modal Bangsa')) {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'DBEAFE' } // Light blue
+              };
+              cell.font = { 
+                color: { argb: '1E40AF' }, // Dark blue
+                bold: true 
+              };
+            } else {
+              cell.fill = { 
+                type: 'pattern' as const, 
+                pattern: 'solid' as const, 
+                fgColor: { argb: 'DCFCE7' } // Light green
+              };
+              cell.font = { 
+                color: { argb: '166534' }, // Dark green
+                bold: true 
+              };
+            }
+          }
+
+          // Center alignment untuk kolom tertentu
+          const centerColumns = [
+            1,  // No
+            5,  // Sekolah
+            6,  // Jalur
+            7,  // Status Keputusan
+            9,  // Jenis Kelamin
+            12, // Anak Ke
+            13, // Jumlah Saudara
+            // Nilai semester (19-33)
+            ...Array.from({length: 15}, (_, i) => i + 19),
+            // Dokumen (44-48)
+            44, // Foto
+            45, // Rekomendasi
+            46, // Raport 2
+            47, // Raport 3
+            48  // Raport 4
+          ];
+
+          if (centerColumns.includes(colNumber)) {
+            cell.alignment = {
+              vertical: 'middle' as const,
+              horizontal: 'center' as const
+            };
+          }
+
+          // Style untuk alasan penolakan
+          if (colNumber === 8) {
+            cell.alignment = { 
+              vertical: 'middle' as const,
+              wrapText: true // Enable text wrapping
+            };
+          }
+
+          // Style untuk dokumen
+          if (colNumber >= 44 && colNumber <= 48) {
+            const cellValue = cell.value as any;
+            if (cellValue && typeof cellValue === 'object' && 'hyperlink' in cellValue) {
+              cell.font = { 
+                color: { argb: '0000FF' }, 
+                underline: true 
+              };
+            }
+          }
+        });
+      }
+    });
+
+    // Add summary at the bottom
+    const lastRow = worksheet.lastRow!.number + 2;
+    worksheet.addRow(['Total Data:', data.length]);
+    worksheet.getRow(lastRow).font = { bold: true };
   };
 
   const renderDetailAkademik = (data: PPDBData) => {
@@ -951,6 +1131,108 @@ const DataPendaftar: React.FC = () => {
     }
   };
 
+  const renderMobileRow = (item: PPDBData) => (
+    <div key={item.uid} className="border-b last:border-b-0">
+      <div 
+        onClick={() => setExpandedRow(expandedRow === item.uid ? null : item.uid)}
+        className={classNames(
+          "flex items-center justify-between p-3 cursor-pointer",
+          expandedRow === item.uid ? "bg-gray-50" : "hover:bg-gray-50"
+        )}
+      >
+        <div>
+          <p className="font-medium text-gray-900 text-sm mb-1">{item.namaSiswa}</p>
+          <p className="text-xs text-gray-500">{item.nisn}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge 
+            status={item.status}
+            adminStatus={item.adminStatus}
+            className="text-xs"
+          />
+          <ChevronDownIcon 
+            className={classNames(
+              "w-4 h-4 text-gray-400 transition-transform",
+              expandedRow === item.uid ? "transform rotate-180" : ""
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Dropdown Content */}
+      {expandedRow === item.uid && (
+        <div className="px-3 pb-3 space-y-3 bg-gray-50">
+          {/* Info List */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-500">Jalur</p>
+              <JalurBadge jalur={item.jalur} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Asal Sekolah</p>
+              <p className="text-sm text-gray-900">{item.asalSekolah}</p>
+            </div>
+            {/* Info pemeriksa */}
+            <div>
+              <p className="text-xs text-gray-500">Pemeriksa</p>
+              <p className="text-sm text-gray-900">
+                {item.updatedBy ? (
+                  <span className="font-medium">
+                    {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
+              </p>
+            </div>
+            {/* Tanggal update jika ada */}
+            {item.updatedBy && (
+              <div>
+                <p className="text-xs text-gray-500">Tanggal Kirim</p>
+                <p className="text-sm text-gray-900">
+                  {formatDateTime(item.updatedBy.timestamp)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Tombol Aksi */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button
+              onClick={() => {
+                setSelectedData(item);
+                setShowDetailModal(true);
+              }}
+              className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-xs transition-colors"
+            >
+              <EyeIcon className="w-4 h-4" />
+              <span>Detail</span>
+            </Button>
+            
+            <Button
+              onClick={() => handleOpenStatusModal(item)}
+              className="flex items-center justify-center gap-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-xs transition-colors"
+            >
+              <CheckCircleIcon className="w-4 h-4" />
+              <span>Status</span>
+            </Button>
+            
+            <Button
+              onClick={() => {
+                setSelectedData(item);
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs transition-colors"
+            >
+              <TrashIcon className="w-4 h-4" />
+              <span>Hapus</span>
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (pendaftar.length === 0) {
     return (
       <div className="p-4 md:p-6">
@@ -1108,82 +1390,61 @@ const DataPendaftar: React.FC = () => {
           <>
             {/* Mobile View */}
             <div className="md:hidden space-y-3">
-              {getFilteredData().map((item) => (
-                <div key={item.uid} className="bg-white rounded-lg shadow p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{item.namaSiswa}</h3>
-                      {userRole?.isMaster && (
-                        <div className="mt-1">
-                          <SchoolBadge school={item.school} />
-                        </div>
-                      )}
-                    </div>
-                    <StatusBadge 
-                      status={item.status}
-                      adminStatus={item.adminStatus}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Jalur</span>
-                      <JalurBadge jalur={item.jalur} />
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Asal Sekolah</span>
-                      <span className="text-gray-900">{item.asalSekolah}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex justify-end gap-2">
-                    {/* Action buttons... */}
-                  </div>
-                </div>
-              ))}
+              {getFilteredData().map(renderMobileRow)}
             </div>
 
             {/* Desktop View */}
             <div className="hidden md:block">
               <Table 
-                headers={headers.map(header => 
-                  header ? {
-                    content: (
-                      <button
-                        onClick={() => header && handleSort(header)}
-                        className="flex items-center gap-1 hover:text-blue-600"
-                      >
-                        {header}
-                        {sortConfig?.key === header && (
-                          <ChevronUpIcon 
-                            className={`w-4 h-4 transition-transform ${
-                              sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                            }`}
-                          />
-                        )}
-                      </button>
-                    )
-                  } : header
-                )}
+                headers={headers}
                 data={getPaginatedData().map((item, index) => [
-                  <span className="text-gray-600">
+                  // No
+                  <div className="text-left text-gray-600">
                     {((currentPage - 1) * itemsPerPage) + index + 1}
-                  </span>,
-                  <div className="truncate max-w-[150px]" title={item.namaSiswa}>
+                  </div>,
+                  // Nama
+                  <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
                     {item.namaSiswa}
                   </div>,
-                  ...(userRole?.isMaster ? [<SchoolBadge key={item.uid} school={item.school} />] : []),
-                  <JalurBadge key={item.uid} jalur={item.jalur} />,
-                  <div className="truncate max-w-[150px]" title={item.asalSekolah}>
+                  // Sekolah (jika master admin)
+                  ...(userRole?.isMaster ? [
+                    <div className="text-left">
+                      <SchoolBadge key={item.uid} school={item.school} />
+                    </div>
+                  ] : []),
+                  // Jalur
+                  <div className="text-left">
+                    <JalurBadge key={item.uid} jalur={item.jalur} />
+                  </div>,
+                  // Asal Sekolah
+                  <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
                     {item.asalSekolah}
                   </div>,
-                  <StatusBadge 
-                    status={item.status}
-                    adminStatus={item.adminStatus}
-                  />,
-                  <span>{formatDateTime(item.submittedAt || item.createdAt)}</span>,
-                  <div key={item.uid} className="flex items-center gap-1.5">
-                    {/* Tombol Lihat Detail */}
+                  // Status
+                  <div className="text-left">
+                    <StatusBadge 
+                      status={item.status}
+                      adminStatus={item.adminStatus}
+                      className="text-xs"
+                    />
+                  </div>,
+                  // Admin
+                  <div className="text-left">
+                    {item.updatedBy ? (
+                      <span className="text-sm font-medium text-gray-900">
+                        {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </div>,
+                  // Tanggal Submit
+                  <div className="text-left">
+                    {formatDateTime(item.submittedAt || item.createdAt)}
+                  </div>,
+                  // Aksi
+                  <div className="text-left flex items-center gap-1.5">
+                    {/* Tombol-tombol aksi tetap sama */}
                     <Button
                       onClick={() => {
                         setSelectedData(item);
@@ -1196,7 +1457,6 @@ const DataPendaftar: React.FC = () => {
                       <span className="hidden lg:inline">Detail</span>
                     </Button>
 
-                    {/* Tombol Ubah Status */}
                     <Button
                       onClick={() => handleOpenStatusModal(item)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg text-sm transition-colors"
@@ -1206,7 +1466,6 @@ const DataPendaftar: React.FC = () => {
                       <span className="hidden lg:inline">Status</span>
                     </Button>
 
-                    {/* Tombol Hapus */}
                     <Button
                       onClick={() => {
                         setSelectedData(item);
@@ -1218,19 +1477,6 @@ const DataPendaftar: React.FC = () => {
                       <TrashIcon className="w-4 h-4" />
                       <span className="hidden lg:inline">Hapus</span>
                     </Button>
-
-                    {/* Tombol Reset */}
-                    {/* <Button
-                      onClick={() => {
-                        setSelectedData(item);
-                        setShowResetModal(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg text-sm transition-colors"
-                      title="Reset Data"
-                    >
-                      <ArrowPathIcon className="w-4 h-4" />
-                      <span className="hidden lg:inline">Reset</span>
-                    </Button> */}
                   </div>
                 ])}
               />

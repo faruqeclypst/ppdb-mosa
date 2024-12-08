@@ -752,6 +752,9 @@ const PPDBFormPage: React.FC = () => {
   }, [navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    // Prevent changes if form is submitted
+    if (formStatus === 'submitted') return;
+
     const { name, value } = e.target;
     
     if (name === 'jalur') {
@@ -821,6 +824,9 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
+    // Prevent changes if form is submitted
+    if (formStatus === 'submitted') return;
+
     if (!file) {
       setFormData(prev => ({ ...prev, [name]: null }));
       return;
@@ -1228,6 +1234,9 @@ const PPDBFormPage: React.FC = () => {
     setShowChangeJalurModal(false);
   };
 
+  // Add this CSS class to all inputs when form is submitted
+  const disabledInputClass = formStatus === 'submitted' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '';
+
   const renderInformasiSiswa = () => {
     const getAvailableJalur = () => {
       const options = [
@@ -1256,7 +1265,6 @@ const PPDBFormPage: React.FC = () => {
           <SectionTitle>Data Pribadi</SectionTitle>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Tampilkan Select Jalur hanya jika ada jalur yang aktif */}
               {getAvailableJalur().length > 1 && (
                 <Select
                   label="Pilih Jalur"
@@ -1265,7 +1273,8 @@ const PPDBFormPage: React.FC = () => {
                   onChange={handleInputChange}
                   options={getAvailableJalur()}
                   required
-                  className="bg-white"
+                  className={`bg-white ${disabledInputClass}`}
+                  disabled={formStatus === 'submitted'}
                 />
               )}
 
@@ -1275,6 +1284,8 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.namaSiswa}
                 onChange={handleInputChange}
                 required
+                disabled={formStatus === 'submitted'}
+                className={disabledInputClass}
               />
 
               <Input
@@ -1282,17 +1293,20 @@ const PPDBFormPage: React.FC = () => {
                 name="nik"
                 value={formData.nik}
                 onChange={(e) => {
+                  if (formStatus === 'submitted') return;
                   // Hanya terima input angka dan -
                   const value = e.target.value.replace(/[^0-9-]/g, '');
                   setFormData(prev => ({ ...prev, nik: value }));
                 }}
                 onKeyPress={(e) => {
-                  if (!/[0-9-]/.test(e.key)) {
+                  if (formStatus === 'submitted' || !/[0-9-]/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
                 maxLength={16}
                 required
+                className={disabledInputClass}
+                disabled={formStatus === 'submitted'}
               />
             </div>
 
@@ -1303,15 +1317,18 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.tempatLahir}
                 onChange={handleInputChange}
                 required
+                className={disabledInputClass}
               />
 
               <DatePicker
                 label="Tanggal Lahir"
                 value={formData.tanggalLahir}
                 onChange={(date) => {
+                  if (formStatus === 'submitted') return; // Prevent changes if submitted
                   setFormData(prev => ({ ...prev, tanggalLahir: date }));
                 }}
                 required
+                className={disabledInputClass}
               />
 
               <Input
@@ -1319,17 +1336,20 @@ const PPDBFormPage: React.FC = () => {
                 name="nisn"
                 value={formData.nisn}
                 onChange={(e) => {
+                  if (formStatus === 'submitted') return;
                   // Hanya terima input angka dan -
                   const value = e.target.value.replace(/[^0-9-]/g, '');
                   setFormData(prev => ({ ...prev, nisn: value }));
                 }}
                 onKeyPress={(e) => {
-                  if (!/[0-9-]/.test(e.key)) {
+                  if (formStatus === 'submitted' || !/[0-9-]/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
                 maxLength={10}
                 required
+                className={disabledInputClass}
+                disabled={formStatus === 'submitted'}
               />
             </div>
 
@@ -1345,6 +1365,8 @@ const PPDBFormPage: React.FC = () => {
                   { value: 'P', label: 'Perempuan' }
                 ]}
                 required
+                className={`bg-white ${disabledInputClass}`}
+                disabled={formStatus === 'submitted'}
               />
 
               <Input
@@ -1352,20 +1374,23 @@ const PPDBFormPage: React.FC = () => {
                 name="anakKe"
                 value={formData.anakKe}
                 onChange={(e) => {
-                  // Hanya terima input angka
+                  if (formStatus === 'submitted') return; // Prevent changes if submitted
                   const value = e.target.value.replace(/\D/g, '');
                   if (Number(value) > 0 || value === '') {
                     setFormData(prev => ({ ...prev, anakKe: value }));
                   }
                 }}
                 onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
+                  if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
                 min="1"
                 maxLength={2}
                 required
+                className={disabledInputClass}
+                disabled={formStatus === 'submitted'}
+                type="number" // Explicitly set type
               />
 
               <Input
@@ -1373,20 +1398,23 @@ const PPDBFormPage: React.FC = () => {
                 name="jumlahSaudara"
                 value={formData.jumlahSaudara}
                 onChange={(e) => {
-                  // Hanya terima input angka
+                  if (formStatus === 'submitted') return; // Prevent changes if submitted
                   const value = e.target.value.replace(/\D/g, '');
                   if (Number(value) >= 0 || value === '') {
                     setFormData(prev => ({ ...prev, jumlahSaudara: value }));
                   }
                 }}
                 onKeyPress={(e) => {
-                  if (!/[0-9]/.test(e.key)) {
+                  if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
                     e.preventDefault();
                   }
                 }}
                 min="0"
                 maxLength={2}
                 required
+                className={disabledInputClass}
+                disabled={formStatus === 'submitted'}
+                type="number" // Explicitly set type
               />
             </div>
           </div>
@@ -1401,6 +1429,7 @@ const PPDBFormPage: React.FC = () => {
               value={formData.alamat}
               onChange={handleInputChange}
               required
+              className={disabledInputClass}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1410,6 +1439,7 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.kecamatan}
                 onChange={handleInputChange}
                 required
+                className={disabledInputClass}
               />
 
               <Input
@@ -1418,6 +1448,7 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.kabupaten}
                 onChange={handleInputChange}
                 required
+                className={disabledInputClass}
               />
             </div>
           </div>
@@ -1433,6 +1464,7 @@ const PPDBFormPage: React.FC = () => {
                 value={formData.asalSekolah}
                 onChange={handleInputChange}
                 required
+                className={disabledInputClass}
               />
             </div>
 
@@ -1442,6 +1474,7 @@ const PPDBFormPage: React.FC = () => {
               value={formData.kabupatenAsalSekolah}
               onChange={handleInputChange}
               required
+              className={disabledInputClass}
             />
           </div>
         </div>
@@ -1460,6 +1493,7 @@ const PPDBFormPage: React.FC = () => {
       { label: 'IPA', mobileLabel: 'IPA', key: 'nilaiIpa' }
     ];
 
+    // Add disabled prop to all inputs
     return (
       <div className="space-y-10">
         <div>
@@ -1479,16 +1513,16 @@ const PPDBFormPage: React.FC = () => {
                       max="100"
                       value={String(formData[`${key}${semester}` as keyof typeof formData] || '')}
                       onChange={(e) => {
-                        const value = Number(e.target.value);
-                        if (!isNaN(value) && value >= 0 && value <= 100) {
-                          handleInputChange(e);
-                        }
+                        if (formStatus === 'submitted') return; // Prevent changes if submitted
+                        handleInputChange(e);
                       }}
                       onKeyPress={(e) => {
-                        if (!/[0-9]/.test(e.key)) {
+                        if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
                           e.preventDefault();
                         }
                       }}
+                      disabled={formStatus === 'submitted'}
+                      className={disabledInputClass}
                       required
                     />
                   ))}
@@ -1512,6 +1546,8 @@ const PPDBFormPage: React.FC = () => {
             value={formData.namaAyah}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="Pekerjaan Ayah"
@@ -1519,6 +1555,8 @@ const PPDBFormPage: React.FC = () => {
             value={formData.pekerjaanAyah}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="Instansi / Unit Kerja"
@@ -1526,12 +1564,15 @@ const PPDBFormPage: React.FC = () => {
             value={formData.instansiAyah}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="No. HP/WA (10-14 digit)"
             name="hpAyah"
             value={formData.hpAyah}
             onChange={(e) => {
+              if (formStatus === 'submitted') return;
               // Hanya terima input angka
               const value = e.target.value.replace(/\D/g, '');
               // Pastikan dimulai dengan 08
@@ -1547,12 +1588,14 @@ const PPDBFormPage: React.FC = () => {
             minLength={10}
             maxLength={14}
             onKeyPress={(e) => {
-              // Mencegah input karakter non-angka
-              if (!/[0-9]/.test(e.key)) {
+              if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
                 e.preventDefault();
               }
             }}
             required
+            className={disabledInputClass}
+            disabled={formStatus === 'submitted'}
+            type="tel"
           />
         </div>
       </div>
@@ -1566,6 +1609,8 @@ const PPDBFormPage: React.FC = () => {
             value={formData.namaIbu}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="Pekerjaan Ibu"
@@ -1573,6 +1618,8 @@ const PPDBFormPage: React.FC = () => {
             value={formData.pekerjaanIbu}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="Instansi / Unit Kerja"
@@ -1580,12 +1627,15 @@ const PPDBFormPage: React.FC = () => {
             value={formData.instansiIbu}
             onChange={handleInputChange}
             required
+            disabled={formStatus === 'submitted'}
+            className={disabledInputClass}
           />
           <Input
             label="No. HP/WA (10-14 digit)"
             name="hpIbu"
             value={formData.hpIbu}
             onChange={(e) => {
+              if (formStatus === 'submitted') return;
               // Hanya terima input angka
               const value = e.target.value.replace(/\D/g, '');
               // Pastikan dimulai dengan 08
@@ -1601,12 +1651,14 @@ const PPDBFormPage: React.FC = () => {
             minLength={10}
             maxLength={14}
             onKeyPress={(e) => {
-              // Mencegah input karakter non-angka
-              if (!/[0-9]/.test(e.key)) {
+              if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
                 e.preventDefault();
               }
             }}
             required
+            className={disabledInputClass}
+            disabled={formStatus === 'submitted'}
+            type="tel"
           />
         </div>
       </div>
@@ -1700,6 +1752,7 @@ const PPDBFormPage: React.FC = () => {
               required={true}
               value={formData.rekomendasi}
               id="rekomendasi"
+              className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
             />
 
             {semesters.map((semester) => (
@@ -1713,6 +1766,7 @@ const PPDBFormPage: React.FC = () => {
                 required={true}
                 value={formData[`raport${semester}` as keyof typeof formData]}
                 id={`raport${semester}`}
+                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
               />
             ))}
           </div>
@@ -2040,7 +2094,7 @@ const PPDBFormPage: React.FC = () => {
                     />
                     <label 
                       htmlFor="photoUpload" 
-                      className="cursor-pointer block"
+                      className={`cursor-pointer block ${formStatus === 'submitted' ? 'pointer-events-none opacity-75' : ''}`}
                     >
                       <div className="w-20 h-28 md:w-32 md:h-40 rounded-lg overflow-hidden relative">
                         {formData.photo ? (

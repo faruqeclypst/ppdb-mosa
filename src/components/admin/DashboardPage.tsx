@@ -20,6 +20,7 @@ import Pagination from '../ui/Pagination';
 
 type PPDBData = {
   uid: string;
+  school: 'mosa' | 'fajar';
   jalur: 'prestasi' | 'reguler' | 'undangan';
   namaSiswa: string;
   nisn: string;
@@ -230,45 +231,57 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const ppdbRef = ref(db, 'ppdb');
-        const snapshot = await get(ppdbRef);
+        // Load data from both databases
+        const mosaRef = ref(db, 'ppdb_mosa');
+        const fajarRef = ref(db, 'ppdb_fajar');
         
-        if (snapshot.exists()) {
-          const data = Object.values(snapshot.val()) as PPDBData[];
-          
-          // Filter hanya pendaftar yang sudah submit
-          const submittedData = data.filter(item => item.submittedAt);
-          
-          // Get recent pendaftar - sort berdasarkan submittedAt
-          const recentPendaftar = submittedData
-            .sort((a, b) => new Date(b.submittedAt || '').getTime() - new Date(a.submittedAt || '').getTime())
-            .slice(0, 6)
-            .map(item => ({
-              namaSiswa: item.namaSiswa,
-              jalur: item.jalur,
-              submittedAt: item.submittedAt || new Date().toISOString()
-            }));
-
-          setStats({
-            totalPendaftar: submittedData.length,
-            // Hitung pendaftar baru/pending: yang sudah submit tapi belum ada adminStatus
-            pendaftarBaru: submittedData.filter(item => 
-              item.status === 'submitted' && !item.adminStatus
-            ).length,
-            // Hitung yang diterima berdasarkan adminStatus
-            pendaftarDiterima: submittedData.filter(item => 
-              item.adminStatus === 'diterima'
-            ).length,
-            // Hitung yang ditolak berdasarkan adminStatus  
-            pendaftarDitolak: submittedData.filter(item => 
-              item.adminStatus === 'ditolak'
-            ).length,
-            jalurPrestasi: submittedData.filter(item => item.jalur === 'prestasi').length,
-            jalurReguler: submittedData.filter(item => item.jalur === 'reguler').length,
-            jalurUndangan: submittedData.filter(item => item.jalur === 'undangan').length,
-            recentPendaftar
-          });
+        const [mosaSnapshot, fajarSnapshot] = await Promise.all([
+          get(mosaRef),
+          get(fajarRef)
+        ]);
+        
+        // Combine data from both databases
+        let allData: PPDBData[] = [];
+        
+        if (mosaSnapshot.exists()) {
+          const mosaData = Object.values(mosaSnapshot.val()) as PPDBData[];
+          allData = [...allData, ...mosaData];
         }
+        
+        if (fajarSnapshot.exists()) {
+          const fajarData = Object.values(fajarSnapshot.val()) as PPDBData[];
+          allData = [...allData, ...fajarData];
+        }
+
+        // Filter hanya pendaftar yang sudah submit
+        const submittedData = allData.filter(item => item.submittedAt);
+        
+        // Get recent pendaftar - sort berdasarkan submittedAt
+        const recentPendaftar = submittedData
+          .sort((a, b) => new Date(b.submittedAt || '').getTime() - new Date(a.submittedAt || '').getTime())
+          .slice(0, 6)
+          .map(item => ({
+            namaSiswa: item.namaSiswa,
+            jalur: item.jalur,
+            submittedAt: item.submittedAt || new Date().toISOString()
+          }));
+
+        setStats({
+          totalPendaftar: submittedData.length,
+          pendaftarBaru: submittedData.filter(item => 
+            item.status === 'submitted' && !item.adminStatus
+          ).length,
+          pendaftarDiterima: submittedData.filter(item => 
+            item.adminStatus === 'diterima'
+          ).length,
+          pendaftarDitolak: submittedData.filter(item => 
+            item.adminStatus === 'ditolak'
+          ).length,
+          jalurPrestasi: submittedData.filter(item => item.jalur === 'prestasi').length,
+          jalurReguler: submittedData.filter(item => item.jalur === 'reguler').length,
+          jalurUndangan: submittedData.filter(item => item.jalur === 'undangan').length,
+          recentPendaftar
+        });
       } catch (error) {
         console.error('Error loading stats:', error);
       } finally {
@@ -282,19 +295,38 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const ppdbRef = ref(db, 'ppdb');
-        const snapshot = await get(ppdbRef);
+        // Load data from both databases
+        const mosaRef = ref(db, 'ppdb_mosa');
+        const fajarRef = ref(db, 'ppdb_fajar');
         
-        if (snapshot.exists()) {
-          const ppdbData = Object.entries(snapshot.val())
-            .map(([uid, value]) => ({
-              uid,
-              ...(value as Omit<PPDBData, 'uid'>)
-            }))
-            // Filter hanya data yang sudah submit
-            .filter(item => item.submittedAt);
-          setData(ppdbData);
+        const [mosaSnapshot, fajarSnapshot] = await Promise.all([
+          get(mosaRef),
+          get(fajarRef)
+        ]);
+        
+        let allData: PPDBData[] = [];
+        
+        if (mosaSnapshot.exists()) {
+          const mosaData = Object.entries(mosaSnapshot.val()).map(([uid, value]) => ({
+            uid,
+            ...(value as Omit<PPDBData, 'uid'>),
+            school: 'mosa' as const
+          }));
+          allData = [...allData, ...mosaData];
         }
+        
+        if (fajarSnapshot.exists()) {
+          const fajarData = Object.entries(fajarSnapshot.val()).map(([uid, value]) => ({
+            uid,
+            ...(value as Omit<PPDBData, 'uid'>),
+            school: 'fajar' as const
+          }));
+          allData = [...allData, ...fajarData];
+        }
+
+        // Filter hanya data yang sudah submit
+        const submittedData = allData.filter(item => item.submittedAt);
+        setData(submittedData);
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -934,6 +966,7 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Sekolah</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -1004,6 +1037,14 @@ const DashboardPage: React.FC = () => {
                           className="text-xs"
                         />
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={classNames(
+                        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                        student.school === 'mosa' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      )}>
+                        {student.school === 'mosa' ? 'MOSA' : 'FAJAR'}
+                      </span>
                     </td>
                   </tr>
                 );

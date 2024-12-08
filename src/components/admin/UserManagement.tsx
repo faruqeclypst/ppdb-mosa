@@ -6,8 +6,9 @@ import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import { showAlert } from '../ui/Alert';
-import { KeyIcon, TrashIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { KeyIcon, TrashIcon, UserPlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import classNames from 'classnames';
 
 type Admin = {
   uid: string;
@@ -35,6 +36,7 @@ const UserManagement: React.FC = () => {
     isMaster: false
   });
   const [schoolFilter, setSchoolFilter] = useState<'all' | 'mosa' | 'fajar'>('all');
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   useEffect(() => {
     loadAdmins();
@@ -291,6 +293,89 @@ const UserManagement: React.FC = () => {
     return <Table headers={headers} data={data} />;
   };
 
+  const isMobile = () => {
+    return window.innerWidth <= 640;
+  };
+
+  const renderMobileRow = (admin: Admin) => (
+    <div key={admin.uid} className="border-b last:border-b-0">
+      <div 
+        onClick={() => setExpandedRow(expandedRow === admin.uid ? null : admin.uid)}
+        className={classNames(
+          "flex items-center justify-between p-3 cursor-pointer",
+          expandedRow === admin.uid ? "bg-gray-50" : "hover:bg-gray-50"
+        )}
+      >
+        <div>
+          <p className="font-medium text-gray-900 text-sm mb-1">{admin.fullName}</p>
+          <p className="text-xs text-gray-500">{admin.email}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={classNames(
+            "px-2 py-1 rounded-full text-xs font-medium",
+            admin.isMaster 
+              ? "bg-purple-100 text-purple-700"
+              : "bg-blue-100 text-blue-700"
+          )}>
+            {admin.isMaster ? 'Admin Master' : 'Admin Sekolah'}
+          </span>
+          <ChevronDownIcon 
+            className={classNames(
+              "w-4 h-4 text-gray-400 transition-transform",
+              expandedRow === admin.uid ? "transform rotate-180" : ""
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Dropdown Content */}
+      {expandedRow === admin.uid && (
+        <div className="px-3 pb-3 space-y-3 bg-gray-50">
+          {/* Info List */}
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-500">Sekolah</p>
+              <p className="text-sm font-medium text-gray-900">
+                {admin.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Tanggal Dibuat</p>
+              <p className="text-sm text-gray-900">
+                {new Date(admin.createdAt).toLocaleDateString('id-ID')}
+              </p>
+            </div>
+          </div>
+
+          {/* Tombol Aksi */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <Button
+              onClick={() => {
+                setSelectedAdmin(admin);
+                setShowResetModal(true);
+              }}
+              className="flex items-center justify-center gap-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 py-2 rounded-lg text-xs transition-colors"
+            >
+              <KeyIcon className="w-4 h-4" />
+              <span>Reset Password</span>
+            </Button>
+            
+            <Button
+              onClick={() => {
+                setSelectedAdmin(admin);
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs transition-colors"
+            >
+              <TrashIcon className="w-4 h-4" />
+              <span>Hapus</span>
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -309,26 +394,40 @@ const UserManagement: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
               {/* Filter Sekolah untuk Admin Master */}
               {userRole?.isMaster && (
-                <select
-                  value={schoolFilter}
-                  onChange={(e) => setSchoolFilter(e.target.value as 'all' | 'mosa' | 'fajar')}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="all">Semua Sekolah</option>
-                  <option value="mosa">SMAN Modal Bangsa</option>
-                  <option value="fajar">SMAN 10 Fajar Harapan</option>
-                </select>
+                <div className="relative w-full md:w-auto">
+                  <select
+                    value={schoolFilter}
+                    onChange={(e) => setSchoolFilter(e.target.value as 'all' | 'mosa' | 'fajar')}
+                    className="w-full px-3 py-2 border rounded-lg text-sm appearance-none bg-white pl-9 pr-8"
+                  >
+                    <option value="all">Semua Sekolah</option>
+                    <option value="mosa">SMAN Modal Bangsa</option>
+                    <option value="fajar">SMAN 10 Fajar Harapan</option>
+                  </select>
+                  {/* Icon untuk filter */}
+                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                    <div className="w-4 h-4 rounded-full bg-gray-200" />
+                  </div>
+                </div>
               )}
 
+              {/* Tombol Tambah Admin yang diperbarui */}
               <Button
                 onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className={classNames(
+                  "flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors",
+                  "w-full md:w-auto"
+                )}
               >
-                <UserPlusIcon className="w-5 h-5 mr-2" />
-                Tambah Admin
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-blue-500 rounded">
+                    <UserPlusIcon className="w-4 h-4" />
+                  </div>
+                  <span className="font-medium">Tambah Admin Baru</span>
+                </div>
               </Button>
             </div>
           </div>
@@ -338,25 +437,44 @@ const UserManagement: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
             </div>
           ) : (
-            renderAdminTable()
+            <>
+              {/* Mobile View */}
+              <div className="md:hidden">
+                {admins.length > 0 ? (
+                  <div className="divide-y divide-gray-200">
+                    {admins.map(renderMobileRow)}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Belum ada data admin</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                {renderAdminTable()}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Modal Tambah Admin - Mobile Optimized */}
+      {/* Modal Tambah Admin */}
       <Modal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
+        size={isMobile() ? "full" : "md"}
       >
-        <div className="p-3 md:p-6">
+        <div className={`${isMobile() ? 'p-4' : 'p-6'}`}>
           <div className="text-center mb-4">
-            <div className="mx-auto w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-              <UserPlusIcon className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+            <div className={`mx-auto ${isMobile() ? 'w-10 h-10' : 'w-12 h-12'} bg-blue-100 rounded-full flex items-center justify-center mb-3`}>
+              <UserPlusIcon className={`${isMobile() ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600`} />
             </div>
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">
+            <h3 className={`${isMobile() ? 'text-lg' : 'text-xl'} font-semibold text-gray-900`}>
               Tambah Admin Baru
             </h3>
-            <p className="text-xs md:text-sm text-gray-600 mt-1">
+            <p className={`${isMobile() ? 'text-sm' : 'text-base'} text-gray-600 mt-1`}>
               Lengkapi data untuk membuat akun admin baru
             </p>
           </div>
@@ -364,16 +482,16 @@ const UserManagement: React.FC = () => {
           <div className="space-y-4">
             {renderAddAdminForm()}
 
-            <div className="flex flex-col md:flex-row gap-3 pt-4">
+            <div className={`flex ${isMobile() ? 'flex-col' : 'flex-row justify-end'} gap-3 pt-4`}>
               <Button
                 onClick={() => setShowAddModal(false)}
-                className="w-full md:w-auto order-2 md:order-1 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 md:py-2"
+                className={`${isMobile() ? 'w-full py-3' : ''} bg-gray-100 text-gray-700 hover:bg-gray-200`}
               >
                 Batal
               </Button>
               <Button
                 onClick={handleAddAdmin}
-                className="w-full md:w-auto order-1 md:order-2 bg-blue-600 text-white hover:bg-blue-700 py-3 md:py-2"
+                className={`${isMobile() ? 'w-full py-3' : ''} bg-blue-600 text-white hover:bg-blue-700`}
               >
                 Simpan
               </Button>
@@ -386,31 +504,32 @@ const UserManagement: React.FC = () => {
       <Modal
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
+        size={isMobile() ? "full" : "sm"}
       >
-        <div className="p-6">
+        <div className={`${isMobile() ? 'p-4' : 'p-6'}`}>
           <div className="text-center mb-6">
-            <div className="mx-auto w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-              <KeyIcon className="w-6 h-6 text-yellow-600" />
+            <div className={`mx-auto ${isMobile() ? 'w-10 h-10' : 'w-12 h-12'} bg-yellow-100 rounded-full flex items-center justify-center mb-4`}>
+              <KeyIcon className={`${isMobile() ? 'w-5 h-5' : 'w-6 h-6'} text-yellow-600`} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className={`${isMobile() ? 'text-lg' : 'text-xl'} font-semibold text-gray-900`}>
               Reset Password Admin
             </h3>
-            <p className="text-gray-600 mt-2">
+            <p className={`${isMobile() ? 'text-sm' : 'text-base'} text-gray-600 mt-2`}>
               Apakah Anda yakin ingin mengirim email reset password ke{' '}
               <span className="font-medium">{selectedAdmin?.email}</span>?
             </p>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className={`flex ${isMobile() ? 'flex-col' : 'flex-row justify-end'} gap-3`}>
             <Button
               onClick={() => setShowResetModal(false)}
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className={`${isMobile() ? 'w-full py-3' : ''} bg-gray-100 text-gray-700 hover:bg-gray-200`}
             >
               Batal
             </Button>
             <Button
               onClick={handleResetPassword}
-              className="bg-yellow-500 text-white hover:bg-yellow-600"
+              className={`${isMobile() ? 'w-full py-3' : ''} bg-yellow-500 text-white hover:bg-yellow-600`}
             >
               Kirim Email Reset
             </Button>
@@ -422,16 +541,17 @@ const UserManagement: React.FC = () => {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
+        size={isMobile() ? "full" : "sm"}
       >
-        <div className="p-6">
+        <div className={`${isMobile() ? 'p-4' : 'p-6'}`}>
           <div className="text-center mb-6">
-            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <TrashIcon className="w-6 h-6 text-red-600" />
+            <div className={`mx-auto ${isMobile() ? 'w-10 h-10' : 'w-12 h-12'} bg-red-100 rounded-full flex items-center justify-center mb-4`}>
+              <TrashIcon className={`${isMobile() ? 'w-5 h-5' : 'w-6 h-6'} text-red-600`} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className={`${isMobile() ? 'text-lg' : 'text-xl'} font-semibold text-gray-900`}>
               Hapus Admin
             </h3>
-            <p className="text-gray-600 mt-2">
+            <p className={`${isMobile() ? 'text-sm' : 'text-base'} text-gray-600 mt-2`}>
               Apakah Anda yakin ingin menghapus admin{' '}
               <span className="font-medium">{selectedAdmin?.fullName}</span>?
               <br />
@@ -441,16 +561,16 @@ const UserManagement: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className={`flex ${isMobile() ? 'flex-col' : 'flex-row justify-end'} gap-3`}>
             <Button
               onClick={() => setShowDeleteModal(false)}
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className={`${isMobile() ? 'w-full py-3' : ''} bg-gray-100 text-gray-700 hover:bg-gray-200`}
             >
               Batal
             </Button>
             <Button
               onClick={handleDeleteAdmin}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className={`${isMobile() ? 'w-full py-3' : ''} bg-red-600 text-white hover:bg-red-700`}
             >
               Hapus
             </Button>
