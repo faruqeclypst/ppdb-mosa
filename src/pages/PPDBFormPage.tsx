@@ -224,19 +224,28 @@ const getNilaiFields = (semesters: string[]) => {
   );
 };
 
+// Update fungsi validateNilai
 const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?: string } => {
   if (!nilai) return { isValid: false, error: 'Nilai harus diisi' };
 
   const nilaiNum = parseFloat(nilai);
-  if (isNaN(nilaiNum) || nilaiNum < 0 || nilaiNum > 100) {
-    return { isValid: false, error: 'Nilai harus valid dan antara 0-100' };
+  
+  // Validasi format nilai
+  if (isNaN(nilaiNum)) {
+    return { isValid: false, error: 'Nilai harus berupa angka' };
   }
 
+  // Validasi rentang nilai
+  if (nilaiNum < 0 || nilaiNum > 100) {
+    return { isValid: false, error: 'Nilai harus antara 0-100' };
+  }
+
+  // Validasi nilai minimum sesuai jalur
   const minNilai = VALIDATION_CONFIG.MIN_NILAI[jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
   if (nilaiNum < minNilai) {
     return { 
       isValid: false, 
-      error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}. Nilai ${nilaiNum} tidak memenuhi syarat.` 
+      error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}` 
     };
   }
 
@@ -720,10 +729,14 @@ const PPDBFormPage: React.FC = () => {
         }
 
         if (userData) {
+          // Update formData dengan data dari register
           setFormData({
             ...INITIAL_FORM_DATA,
             ...userData,
-            uid: user.uid
+            uid: user.uid,
+            // Isi otomatis nama dan NIK dari data register 
+            namaSiswa: userData.fullName || '',
+            nik: userData.nik || ''
           });
           setFormStatus(userData.status || 'draft');
           setLastUpdated(userData.lastUpdated || '');
@@ -981,42 +994,78 @@ const PPDBFormPage: React.FC = () => {
     const semesters = getRequiredSemesters(formData.jalur);
     const nilaiFields = getNilaiFields(semesters);
 
+    const mapelLabels = {
+      Agama: 'Pendidikan Agama',
+      Bindo: 'Bahasa Indonesia',
+      Bing: 'Bahasa Inggris',
+      Mtk: 'Matematika',
+      Ipa: 'IPA'
+    };
+
     for (const field of nilaiFields) {
       const nilaiStr = formData[field as keyof FormData];
+      
+      // Ekstrak informasi mapel dan semester dari nama field
+      const mapel = field.replace(/nilai|[0-9]/g, '');
+      const semester = field.match(/\d+/)?.[0];
+      const mapelLabel = mapelLabels[mapel as keyof typeof mapelLabels];
+
       if (!nilaiStr) {
-        setError(`Nilai akademik ${field.replace('nilai', '')} belum diisi`);
+        setError(`Nilai ${mapelLabel} semester ${semester} belum diisi`);
+        setCurrentStep(1); // Pindah ke tab Akademik
         return false;
       }
-      
-      // Tambahkan log untuk debugging
-      console.log(`Validating ${field}: ${nilaiStr}`);
       
       const validation = validateNilai(nilaiStr as string, formData.jalur);
       if (!validation.isValid) {
-        setError(`${field.replace('nilai', '')}: ${validation.error}`);
+        setError(`${mapelLabel} semester ${semester}: ${validation.error}`);
+        setCurrentStep(1); // Pindah ke tab Akademik
         return false;
       }
 
-      // Tambahkan validasi eksplisit untuk nilai minimum
+      // Validasi eksplisit untuk nilai minimum
       const nilaiNum = parseFloat(nilaiStr as string);
       const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
       if (nilaiNum < minNilai) {
-        setError(`Nilai ${field.replace('nilai', '')} (${nilaiNum}) kurang dari nilai minimal ${minNilai} untuk jalur ${formData.jalur}`);
+        setError(`${mapelLabel} semester ${semester} (${nilaiNum}) kurang dari nilai minimal ${minNilai} untuk jalur ${formData.jalur}`);
+        setCurrentStep(1); // Pindah ke tab Akademik
         return false;
       }
     }
 
     // 4. Validasi informasi orang tua
-    const missingInfoOrtu = VALIDATION_CONFIG.REQUIRED_FIELDS.ORANG_TUA.filter(field => {
-      const value = formData[field as keyof FormData];
-      return !value || (value && value.toString().trim() === '');
-    });
+    const orangTuaFields = {
+      namaAyah: 'Nama Ayah',
+      pekerjaanAyah: 'Pekerjaan Ayah',
+      instansiAyah: 'Instansi/Unit Kerja Ayah',
+      hpAyah: 'No. HP/WA Ayah',
+      namaIbu: 'Nama Ibu',
+      pekerjaanIbu: 'Pekerjaan Ibu',
+      instansiIbu: 'Instansi/Unit Kerja Ibu',
+      hpIbu: 'No. HP/WA Ibu'
+    };
 
-    if (missingInfoOrtu.length > 0) {
-      const missingLabels = missingInfoOrtu.map(field => 
-        VALIDATION_CONFIG.FIELD_LABELS[field as keyof typeof VALIDATION_CONFIG.FIELD_LABELS]
-      );
-      setError(`Data Orang Tua yang masih kosong: ${missingLabels.join(', ')}`);
+    const missingFields = [];
+    for (const [key, label] of Object.entries(orangTuaFields)) {
+      const value = formData[key as keyof typeof formData];
+      if (!value || value.toString().trim() === '') {
+        missingFields.push(label);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      setError(`Data yang masih kosong: ${missingFields.join(', ')}`);
+      return false;
+    }
+
+    // Validasi format nomor HP
+    const phoneRegex = /^08[0-9]{8,12}$/;
+    if (!phoneRegex.test(formData.hpAyah)) {
+      setError('Nomor HP Ayah tidak valid (harus diawali 08 dan 10-14 digit)');
+      return false;
+    }
+    if (!phoneRegex.test(formData.hpIbu)) {
+      setError('Nomor HP Ibu tidak valid (harus diawali 08 dan 10-14 digit)');
       return false;
     }
 
@@ -1484,7 +1533,6 @@ const PPDBFormPage: React.FC = () => {
 
   const renderAkademik = () => {
     const semesters = ['2', '3', '4'];
-
     const mapelList = [
       { label: 'Pendidikan Agama', mobileLabel: 'Pendidikan Agama', key: 'nilaiAgama' },
       { label: 'Bahasa Indonesia', mobileLabel: 'Bahasa Indonesia', key: 'nilaiBindo' },
@@ -1493,39 +1541,79 @@ const PPDBFormPage: React.FC = () => {
       { label: 'IPA', mobileLabel: 'IPA', key: 'nilaiIpa' }
     ];
 
-    // Add disabled prop to all inputs
     return (
       <div className="space-y-10">
+        {/* Info nilai minimum */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div className="flex items-center gap-2 text-sm text-blue-800">
+            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium">
+              Nilai minimum untuk jalur {formData.jalur} adalah {VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI]}
+            </span>
+          </div>
+        </div>
+
         <div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {semesters.map((semester) => (
               <div key={semester} className="space-y-6">
                 <SectionTitle>Semester {semester}</SectionTitle>
                 <div className="space-y-4">
-                  {mapelList.map(({ label, mobileLabel, key }) => (
-                    <Input
-                      key={key}
-                      label={label}
-                      mobilelabel={mobileLabel}
-                      name={`${key}${semester}`}
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={String(formData[`${key}${semester}` as keyof typeof formData] || '')}
-                      onChange={(e) => {
-                        if (formStatus === 'submitted') return; // Prevent changes if submitted
-                        handleInputChange(e);
-                      }}
-                      onKeyPress={(e) => {
-                        if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      disabled={formStatus === 'submitted'}
-                      className={disabledInputClass}
-                      required
-                    />
-                  ))}
+                  {mapelList.map(({ label, mobileLabel, key }) => {
+                    const fieldName = `${key}${semester}` as keyof typeof formData;
+                    const value = formData[fieldName] as string;
+                    const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
+                    const isInvalid = value && (
+                      isNaN(parseFloat(value)) || 
+                      parseFloat(value) < 0 || 
+                      parseFloat(value) > 100 ||
+                      parseFloat(value) < minNilai
+                    );
+
+                    return (
+                      <div key={key} className="relative">
+                        <Input
+                          label={label}
+                          mobilelabel={mobileLabel}
+                          name={fieldName}
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={value}
+                          onChange={(e) => {
+                            if (formStatus === 'submitted') return;
+                            handleInputChange(e);
+                          }}
+                          onKeyPress={(e) => {
+                            if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          disabled={formStatus === 'submitted'}
+                          className={`${disabledInputClass} ${isInvalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} 
+                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                          required
+                        />
+                        {isInvalid && (
+                          <div className="absolute right-2 top-[2.5rem] flex items-center"> {/* Ubah top dari top-0 menjadi top-[2.5rem] */}
+                            <div className="relative group">
+                              <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-[10px]">!</span>
+                              </div>
+                              <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block">
+                                <div className="bg-red-50 text-red-600 text-xs py-1 px-2 rounded border border-red-200 whitespace-nowrap shadow-sm">
+                                  Nilai minimal {minNilai}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -1568,12 +1656,10 @@ const PPDBFormPage: React.FC = () => {
             className={disabledInputClass}
           />
           <Input
-            label="No. HP/WA (10-14 digit)"
+            label="No. HP/WA Ayah (10-14 digit)"
             name="hpAyah"
             value={formData.hpAyah}
             onChange={(e) => {
-              if (formStatus === 'submitted') return;
-              // Hanya terima input angka
               const value = e.target.value.replace(/\D/g, '');
               // Pastikan dimulai dengan 08
               if (value === '0' || value.startsWith('08')) {
@@ -1587,15 +1673,13 @@ const PPDBFormPage: React.FC = () => {
             pattern="^08[0-9]{8,12}$"
             minLength={10}
             maxLength={14}
-            onKeyPress={(e) => {
-              if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                e.preventDefault();
-              }
-            }}
             required
-            className={disabledInputClass}
-            disabled={formStatus === 'submitted'}
-            type="tel"
+            className={`${disabledInputClass} ${
+              formData.hpAyah && !formData.hpAyah.match(/^08[0-9]{8,12}$/) 
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                : ''
+            }`}
+            placeholder="Contoh: 081234567890"
           />
         </div>
       </div>
@@ -1631,12 +1715,10 @@ const PPDBFormPage: React.FC = () => {
             className={disabledInputClass}
           />
           <Input
-            label="No. HP/WA (10-14 digit)"
+            label="No. HP/WA Ibu (10-14 digit)"
             name="hpIbu"
             value={formData.hpIbu}
             onChange={(e) => {
-              if (formStatus === 'submitted') return;
-              // Hanya terima input angka
               const value = e.target.value.replace(/\D/g, '');
               // Pastikan dimulai dengan 08
               if (value === '0' || value.startsWith('08')) {
@@ -1650,15 +1732,13 @@ const PPDBFormPage: React.FC = () => {
             pattern="^08[0-9]{8,12}$"
             minLength={10}
             maxLength={14}
-            onKeyPress={(e) => {
-              if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                e.preventDefault();
-              }
-            }}
             required
-            className={disabledInputClass}
-            disabled={formStatus === 'submitted'}
-            type="tel"
+            className={`${disabledInputClass} ${
+              formData.hpIbu && !formData.hpIbu.match(/^08[0-9]{8,12}$/) 
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                : ''
+            }`}
+            placeholder="Contoh: 081234567890"
           />
         </div>
       </div>

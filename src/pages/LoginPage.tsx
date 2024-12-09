@@ -8,7 +8,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import { motion } from 'framer-motion';
-import { EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { ref, get } from 'firebase/database';
 import Modal from '../components/ui/Modal';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -26,6 +26,7 @@ const LoginPage: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
  
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -237,13 +238,24 @@ const LoginPage: React.FC = () => {
                 <LockClosedIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                 <Input
                   label="Password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   placeholder="Masukkan password"
-                  className="pl-10"
+                  className="pl-10 pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[2.1rem] text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5" />
+                  )}
+                </button>
               </div>
  
               <div className="flex items-center justify-between">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword, User, onAuthStateChanged } from 'firebase/auth';
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, query, orderByChild, equalTo } from 'firebase/database';
 import { auth, db } from '../firebase/config';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
@@ -16,7 +16,11 @@ import {
   KeyIcon,
   ArrowRightIcon,
   XMarkIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  CheckCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  IdentificationIcon
 } from '@heroicons/react/24/outline';
 import { getPPDBStatus } from '../utils/ppdbStatus';
 import Modal from '../components/ui/Modal';
@@ -29,6 +33,16 @@ interface FormData {
   password: string;
   confirmPassword: string;
   school: 'mosa' | 'fajar' | '';
+  nik: string;
+}
+
+// Tambahkan interface untuk data pendaftar
+interface PPDBUserData {
+  fullName: string;
+  nik: string;
+  email: string;
+  school?: string;
+  status?: string;
 }
 
 const RegisterPage: React.FC = () => {
@@ -39,19 +53,30 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    school: ''
+    school: '',
+    nik: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [isNIKValid, setIsNIKValid] = useState<boolean>(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const checkFirstAdmin = async () => {
-      const adminRef = ref(db, 'admins');
-      const snapshot = await get(adminRef);
-      setIsFirstAdmin(!snapshot.exists());
+      try {
+        const adminRef = ref(db, 'admins');
+        const snapshot = await get(adminRef);
+        setIsFirstAdmin(!snapshot.exists());
+      } catch (error) {
+        console.error('Error checking first admin:', error);
+        // Jika gagal mengecek, asumsikan bukan admin pertama
+        setIsFirstAdmin(false);
+      }
     };
 
     checkFirstAdmin();
@@ -113,6 +138,54 @@ const RegisterPage: React.FC = () => {
     }
   }, [user, navigate]);
 
+  const checkExistingNIK = async (nik: string): Promise<{exists: boolean, userData?: {fullName: string, nik: string}}> => {
+    try {
+      if (nik === '-') return { exists: false };
+
+      // Cek di database MOSA
+      const mosaRef = ref(db, 'ppdb_mosa');
+      const mosaQuery = query(mosaRef, orderByChild('nik'), equalTo(nik));
+      let mosaSnapshot;
+      try {
+        mosaSnapshot = await get(mosaQuery);
+      } catch (error) {
+        console.error('Error checking MOSA database:', error);
+        mosaSnapshot = null;
+      }
+
+      // Cek di database Fajar Harapan
+      const fajarRef = ref(db, 'ppdb_fajar');
+      const fajarQuery = query(fajarRef, orderByChild('nik'), equalTo(nik));
+      let fajarSnapshot;
+      try {
+        fajarSnapshot = await get(fajarQuery);
+      } catch (error) {
+        console.error('Error checking Fajar database:', error);
+        fajarSnapshot = null;
+      }
+
+      if (mosaSnapshot?.exists()) {
+        const mosaData = Object.values(mosaSnapshot.val())[0] as PPDBUserData;
+        if (mosaData && mosaData.nik !== '-') {
+          return { exists: true, userData: { fullName: mosaData.fullName, nik: mosaData.nik } };
+        }
+      }
+
+      if (fajarSnapshot?.exists()) {
+        const fajarData = Object.values(fajarSnapshot.val())[0] as PPDBUserData;
+        if (fajarData && fajarData.nik !== '-') {
+          return { exists: true, userData: { fullName: fajarData.fullName, nik: fajarData.nik } };
+        }
+      }
+
+      return { exists: false };
+    } catch (error) {
+      console.error('Error checking NIK:', error);
+      // Jika terjadi error, anggap NIK tidak ada
+      return { exists: false };
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -122,6 +195,46 @@ const RegisterPage: React.FC = () => {
       setError('Silakan pilih sekolah');
       setLoading(false);
       return;
+    }
+
+    if (!isFirstAdmin) {
+      // Validasi NIK
+      if (!formData.nik) {
+        setError('NIK wajib diisi');
+        setLoading(false);
+        return;
+      }
+      
+      // Validasi format NIK
+      if (formData.nik !== '-') {
+        if (formData.nik.length !== 16) {
+          setError('NIK harus 16 digit');
+          setLoading(false);
+          return;
+        }
+
+        // Validasi NIK hanya angka
+        if (!/^\d{16}$/.test(formData.nik)) {
+          setError('NIK hanya boleh berisi angka');
+          setLoading(false);
+          return;
+        }
+
+        // Cek NIK duplikat
+        const { exists, userData } = await checkExistingNIK(formData.nik);
+        if (exists && userData) {
+          setError(`NIK sudah terdaftar oleh: ${userData.nik} - ${userData.fullName}`);
+          setLoading(false);
+          setIsNIKValid(false);
+          return;
+        }
+      }
+
+      if (!isNIKValid) {
+        setError('NIK tidak valid atau sudah terdaftar');
+        setLoading(false);
+        return;
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -140,6 +253,7 @@ const RegisterPage: React.FC = () => {
       const userData = {
         fullName: formData.fullName,
         email: formData.email,
+        nik: formData.nik,
         createdAt: new Date().toISOString()
       };
 
@@ -157,7 +271,7 @@ const RegisterPage: React.FC = () => {
           school: formData.school,
           status: 'draft'
         });
-        navigate('/ppdb/form');
+        setShowSuccessModal(true);
       }
 
     } catch (err: any) {
@@ -187,6 +301,11 @@ const RegisterPage: React.FC = () => {
       icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
       title: "Pantau status pendaftaran",
       description: "Cek status pendaftaran kapan saja secara real-time"
+    },
+    {
+      icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
+      title: "Pendaftaran hanya untuk satu sekolah",
+      description: "Anda harus memilih salah satu, SMAN Modal Bangsa atau SMAN 10 Fajar Harapan"
     }
   ];
 
@@ -214,7 +333,7 @@ const RegisterPage: React.FC = () => {
                 Selamat Datang di PPDB Online
               </h1>
               <p className="text-lg text-gray-600">
-                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
+                SMAN Modal Bangsa dan SMAN 10 Fajar Harapan membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
               </p>
             </div>
 
@@ -323,53 +442,144 @@ const RegisterPage: React.FC = () => {
                 <div className="relative">
                   <UserIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
-                    label="Nama Lengkap Pendaftar"
+                    label="Nama Lengkap"
                     type="text"
                     required
                     value={formData.fullName}
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    placeholder={isFirstAdmin ? "Nama Admin" : "Nama Lengkap"}
+                    placeholder={isFirstAdmin ? "Nama Admin" : "Nama Lengkap Siswa"}
                     className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
                 </div>
 
+                {!isFirstAdmin && (
+                  <div className="relative">
+                    <IdentificationIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
+                    <Input
+                      label={<span>NIK <span className="text-gray-500 text-xs">(-) jika tidak ada</span></span>}
+                      type="text"
+                      required
+                      value={formData.nik}
+                      onChange={async (e) => {
+                        const value = e.target.value.replace(/[^0-9-]/g, '');
+                        setFormData({...formData, nik: value});
+
+                        // Reset validasi jika input kosong
+                        if (!value) {
+                          setError('');
+                          setIsNIKValid(false);
+                          return;
+                        }
+
+                        // Validasi untuk input "-"
+                        if (value === '-') {
+                          setError('');
+                          setIsNIKValid(true);
+                          return;
+                        }
+
+                        // Validasi panjang NIK
+                        if (value.length !== 16) {
+                          setError('NIK harus 16 digit');
+                          setIsNIKValid(false);
+                          return;
+                        }
+
+                        // Cek NIK di database
+                        const { exists, userData } = await checkExistingNIK(value);
+                        if (exists && userData) {
+                          setError(`NIK sudah terdaftar oleh: ${userData.nik} - ${userData.fullName}`);
+                          setIsNIKValid(false);
+                        } else {
+                          setError('');
+                          setIsNIKValid(true);
+                        }
+                      }}
+                      onKeyPress={(e) => {
+                        if (!/[0-9-]/.test(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      maxLength={16}
+                      placeholder="Masukkan NIK (16 digit)"
+                      className={`pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5 ${
+                        formData.nik && formData.nik !== '-' && formData.nik.length !== 16 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                          : ''
+                      }`}
+                    />
+                  </div>
+                )}
+
                 <div className="relative">
                   <EnvelopeIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
-                    label="Email"
+                    label={
+                      <div className="flex items-center justify-between">
+                        <span>Email</span>
+                        <span className="text-xs text-yellow-600 font-medium">
+                          *Pastikan email aktif
+                        </span>
+                      </div>
+                    }
                     type="email"
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    placeholder="Masukkan email"
+                    placeholder="Masukkan email aktif"
                     className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Informasi dan pengumuman akan dikirim ke email ini
+                  </p>
                 </div>
 
                 <div className="relative">
                   <LockClosedIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     placeholder="Masukkan password"
-                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
+                    className="pl-8 pr-10 md:pl-10 text-sm md:text-base py-2 md:py-2.5 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-[2.1rem] text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    ) : (
+                      <EyeIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    )}
+                  </button>
                 </div>
 
                 <div className="relative">
                   <KeyIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
                     label="Konfirmasi Password"
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                     placeholder="Konfirmasi password"
-                    className="pl-8 md:pl-10 text-sm md:text-base py-2 md:py-2.5"
+                    className="pl-8 pr-10 md:pl-10 text-sm md:text-base py-2 md:py-2.5 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-[2.1rem] text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeSlashIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    ) : (
+                      <EyeIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    )}
+                  </button>
                 </div>
 
                 <div className="space-y-3 md:space-y-4">
@@ -378,7 +588,7 @@ const RegisterPage: React.FC = () => {
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
                               hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 
                               py-2 md:py-3 rounded-lg transition-all duration-300 text-sm md:text-base"
-                    disabled={loading}
+                    disabled={loading || (!isFirstAdmin && !isNIKValid)}
                   >
                     {loading ? (
                       <div className="flex items-center justify-center">
@@ -441,6 +651,41 @@ const RegisterPage: React.FC = () => {
               className="bg-blue-600 text-white hover:bg-blue-700"
             >
               Kembali ke Beranda
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={showSuccessModal} 
+        onClose={() => setShowSuccessModal(false)}
+      >
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircleIcon className="w-10 h-10 text-green-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Registrasi Berhasil!
+          </h3>
+          <div className="text-gray-600 space-y-4 mb-6">
+            <p>
+              Akun PPDB Anda telah berhasil dibuat.
+            </p>
+            <div className="bg-yellow-50 p-4 rounded-lg text-left">
+              <p className="text-yellow-800 font-medium mb-2">Penting!</p>
+              <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
+                <li>Cek email Anda untuk informasi selanjutnya</li>
+                <li>Pastikan cek folder Spam jika email tidak ada di Inbox</li>
+                <li>Simpan email dan password untuk login kembali</li>
+              </ul>
+            </div>
+          </div>
+          <div className="flex justify-center gap-4">
+            <Button
+              onClick={() => navigate('/ppdb/form')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Lanjut ke Form PPDB
             </Button>
           </div>
         </div>

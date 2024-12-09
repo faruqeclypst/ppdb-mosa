@@ -464,36 +464,36 @@ const DataPendaftar: React.FC = () => {
 
       if (userRole?.isMaster) {
         // Master admin - export semua data
-        const dataMosa = allData.filter(item => item.school === 'mosa');
-        const dataFajar = allData.filter(item => item.school === 'fajar');
+        const dataModalBangsa = allData.filter(item => item.school === 'mosa');
+        const dataFajarHarapan = allData.filter(item => item.school === 'fajar');
 
-        // Data per jalur untuk MOSA
-        const dataMosaPrestasi = dataMosa.filter(item => item.jalur === 'prestasi');
-        const dataMosaReguler = dataMosa.filter(item => item.jalur === 'reguler');
-        const dataMosaUndangan = dataMosa.filter(item => item.jalur === 'undangan');
+        // Data per jalur untuk Modal Bangsa
+        const dataModalBangsaPrestasi = dataModalBangsa.filter(item => item.jalur === 'prestasi');
+        const dataModalBangsaReguler = dataModalBangsa.filter(item => item.jalur === 'reguler');
+        const dataModalBangsaUndangan = dataModalBangsa.filter(item => item.jalur === 'undangan');
 
-        // Data per jalur untuk FAJAR
-        const dataFajarPrestasi = dataFajar.filter(item => item.jalur === 'prestasi');
-        const dataFajarReguler = dataFajar.filter(item => item.jalur === 'reguler');
-        const dataFajarUndangan = dataFajar.filter(item => item.jalur === 'undangan');
+        // Data per jalur untuk Fajar Harapan
+        const dataFajarHarapanPrestasi = dataFajarHarapan.filter(item => item.jalur === 'prestasi');
+        const dataFajarHarapanReguler = dataFajarHarapan.filter(item => item.jalur === 'reguler');
+        const dataFajarHarapanUndangan = dataFajarHarapan.filter(item => item.jalur === 'undangan');
 
         // Setup worksheet untuk semua data
         setupWorksheet(workbook, 'Semua Data', allData);
 
-        // Setup worksheet untuk MOSA
-        setupWorksheet(workbook, 'MOSA - Semua', dataMosa);
-        setupWorksheet(workbook, 'MOSA - Prestasi', dataMosaPrestasi);
-        setupWorksheet(workbook, 'MOSA - Reguler', dataMosaReguler);
-        setupWorksheet(workbook, 'MOSA - Undangan', dataMosaUndangan);
+        // Setup worksheet untuk Modal Bangsa
+        setupWorksheet(workbook, 'Modal Bangsa - Semua', dataModalBangsa);
+        setupWorksheet(workbook, 'Modal Bangsa - Prestasi', dataModalBangsaPrestasi);
+        setupWorksheet(workbook, 'Modal Bangsa - Reguler', dataModalBangsaReguler);
+        setupWorksheet(workbook, 'Modal Bangsa - Undangan', dataModalBangsaUndangan);
 
-        // Setup worksheet untuk FAJAR
-        setupWorksheet(workbook, 'FAJAR - Semua', dataFajar);
-        setupWorksheet(workbook, 'FAJAR - Prestasi', dataFajarPrestasi);
-        setupWorksheet(workbook, 'FAJAR - Reguler', dataFajarReguler);
-        setupWorksheet(workbook, 'FAJAR - Undangan', dataFajarUndangan);
+        // Setup worksheet untuk Fajar Harapan
+        setupWorksheet(workbook, 'Fajar Harapan - Semua', dataFajarHarapan);
+        setupWorksheet(workbook, 'Fajar Harapan - Prestasi', dataFajarHarapanPrestasi);
+        setupWorksheet(workbook, 'Fajar Harapan - Reguler', dataFajarHarapanReguler);
+        setupWorksheet(workbook, 'Fajar Harapan - Undangan', dataFajarHarapanUndangan);
       } else {
         // Admin biasa - export hanya data sekolahnya
-        const schoolName = userRole?.school === 'mosa' ? 'MOSA' : 'FAJAR';
+        const schoolName = userRole?.school === 'mosa' ? 'Modal Bangsa' : 'Fajar Harapan';
         
         // Data per jalur
         const dataPrestasi = allData.filter(item => item.jalur === 'prestasi');
@@ -516,7 +516,7 @@ const DataPendaftar: React.FC = () => {
       // Nama file yang berbeda untuk master dan admin biasa
       const fileName = userRole?.isMaster 
         ? `Data_Pendaftar_PPDB_Semua_Sekolah_${new Date().toLocaleDateString('id-ID')}.xlsx`
-        : `Data_Pendaftar_PPDB_${userRole?.school === 'mosa' ? 'MOSA' : 'FAJAR'}_${new Date().toLocaleDateString('id-ID')}.xlsx`;
+        : `Data_Pendaftar_PPDB_${userRole?.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan'}_${new Date().toLocaleDateString('id-ID')}.xlsx`;
 
       saveAs(blob, fileName);
       showAlert('success', 'Data berhasil diexport ke Excel');
@@ -552,7 +552,8 @@ const DataPendaftar: React.FC = () => {
       // Kolom sekolah hanya ditampilkan untuk master admin
       ...(userRole?.isMaster ? [{ header: 'Sekolah', key: 'school', width: 25 }] : []),
       { header: 'Jalur', key: 'jalur', width: 15 },
-      { header: 'Status Keputusan', key: 'adminStatus', width: 18 },
+      { header: 'Status', key: 'statusKeputusan', width: 15 }, // Separate status column
+      { header: 'Pemeriksa', key: 'adminName', width: 25 }, // Separate admin name column
       { header: 'Alasan Penolakan', key: 'alasanPenolakan', width: 50 },
       { header: 'NIK', key: 'nik', width: 20 },
       { header: 'Jenis Kelamin', key: 'jenisKelamin', width: 15 },
@@ -612,10 +613,10 @@ const DataPendaftar: React.FC = () => {
       cell.style = headerStyle;
     });
 
-    // Sesuaikan freeze panes berdasarkan role
+    // Update freeze panes to include the Pemeriksa column
     worksheet.views = [{ 
       state: 'frozen', 
-      xSplit: userRole?.isMaster ? 7 : 6, // Kurangi 1 jika bukan master admin
+      xSplit: userRole?.isMaster ? 8 : 7, // Increased by 1 to include Pemeriksa column
       ySplit: 1, 
       activeCell: 'A2' 
     }];
@@ -632,9 +633,10 @@ const DataPendaftar: React.FC = () => {
       } : {}),
       jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
       // Format status keputusan admin
-      adminStatus: item.adminStatus ? 
-                    `${item.adminStatus === 'diterima' ? 'DITERIMA' : 'DITOLAK'} (${item.updatedBy?.email.split('@')[0] || 'unknown'})` : 
-                    'PENDING',
+      statusKeputusan: item.adminStatus ? 
+        (item.adminStatus === 'diterima' ? 'DITERIMA' : 'DITOLAK') : 
+        'PENDING',
+      adminName: item.updatedBy?.name || item.updatedBy?.email.split('@')[0] || '-',
       // Tambahkan alasan penolakan
       alasanPenolakan: item.alasanPenolakan || '-',
       nik: item.nik,
@@ -761,40 +763,37 @@ const DataPendaftar: React.FC = () => {
             }
           }
 
-          // Style untuk status keputusan (kolom 7)
-          if (colNumber === 7) {
-            const statusValue = cell.value as string;
-            if (statusValue === 'DITERIMA') {
-              cell.fill = { 
-                type: 'pattern' as const, 
-                pattern: 'solid' as const, 
-                fgColor: { argb: 'DCFCE7' } // Light green
-              };
-              cell.font = { 
-                color: { argb: '166534' }, // Dark green
-                bold: true 
-              };
-            } else if (statusValue === 'DITOLAK') {
-              cell.fill = { 
-                type: 'pattern' as const, 
-                pattern: 'solid' as const, 
-                fgColor: { argb: 'FEE2E2' } // Light red
-              };
-              cell.font = { 
-                color: { argb: 'B91C1C' }, // Dark red
-                bold: true 
-              };
-            } else if (statusValue === 'PENDING') {
-              cell.fill = { 
-                type: 'pattern' as const, 
-                pattern: 'solid' as const, 
-                fgColor: { argb: 'FEF3C7' } // Light yellow
-              };
-              cell.font = { 
-                color: { argb: 'B45309' }, // Dark yellow
-                bold: true 
-              };
-            }
+          // Style untuk status keputusan (sesuaikan dengan index kolom yang baru)
+          if (cell.value === 'DITERIMA') {
+            cell.fill = { 
+              type: 'pattern' as const, 
+              pattern: 'solid' as const, 
+              fgColor: { argb: 'DCFCE7' } // Light green
+            };
+            cell.font = { 
+              color: { argb: '166534' }, // Dark green
+              bold: true 
+            };
+          } else if (cell.value === 'DITOLAK') {
+            cell.fill = { 
+              type: 'pattern' as const, 
+              pattern: 'solid' as const, 
+              fgColor: { argb: 'FEE2E2' } // Light red
+            };
+            cell.font = { 
+              color: { argb: 'B91C1C' }, // Dark red
+              bold: true 
+            };
+          } else if (cell.value === 'PENDING') {
+            cell.fill = { 
+              type: 'pattern' as const, 
+              pattern: 'solid' as const, 
+              fgColor: { argb: 'FEF3C7' } // Light yellow
+            };
+            cell.font = { 
+              color: { argb: 'B45309' }, // Dark yellow
+              bold: true 
+            };
           }
 
           // Style untuk sekolah (kolom 5)
@@ -823,17 +822,21 @@ const DataPendaftar: React.FC = () => {
             }
           }
 
-          // Center alignment untuk kolom tertentu
+          // Update centerColumns untuk memastikan semua kolom nilai dan jumlah saudara di-center
           const centerColumns = [
             1,  // No
-            5,  // Sekolah
             6,  // Jalur
             7,  // Status Keputusan
             9,  // Jenis Kelamin
-            12, // Anak Ke
-            13, // Jumlah Saudara
-            // Nilai semester (19-33)
-            ...Array.from({length: 15}, (_, i) => i + 19),
+            13, // Anak Ke
+            14, // Jumlah Saudara
+            15, // Jumlah Saudara Total
+            // Nilai semester (21-35) - pastikan mencakup semua kolom nilai termasuk IPA
+            21, 22, 23, // Agama
+            24, 25, 26, // B.Indo
+            27, 28, 29, // B.Ing
+            30, 31, 32, // MTK
+            33, 34, 35, // IPA - pastikan kolom IPA juga di-center
             // Dokumen (44-48)
             44, // Foto
             45, // Rekomendasi
@@ -866,6 +869,14 @@ const DataPendaftar: React.FC = () => {
                 underline: true 
               };
             }
+          }
+
+          // Style untuk nama admin (optional)
+          if (colNumber === columns.findIndex(col => col.key === 'adminName') + 1) {
+            cell.font = { 
+              color: { argb: '1F2937' }, // Gray-800
+              bold: true 
+            };
           }
         });
       }
@@ -1997,7 +2008,7 @@ const DataPendaftar: React.FC = () => {
       <Modal
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
-      >
+        >
         <div className="p-6">
           <div className="text-center mb-6">
             <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
