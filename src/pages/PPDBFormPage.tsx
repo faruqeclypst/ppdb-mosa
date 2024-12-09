@@ -182,11 +182,18 @@ const VALIDATION_CONFIG = {
     kabupatenAsalSekolah: 'Kabupaten Asal Sekolah'
   },
 
-  // Nilai minimum per jalur
+  // Nilai minimum per sekolah dan jalur
   MIN_NILAI: {
-    prestasi: 83,
-    reguler: 83,
-    undangan: 83
+    mosa: {
+      prestasi: 83,
+      reguler: 83,
+      undangan: 83
+    },
+    fajar: {
+      prestasi: 85,
+      reguler: 85,
+      undangan: 85
+    }
   },
 
   // Semester yang diperlukan per jalur
@@ -225,7 +232,7 @@ const getNilaiFields = (semesters: string[]) => {
 };
 
 // Update fungsi validateNilai
-const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?: string } => {
+const validateNilai = (nilai: string, jalur: string, school: 'mosa' | 'fajar'): { isValid: boolean; error?: string } => {
   if (!nilai) return { isValid: false, error: 'Nilai harus diisi' };
 
   const nilaiNum = parseFloat(nilai);
@@ -240,12 +247,12 @@ const validateNilai = (nilai: string, jalur: string): { isValid: boolean; error?
     return { isValid: false, error: 'Nilai harus antara 0-100' };
   }
 
-  // Validasi nilai minimum sesuai jalur
-  const minNilai = VALIDATION_CONFIG.MIN_NILAI[jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
+  // Validasi nilai minimum sesuai sekolah dan jalur
+  const minNilai = VALIDATION_CONFIG.MIN_NILAI[school][jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa];
   if (nilaiNum < minNilai) {
     return { 
       isValid: false, 
-      error: `Nilai minimal untuk jalur ${jalur} adalah ${minNilai}` 
+      error: `Nilai minimal untuk ${school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'} adalah ${minNilai}` 
     };
   }
 
@@ -261,22 +268,57 @@ const getPPDBYear = () => {
 };
 
 // Update fungsi formatRegistrationNumber
-const formatRegistrationNumber = (uid: string, jalur: string) => {
-  // Ambil 6 karakter terakhir dari uid
-  const shortId = uid.slice(-6).toUpperCase();
-  
-  // Dapatkan kode jalur
-  const jalurCode = {
-    'prestasi': 'PST',
-    'reguler': 'REG', 
-    'undangan': 'UND'
-  }[jalur] || 'XXX';
-  
-  // Gunakan tahun PPDB yang tetap (2025)
-  const { start } = getPPDBYear();
-  
-  // Format: PPDB/2025/PST/XXXXXX
-  return `PPDB/${start}/${jalurCode}/${shortId}`;
+const formatRegistrationNumber = async (jalur: string, school: 'mosa' | 'fajar') => {
+  try {
+    // Dapatkan kode jalur
+    const jalurCode = {
+      'prestasi': 'PST',
+      'reguler': 'REG', 
+      'undangan': 'UND'
+    }[jalur] || 'XXX';
+    
+    // Gunakan tahun PPDB yang tetap (2025)
+    const { start } = getPPDBYear();
+
+    // Tentukan kode leting berdasarkan sekolah
+    // Untuk MOSA: 32 di tahun 2025, 33 di 2026, dst
+    // Untuk Fajar: mulai dari 20
+    const getLetingCode = (school: 'mosa' | 'fajar', year: number) => {
+      if (school === 'mosa') {
+        // 2025 -> 32, 2026 -> 33, dst
+        return (year - 1993).toString(); // 2025 - 1993 = 32
+      } else {
+        return '20'; // Fajar Harapan mulai dari 20
+      }
+    };
+
+    const letingCode = getLetingCode(school, start);
+
+    // Ambil data pendaftar untuk menghitung nomor urut
+    const ppdbRef = ref(db, `ppdb_${school}`);
+    const snapshot = await get(ppdbRef);
+    
+    let registrationNumber = 1; // Mulai dari 1
+    
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      // Hitung jumlah pendaftar yang sudah ada dengan jalur yang sama
+      const existingRegistrations = Object.values(data as Record<string, any>)
+        .filter((item: any) => item.jalur === jalur && item.status === 'submitted');
+      registrationNumber = existingRegistrations.length + 1;
+    }
+
+    // Format nomor dengan padding 3 digit
+    const paddedNumber = registrationNumber.toString().padStart(3, '0');
+    
+    // Format: PPDB/2025/PST/32001 untuk MOSA atau PPDB/2025/PST/20001 untuk Fajar
+    return `PPDB/${start}/${jalurCode}/${letingCode}${paddedNumber}`;
+  } catch (error) {
+    console.error('Error generating registration number:', error);
+    // Fallback ke format default jika terjadi error
+    const defaultLetingCode = school === 'mosa' ? '32' : '20';
+    return `PPDB/${getPPDBYear().start}/${jalur.toUpperCase()}/${defaultLetingCode}000`;
+  }
 };
 
 // Tambahkan fungsi untuk memecah teks panjang
@@ -301,7 +343,7 @@ const wrapText = (text: string, maxLength: number): string[] => {
   return lines;
 };
 
-// Tambahkan fungsi untuk membuat bukti pendaftaran PDF
+// Update fungsi generateRegistrationCard, tambahkan fungsi drawSignatureBox dan konstanta yang diperlukan
 const generateRegistrationCard = async (formData: FormData) => {
   try {
     const pdfDoc = await PDFDocument.create();
@@ -319,21 +361,21 @@ const generateRegistrationCard = async (formData: FormData) => {
       borderWidth: 1,
     });
 
-    // Sesuaikan marginX agar konten tidak terlalu dekat dengan border
-    const marginX = 50; // Tetap 50 karena sudah cukup jauh dari border
+    const marginX = 50;
 
     // Load fonts
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    // Load logo sekolah
-    const logoResponse = await fetch('/images/mosa.png');
+    // Load logo sekolah sesuai dengan sekolah yang dipilih
+    const logoPath = formData.school === 'mosa' ? '/images/mosa.png' : '/images/fajar.png';
+    const logoResponse = await fetch(logoPath);
     const logoArrayBuffer = await logoResponse.arrayBuffer();
     const logoImage = await pdfDoc.embedPng(logoArrayBuffer);
-    const logoDims = logoImage.scale(0.09); // Mengubah skala dari 0.07 menjadi 0.09
+    const logoDims = logoImage.scale(0.09);
 
     // Header positioning
-    const headerY = height - 80; // Turunkan sedikit header
+    const headerY = height - 80;
 
     // Draw logo
     page.drawImage(logoImage, {
@@ -354,7 +396,9 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: rgb(0, 0, 0),
     });
 
-    page.drawText('SMAN MODAL BANGSA', {
+    // Sesuaikan nama sekolah berdasarkan school
+    const schoolName = formData.school === 'mosa' ? 'SMAN MODAL BANGSA' : 'SMAN 10 FAJAR HARAPAN';
+    page.drawText(schoolName, {
       x: headerTextX,
       y: headerY - 10,
       size: 14,
@@ -362,6 +406,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: rgb(0, 0, 0),
     });
 
+    // Sisanya tetap sama seperti sebelumnya...
     const { start, end } = getPPDBYear();
     page.drawText(`TAHUN PELAJARAN ${start}/${end}`, {
       x: headerTextX,
@@ -424,7 +469,7 @@ const generateRegistrationCard = async (formData: FormData) => {
     });
 
     // Format nomor pendaftaran
-    const registrationNumber = formatRegistrationNumber(formData.uid || '', formData.jalur);
+    const registrationNumber = await formatRegistrationNumber(formData.jalur, formData.school);
 
     // Informasi pendaftar dengan layout yang lebih rapi
     const startY = lineY - 80;
@@ -481,9 +526,7 @@ const generateRegistrationCard = async (formData: FormData) => {
     });
 
     const notes = [
-      'Kartu ini sebagai bukti pendaftaran PPDB SMAN Modal Bangsa'
-      // '2. Simpan bukti ini dan tunjukkan saat pendaftaran ulang',
-      // '3. Pengumuman hasil seleksi dapat dilihat di website PPDB'
+      `Kartu ini sebagai bukti pendaftaran PPDB ${formData.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}`
     ];
 
     notes.forEach((note) => {
@@ -505,7 +548,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       year: 'numeric'
     });
 
-    // Update fungsi drawSignatureBox
+    // Fungsi untuk membuat box tanda tangan
     const drawSignatureBox = (x: number, y: number, width: number, label: string, name?: string) => {
       // Label (Panitia/Pendaftar)
       page.drawText(label, {
@@ -548,16 +591,14 @@ const generateRegistrationCard = async (formData: FormData) => {
       }
     };
 
-    // Update bagian tanda tangan
-    // Pindahkan deklarasi konstanta ke atas
-    const signatureWidth = 140; // Lebar area tanda tangan yang lebih besar
+    // Konstanta untuk tanda tangan
+    const signatureWidth = 140; // Lebar area tanda tangan
     const boxStartY = currentY - 40;
-
-    // Hitung posisi kolom kanan
     const rightColumnX = width - marginX - signatureWidth;
 
-    // Tanggal dan tanda tangan sejajar
-    const dateText = 'Aceh Besar, ' + today;
+    // Tanggal dan tanda tangan sejajar - sesuaikan lokasi berdasarkan sekolah
+    const location = formData.school === 'mosa' ? 'Aceh Besar' : 'Banda Aceh';
+    const dateText = `${location}, ${today}`;
 
     // Tanggal dan "Pendaftar" sejajar di kanan
     page.drawText(dateText, {
@@ -568,7 +609,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: rgb(0, 0, 0),
     });
 
-    // Hanya tampilkan box tanda tangan pendaftar
+    // Tampilkan box tanda tangan pendaftar
     drawSignatureBox(
       rightColumnX,
       boxStartY,
@@ -579,8 +620,9 @@ const generateRegistrationCard = async (formData: FormData) => {
 
     // Save PDF
     const pdfBytes = await pdfDoc.save();
+    const schoolAbbr = formData.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan';
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    saveAs(blob, `Kartu_Pendaftaran_${formData.namaSiswa}.pdf`);
+    saveAs(blob, `Kartu_Pendaftaran_${schoolAbbr}_${formData.namaSiswa}.pdf`);
 
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -1012,23 +1054,14 @@ const PPDBFormPage: React.FC = () => {
 
       if (!nilaiStr) {
         setError(`Nilai ${mapelLabel} semester ${semester} belum diisi`);
-        setCurrentStep(1); // Pindah ke tab Akademik
+        setCurrentStep(1);
         return false;
       }
       
-      const validation = validateNilai(nilaiStr as string, formData.jalur);
+      const validation = validateNilai(nilaiStr as string, formData.jalur, formData.school);
       if (!validation.isValid) {
         setError(`${mapelLabel} semester ${semester}: ${validation.error}`);
-        setCurrentStep(1); // Pindah ke tab Akademik
-        return false;
-      }
-
-      // Validasi eksplisit untuk nilai minimum
-      const nilaiNum = parseFloat(nilaiStr as string);
-      const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
-      if (nilaiNum < minNilai) {
-        setError(`${mapelLabel} semester ${semester} (${nilaiNum}) kurang dari nilai minimal ${minNilai} untuk jalur ${formData.jalur}`);
-        setCurrentStep(1); // Pindah ke tab Akademik
+        setCurrentStep(1);
         return false;
       }
     }
@@ -1551,7 +1584,7 @@ const PPDBFormPage: React.FC = () => {
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="font-medium">
-              Nilai minimum untuk jalur {formData.jalur} adalah {VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI]}
+              Nilai minimum untuk {formData.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'} adalah {VALIDATION_CONFIG.MIN_NILAI[formData.school][formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa]}
             </span>
           </div>
         </div>
@@ -1565,7 +1598,7 @@ const PPDBFormPage: React.FC = () => {
                   {mapelList.map(({ label, mobileLabel, key }) => {
                     const fieldName = `${key}${semester}` as keyof typeof formData;
                     const value = formData[fieldName] as string;
-                    const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI];
+                    const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.school][formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa];
                     const isInvalid = value && (
                       isNaN(parseFloat(value)) || 
                       parseFloat(value) < 0 || 

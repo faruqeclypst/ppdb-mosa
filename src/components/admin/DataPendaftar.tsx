@@ -935,11 +935,6 @@ const DataPendaftar: React.FC = () => {
             ))}
           </tbody>
         </table>
-        <div className="mt-auto pt-2"> {/* Gunakan mt-auto untuk posisi bottom */}
-          <span className="text-sm text-gray-500">
-            Nilai Minimum: <span className="font-medium text-gray-700">83</span>
-          </span>
-        </div>
       </div>
     );
   };
