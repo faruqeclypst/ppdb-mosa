@@ -55,14 +55,14 @@ const HeroSection: React.FC = () => {
               PPDB {getPPDBYears()}{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
-                  SMAN Modal Bangsa
+                  SMAN Modal Bangsa & SMAN Fajar Harapan
                 </span>
               </span>
             </h1>
             
             {/* Logo untuk Mobile */}
-            <div className="lg:hidden flex justify-center items-center my-12">
-              <div className="relative w-36 mx-auto">
+            <div className="lg:hidden flex justify-center items-center gap-8 my-12">
+              <div className="relative w-28">
                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
                 <img 
                   src="/images/mosa.png" 
@@ -70,11 +70,20 @@ const HeroSection: React.FC = () => {
                   className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
                 />
               </div>
+              <div className="relative w-28">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
+                <img 
+                  src="/images/fajar.png" 
+                  alt="SMAN 10 Fajar Harapan Logo"
+                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
+                />
+              </div>
             </div>
 
             <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Membentuk generasi unggul dengan pendidikan berkualitas dan karakter yang kuat 
-              melalui program pembelajaran yang terintegrasi dan inovatif.
+              Program PPDB Bersama SMA Unggulan Aceh. Membentuk generasi unggul dengan pendidikan 
+              berkualitas dan karakter yang kuat melalui program pembelajaran yang terintegrasi 
+              dan inovatif.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 justify-center lg:justify-start">
@@ -123,13 +132,23 @@ const HeroSection: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="hidden lg:block w-full flex items-center justify-center"
           >
-            <div className="relative w-full max-w-md mx-auto flex items-center justify-center">
-              <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
-              <img 
-                src="/images/mosa.png" 
-                alt="SMAN Modal Bangsa Logo"
-                className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
-              />
+            <div className="flex gap-12 justify-center items-center">
+              <div className="relative w-64">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
+                <img 
+                  src="/images/mosa.png" 
+                  alt="SMAN Modal Bangsa Logo"
+                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
+                />
+              </div>
+              <div className="relative w-64">
+                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
+                <img 
+                  src="/images/fajar.png" 
+                  alt="SMAN 10 Fajar Harapan Logo"
+                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
+                />
+              </div>
             </div>
           </motion.div>
         </div>

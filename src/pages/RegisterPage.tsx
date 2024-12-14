@@ -138,7 +138,7 @@ const RegisterPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const checkExistingNIK = async (nik: string): Promise<{exists: boolean, userData?: {fullName: string, nik: string}}> => {
+  const checkExistingNIK = async (nik: string): Promise<{exists: boolean, userData?: {fullName: string, nik: string, school?: string}}> => {
     try {
       if (nik === '-') return { exists: false };
 
@@ -167,21 +167,20 @@ const RegisterPage: React.FC = () => {
       if (mosaSnapshot?.exists()) {
         const mosaData = Object.values(mosaSnapshot.val())[0] as PPDBUserData;
         if (mosaData && mosaData.nik !== '-') {
-          return { exists: true, userData: { fullName: mosaData.fullName, nik: mosaData.nik } };
+          return { exists: true, userData: { fullName: mosaData.fullName, nik: mosaData.nik, school: 'SMAN Modal Bangsa' } };
         }
       }
 
       if (fajarSnapshot?.exists()) {
         const fajarData = Object.values(fajarSnapshot.val())[0] as PPDBUserData;
         if (fajarData && fajarData.nik !== '-') {
-          return { exists: true, userData: { fullName: fajarData.fullName, nik: fajarData.nik } };
+          return { exists: true, userData: { fullName: fajarData.fullName, nik: fajarData.nik, school: 'SMAN 10 Fajar Harapan' } };
         }
       }
 
       return { exists: false };
     } catch (error) {
       console.error('Error checking NIK:', error);
-      // Jika terjadi error, anggap NIK tidak ada
       return { exists: false };
     }
   };
@@ -223,7 +222,7 @@ const RegisterPage: React.FC = () => {
         // Cek NIK duplikat
         const { exists, userData } = await checkExistingNIK(formData.nik);
         if (exists && userData) {
-          setError(`NIK sudah terdaftar oleh: ${userData.nik} - ${userData.fullName}`);
+          setError(`NIK sudah terdaftar oleh: ${userData.nik} - ${userData.fullName} (${userData.school})`);
           setLoading(false);
           setIsNIKValid(false);
           return;
@@ -488,7 +487,7 @@ const RegisterPage: React.FC = () => {
                         // Cek NIK di database
                         const { exists, userData } = await checkExistingNIK(value);
                         if (exists && userData) {
-                          setError(`NIK sudah terdaftar oleh: ${userData.nik} - ${userData.fullName}`);
+                          setError(`NIK terdaftar: ${userData.nik} - ${userData.fullName} - ${userData.school}`);
                           setIsNIKValid(false);
                         } else {
                           setError('');

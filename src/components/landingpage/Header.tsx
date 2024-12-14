@@ -76,12 +76,12 @@ const Header: React.FC = () => {
           <nav className="flex items-center justify-between">
             {/* Brand Name */}
             <Link to="/">
-              <span className={`
+              {/* <span className={`
                 font-bold text-lg transition-colors duration-300
                 ${isTransparent ? 'text-white' : 'text-blue-600'}
               `}>
                 SMAN Modal Bangsa
-              </span>
+              </span> */}
             </Link>
 
             {/* Desktop Navigation */}

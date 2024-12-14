@@ -259,65 +259,86 @@ const validateNilai = (nilai: string, jalur: string, school: 'mosa' | 'fajar'): 
   return { isValid: true };
 };
 
-// Fungsi untuk mendapatkan tahun ajaran PPDB
+// Update fungsi getPPDBYear untuk mengembalikan kode tahun
 const getPPDBYear = () => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-11
+
+  // Jika sudah lewat bulan Juli (index 6), gunakan tahun berikutnya
+  const startYear = currentMonth >= 6 ? currentYear + 1 : currentYear;
+  const endYear = startYear + 1;
+
+  // Format tahun untuk nomor pendaftaran: XYXY (contoh: 2526 untuk 2025/2026)
+  const yearCode = `${startYear.toString().slice(-2)}${endYear.toString().slice(-2)}`;
+
   return {
-    start: 2025,
-    end: 2026
+    start: startYear,
+    end: endYear,
+    yearCode // tambahkan yearCode
   };
 };
 
-// Update fungsi formatRegistrationNumber
-const formatRegistrationNumber = async (jalur: string, school: 'mosa' | 'fajar') => {
+// Tambahkan interface untuk KabupatenData
+interface KabupatenData {
+  kode: string;
+  nama: string;
+}
+
+// Tambahkan data kabupaten/kota
+const KABUPATEN_LIST: KabupatenData[] = [
+  { kode: '01', nama: 'KOTA BANDA ACEH' },
+  { kode: '02', nama: 'KOTA SABANG' },
+  { kode: '03', nama: 'KOTA LHOKSEUMAWE' },
+  { kode: '04', nama: 'KOTA LANGSA' },
+  { kode: '05', nama: 'KOTA SUBULUSSALAM' },
+  { kode: '06', nama: 'KABUPATEN ACEH BESAR' },
+  { kode: '07', nama: 'KABUPATEN PIDIE' },
+  { kode: '08', nama: 'KABUPATEN PIDIE JAYA' },
+  { kode: '09', nama: 'KABUPATEN BIREUEN' },
+  { kode: '10', nama: 'KABUPATEN ACEH TENGAH' },
+  { kode: '11', nama: 'KABUPATEN BENER MERIAH' },
+  { kode: '12', nama: 'KABUPATEN ACEH UTARA' },
+  { kode: '13', nama: 'KABUPATEN ACEH TIMUR' },
+  { kode: '14', nama: 'KABUPATEN ACEH TAMIANG' },
+  { kode: '15', nama: 'KABUPATEN ACEH SINGKIL' },
+  { kode: '16', nama: 'KABUPATEN ACEH JAYA' },
+  { kode: '17', nama: 'KABUPATEN ACEH BARAT' },
+  { kode: '18', nama: 'KABUPATEN NAGAN RAYA' },
+  { kode: '19', nama: 'KABUPATEN SIMEULUE' },
+  { kode: '20', nama: 'KABUPATEN ACEH BARAT DAYA' },
+  { kode: '21', nama: 'KABUPATEN ACEH SELATAN' },
+  { kode: '22', nama: 'KABUPATEN ACEH TENGGARA' },
+  { kode: '23', nama: 'KABUPATEN GAYO LUES' },
+  { kode: '24', nama: 'LUAR DAERAH' }
+];
+
+// Update fungsi formatRegistrationNumber - hapus parameter jalur yang tidak digunakan
+const formatRegistrationNumber = async (school: 'mosa' | 'fajar', kabupatenKode: string) => {
   try {
-    // Dapatkan kode jalur
-    const jalurCode = {
-      'prestasi': 'PST',
-      'reguler': 'REG', 
-      'undangan': 'UND'
-    }[jalur] || 'XXX';
+    const { yearCode } = getPPDBYear();
     
-    // Gunakan tahun PPDB yang tetap (2025)
-    const { start } = getPPDBYear();
-
-    // Tentukan kode leting berdasarkan sekolah
-    // Untuk MOSA: 32 di tahun 2025, 33 di 2026, dst
-    // Untuk Fajar: mulai dari 20
-    const getLetingCode = (school: 'mosa' | 'fajar', year: number) => {
-      if (school === 'mosa') {
-        // 2025 -> 32, 2026 -> 33, dst
-        return (year - 1993).toString(); // 2025 - 1993 = 32
-      } else {
-        return '20'; // Fajar Harapan mulai dari 20
-      }
-    };
-
-    const letingCode = getLetingCode(school, start);
-
     // Ambil data pendaftar untuk menghitung nomor urut
     const ppdbRef = ref(db, `ppdb_${school}`);
     const snapshot = await get(ppdbRef);
     
-    let registrationNumber = 1; // Mulai dari 1
-    
+    let registrationNumber = 1;
     if (snapshot.exists()) {
       const data = snapshot.val();
-      // Hitung jumlah pendaftar yang sudah ada dengan jalur yang sama
       const existingRegistrations = Object.values(data as Record<string, any>)
-        .filter((item: any) => item.jalur === jalur && item.status === 'submitted');
+        .filter((item: any) => item.status === 'submitted');
       registrationNumber = existingRegistrations.length + 1;
     }
 
-    // Format nomor dengan padding 3 digit
-    const paddedNumber = registrationNumber.toString().padStart(3, '0');
+    // Format nomor urut dengan padding 4 digit
+    const paddedNumber = registrationNumber.toString().padStart(4, '0');
     
-    // Format: PPDB/2025/PST/32001 untuk MOSA atau PPDB/2025/PST/20001 untuk Fajar
-    return `PPDB/${start}/${jalurCode}/${letingCode}${paddedNumber}`;
+    // Format: XYXY010001 (yearCode + kode kabupaten + nomor urut)
+    return `${yearCode}${kabupatenKode}${paddedNumber}`;
   } catch (error) {
     console.error('Error generating registration number:', error);
-    // Fallback ke format default jika terjadi error
-    const defaultLetingCode = school === 'mosa' ? '32' : '20';
-    return `PPDB/${getPPDBYear().start}/${jalur.toUpperCase()}/${defaultLetingCode}000`;
+    const { yearCode } = getPPDBYear();
+    return `${yearCode}000000`; // Fallback jika error
   }
 };
 
@@ -468,8 +489,12 @@ const generateRegistrationCard = async (formData: FormData) => {
       color: textColor,
     });
 
-    // Format nomor pendaftaran
-    const registrationNumber = await formatRegistrationNumber(formData.jalur, formData.school);
+    // Dapatkan kode kabupaten dari nama kabupaten yang dipilih
+    const kabupatenData = KABUPATEN_LIST.find(kab => kab.nama === formData.kabupaten);
+    const kabupatenKode = kabupatenData?.kode || '00';
+
+    // Format nomor pendaftaran dengan kode kabupaten
+    const registrationNumber = await formatRegistrationNumber(formData.school, kabupatenKode);
 
     // Informasi pendaftar dengan layout yang lebih rapi
     const startY = lineY - 80;
@@ -494,7 +519,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       });
     };
 
-    // Data pendaftar dengan grouping yang lebih jelas
+    // Data pendaftar dengan grouping yang lebih jelas - ubah bagian kabupaten
     const fields = [
       { label: 'No. Pendaftaran', value: registrationNumber },
       { label: 'Jalur Pendaftaran', value: formData.jalur.toUpperCase() },
@@ -718,6 +743,8 @@ interface SavedData {
   raport2?: string;
   raport3?: string;
   raport4?: string;
+  registrationNumber: string;
+  kabupatenKode: string;
 }
 
 const PPDBFormPage: React.FC = () => {
@@ -1182,6 +1209,13 @@ const PPDBFormPage: React.FC = () => {
 
       await Promise.all(uploadPromises);
 
+      // Dapatkan kode kabupaten dari nama kabupaten yang dipilih
+      const kabupatenData = KABUPATEN_LIST.find(kab => kab.nama === formData.kabupaten);
+      const kabupatenKode = kabupatenData?.kode || '00';
+
+      // Generate nomor pendaftaran dengan kode kabupaten
+      const registrationNumber = await formatRegistrationNumber(formData.school, kabupatenKode);
+
       // Prepare data untuk disimpan
       const dataToSave: SavedData = {
         // Metadata
@@ -1238,6 +1272,8 @@ const PPDBFormPage: React.FC = () => {
 
         // URL files yang sudah diupload
         ...fileUrls,
+        registrationNumber, // Tambahkan nomor pendaftaran ke data yang disimpan
+        kabupatenKode, // Simpan juga kode kabupaten
       };
 
       // Simpan ke database yang sesuai
@@ -1524,13 +1560,21 @@ const PPDBFormPage: React.FC = () => {
                 className={disabledInputClass}
               />
 
-              <Input
-                label="Kabupaten"
+              <Select
+                label="Kabupaten/Kota"
                 name="kabupaten"
                 value={formData.kabupaten}
                 onChange={handleInputChange}
+                options={[
+                  { value: '', label: '-- Pilih Kabupaten/Kota --', disabled: true },
+                  ...KABUPATEN_LIST.map(kab => ({
+                    value: kab.nama,
+                    label: kab.nama
+                  }))
+                ]}
                 required
-                className={disabledInputClass}
+                className={`bg-white ${disabledInputClass}`}
+                disabled={formStatus === 'submitted'}
               />
             </div>
           </div>
