@@ -23,6 +23,8 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { query, orderByChild, equalTo, get as getDb } from 'firebase/database';
+import schoolData from '../utils/school.json';
+import { useState as useStateLocal } from 'react'; // Rename untuk menghindari konflik
 
 // Types
 export type JalurPeriod = {
@@ -61,7 +63,6 @@ type FormData = {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
-  kabupatenAsalSekolah: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -115,7 +116,6 @@ const INITIAL_FORM_DATA: FormData = {
   kecamatan: '',
   kabupaten: '',
   asalSekolah: '',
-  kabupatenAsalSekolah: '',
   
   // Akademik
   nilaiAgama2: '',
@@ -178,8 +178,7 @@ const VALIDATION_CONFIG = {
     alamat: 'Alamat',
     kecamatan: 'Kecamatan',
     kabupaten: 'Kabupaten',
-    asalSekolah: 'Asal Sekolah',
-    kabupatenAsalSekolah: 'Kabupaten Asal Sekolah'
+    asalSekolah: 'Asal Sekolah'
   },
 
   // Nilai minimum per sekolah dan jalur
@@ -211,7 +210,7 @@ const VALIDATION_CONFIG = {
     SISWA: [
       'namaSiswa', 'nik', 'nisn', 'jenisKelamin', 'tempatLahir', 'tanggalLahir',
       'anakKe', 'jumlahSaudara', 'alamat', 'kecamatan', 'kabupaten',
-      'asalSekolah', 'kabupatenAsalSekolah'
+      'asalSekolah'
     ],
     ORANG_TUA: [
       'namaAyah', 'pekerjaanAyah', 'instansiAyah', 'hpAyah',
@@ -708,7 +707,6 @@ interface SavedData {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
-  kabupatenAsalSekolah: string;
 
   // Data akademik
   nilaiAgama2: string;
@@ -746,6 +744,112 @@ interface SavedData {
   registrationNumber: string;
   kabupatenKode: string;
 }
+
+// Tambahkan komponen SearchableSelect
+const SearchableSelect: React.FC<{
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  disabled?: boolean;
+  required?: boolean;
+  className?: string;
+  name: string;
+}> = ({ label, value, onChange, disabled, required, className, name }) => {
+  const [search, setSearch] = useStateLocal('');
+  const [isOpen, setIsOpen] = useStateLocal(false);
+  const [isFocused, setIsFocused] = useStateLocal(false);
+
+  // Filter sekolah berdasarkan pencarian
+  const filteredSchools = schoolData.filter(school =>
+    school.nm_sekolah.toLowerCase().includes(search.toLowerCase()) ||
+    school.nm_rayon.toLowerCase().includes(search.toLowerCase())
+  ).slice(0, 100);
+
+  // Helper untuk mendapatkan rayon dari nama sekolah
+  const getRayonFromSchoolName = (schoolName: string) => {
+    const school = schoolData.find(s => s.nm_sekolah === schoolName);
+    return school?.nm_rayon || '';
+  };
+
+  return (
+    <div className="relative">
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      
+      <div className="relative">
+        <input
+          type="text"
+          className={`w-full px-3 py-2 border rounded-md ${className}`}
+          placeholder={value || "Ketik untuk mencari sekolah..."}
+          value={isFocused ? search : value}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => {
+            setIsFocused(true);
+            setSearch('');
+            setIsOpen(true);
+          }}
+          onBlur={() => {
+            setTimeout(() => {
+              setIsFocused(false);
+              setIsOpen(false);
+            }, 200);
+          }}
+          disabled={disabled}
+        />
+        
+        <input 
+          type="hidden"
+          name={name}
+          value={value}
+          onChange={onChange}
+        />
+        
+        {isOpen && isFocused && (
+          <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+            {filteredSchools.length > 0 ? (
+              filteredSchools.map((school) => (
+                <div
+                  key={school.npsn}
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => {
+                    onChange({
+                      target: {
+                        name,
+                        value: school.nm_sekolah
+                      }
+                    } as React.ChangeEvent<HTMLInputElement>);
+                    setSearch(school.nm_sekolah);
+                    setIsOpen(false);
+                    setIsFocused(false);
+                  }}
+                >
+                  <div className="font-medium">{school.nm_sekolah}</div>
+                  <div className="text-sm text-gray-500">{school.nm_rayon}</div>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-2 text-gray-500">
+                Tidak ada sekolah yang ditemukan
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {value && !isFocused && (
+        <div className="mt-2 text-sm">
+          <div className="font-medium text-gray-700">Sekolah dipilih:</div>
+          <div className="text-gray-600">{value}</div>
+          <div className="text-gray-500">({getRayonFromSchoolName(value)})</div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const PPDBFormPage: React.FC = () => {
   // Pindahkan hooks ke dalam komponen
@@ -1241,7 +1345,6 @@ const PPDBFormPage: React.FC = () => {
         kecamatan: String(formData.kecamatan || ''),
         kabupaten: String(formData.kabupaten || ''),
         asalSekolah: String(formData.asalSekolah || ''),
-        kabupatenAsalSekolah: String(formData.kabupatenAsalSekolah || ''),
 
         // Data akademik
         nilaiAgama2: String(formData.nilaiAgama2 || ''),
@@ -1582,27 +1685,15 @@ const PPDBFormPage: React.FC = () => {
 
         <div>
           <SectionTitle>Asal Sekolah</SectionTitle>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <Input
-                label="Nama Sekolah"
-                name="asalSekolah"
-                value={formData.asalSekolah}
-                onChange={handleInputChange}
-                required
-                className={disabledInputClass}
-              />
-            </div>
-
-            <Input
-              label="Kabupaten Sekolah"
-              name="kabupatenAsalSekolah"
-              value={formData.kabupatenAsalSekolah}
-              onChange={handleInputChange}
-              required
-              className={disabledInputClass}
-            />
-          </div>
+          <SearchableSelect
+            label="Nama Sekolah"
+            name="asalSekolah"
+            value={formData.asalSekolah}
+            onChange={handleInputChange}
+            required
+            className={`bg-white ${disabledInputClass}`}
+            disabled={formStatus === 'submitted'}
+          />
         </div>
       </div>
     );
@@ -1840,8 +1931,7 @@ const PPDBFormPage: React.FC = () => {
       alamat: formData.alamat,
       kecamatan: formData.kecamatan,
       kabupaten: formData.kabupaten,
-      asalSekolah: formData.asalSekolah,
-      kabupatenAsalSekolah: formData.kabupatenAsalSekolah
+      asalSekolah: formData.asalSekolah
     };
 
     // Cek apakah informasi siswa sudah lengkap
