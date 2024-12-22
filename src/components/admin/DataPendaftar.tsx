@@ -52,7 +52,6 @@ type PPDBData = {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
-  kabupatenAsalSekolah: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -526,7 +525,7 @@ const DataPendaftar: React.FC = () => {
     }
   };
 
-  // Update setupWorksheet untuk menambahkan kolom admin info di Excel
+  // Update setupWorksheet function - remove kabupatenAsalSekolah column
   const setupWorksheet = (workbook: ExcelJS.Workbook, name: string, data: PPDBData[]) => {
     const worksheet = workbook.addWorksheet(name);
 
@@ -552,8 +551,8 @@ const DataPendaftar: React.FC = () => {
       // Kolom sekolah hanya ditampilkan untuk master admin
       ...(userRole?.isMaster ? [{ header: 'Sekolah', key: 'school', width: 25 }] : []),
       { header: 'Jalur', key: 'jalur', width: 15 },
-      { header: 'Status', key: 'statusKeputusan', width: 15 }, // Separate status column
-      { header: 'Pemeriksa', key: 'adminName', width: 25 }, // Separate admin name column
+      { header: 'Status', key: 'statusKeputusan', width: 15 },
+      { header: 'Pemeriksa', key: 'adminName', width: 25 },
       { header: 'Alasan Penolakan', key: 'alasanPenolakan', width: 50 },
       { header: 'NIK', key: 'nik', width: 20 },
       { header: 'Jenis Kelamin', key: 'jenisKelamin', width: 15 },
@@ -565,7 +564,6 @@ const DataPendaftar: React.FC = () => {
       { header: 'Kecamatan', key: 'kecamatan', width: 25 },
       { header: 'Kabupaten', key: 'kabupaten', width: 25 },
       { header: 'Asal Sekolah', key: 'asalSekolah', width: 40 },
-      { header: 'Kabupaten Sekolah', key: 'kabupatenAsalSekolah', width: 25 },
       // Nilai Akademik - Seragamkan lebar kolom nilai
       { header: 'Agama Sem 2', key: 'nilaiAgama2', width: 14 },
       { header: 'Agama Sem 3', key: 'nilaiAgama3', width: 14 },
@@ -604,6 +602,12 @@ const DataPendaftar: React.FC = () => {
       { header: 'Diupdate Oleh', key: 'updatedByEmail', width: 30 },
       { header: 'Admin Sekolah', key: 'updatedBySchool', width: 25 },
       { header: 'Waktu Update', key: 'updatedByTime', width: 20 },
+      // Add raw link columns after the existing document columns
+      { header: 'Link Foto', key: 'photoLink', width: 50 },
+      { header: 'Link Rekomendasi', key: 'rekomendasiLink', width: 50 },
+      { header: 'Link Raport 2', key: 'raport2Link', width: 50 },
+      { header: 'Link Raport 3', key: 'raport3Link', width: 50 },
+      { header: 'Link Raport 4', key: 'raport4Link', width: 50 },
     ];
 
     worksheet.columns = columns;
@@ -649,7 +653,6 @@ const DataPendaftar: React.FC = () => {
       kecamatan: item.kecamatan,
       kabupaten: item.kabupaten,
       asalSekolah: item.asalSekolah,
-      kabupatenAsalSekolah: item.kabupatenAsalSekolah,
       // Nilai Akademik
       nilaiAgama2: item.nilaiAgama2,
       nilaiAgama3: item.nilaiAgama3,
@@ -709,6 +712,12 @@ const DataPendaftar: React.FC = () => {
       updatedBySchool: item.updatedBy?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan',
       updatedByTime: item.updatedBy?.timestamp ? 
         new Date(item.updatedBy.timestamp).toLocaleString('id-ID') : '-',
+      // Add raw links
+      photoLink: item.photo || '-',
+      rekomendasiLink: item.rekomendasi || '-',
+      raport2Link: item.raport2 || '-',
+      raport3Link: item.raport3 || '-',
+      raport4Link: item.raport4 || '-',
     }));
 
     worksheet.addRows(rowData);
@@ -886,6 +895,26 @@ const DataPendaftar: React.FC = () => {
     const lastRow = worksheet.lastRow!.number + 2;
     worksheet.addRow(['Total Data:', data.length]);
     worksheet.getRow(lastRow).font = { bold: true };
+
+    // Add styling for raw link columns
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) { // Skip header row
+        row.eachCell((cell, colNumber) => {
+          // Style for raw link columns
+          if (colNumber >= worksheet.columns.length - 5) { // Last 5 columns are raw links
+            cell.font = {
+              color: { argb: '0000FF' }, // Blue color for links
+              underline: true
+            };
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: 'left',
+              wrapText: true
+            };
+          }
+        });
+      }
+    });
   };
 
   const renderDetailAkademik = (data: PPDBData) => {
@@ -1629,7 +1658,7 @@ const DataPendaftar: React.FC = () => {
                         {/* Foto dan Info Utama */}
                         <div className={`flex ${isMobile() ? 'flex-col' : 'gap-6'}`}>
                           {/* Pas Foto */}
-                          <div className={`${isMobile() ? 'mb-3 flex justify-center' : 'flex-shrink-0'}`}>
+                          <div className={`${isMobile() ? 'mb-3 flex justify-center' : 'w-32 flex-shrink-0'}`}>
                             {selectedData?.photo ? (
                               <div className="relative group">
                                 <div 
@@ -1654,7 +1683,7 @@ const DataPendaftar: React.FC = () => {
 
                           {/* Info Utama */}
                           <div className="flex-1">
-                            <div className="bg-gray-50 p-4 rounded-lg"> {/* Tambah background dan padding */}
+                            <div className="bg-gray-50 p-4 rounded-lg h-40"> {/* Added h-40 to match photo height */}
                               <div className={`grid ${isMobile() ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-x-8 gap-y-4'}`}>
                                 <InfoItem label="NIK" value={selectedData?.nik} />
                                 <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
@@ -1682,9 +1711,8 @@ const DataPendaftar: React.FC = () => {
 
                         <div className={`bg-gray-50 ${isMobile() ? 'p-2.5 rounded-md' : 'p-4 rounded-lg'}`}>
                           <h4 className={`font-medium text-gray-900 ${isMobile() ? 'mb-2 text-sm' : 'mb-3'}`}>Asal Sekolah</h4>
-                          <div className={`grid ${isMobile() ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
+                          <div>
                             <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah} />
-                            <InfoItem label="Kabupaten" value={selectedData?.kabupatenAsalSekolah} />
                           </div>
                         </div>
                       </div>
