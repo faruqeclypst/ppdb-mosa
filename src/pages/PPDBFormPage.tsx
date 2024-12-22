@@ -1467,18 +1467,67 @@ const PPDBFormPage: React.FC = () => {
         { value: '', label: '-- Pilih Jalur --', disabled: true }
       ];
 
-      // Tambahkan jalur hanya jika aktif di settings
-      if (ppdbSettings?.jalurPrestasi?.isActive) {
-        options.push({ value: 'prestasi', label: 'Prestasi', disabled: false });
-      }
-      
-      if (ppdbSettings?.jalurReguler?.isActive) {
-        options.push({ value: 'reguler', label: 'Reguler', disabled: false });
-      }
-      
-      if (ppdbSettings?.jalurUndangan?.isActive) {
-        options.push({ value: 'undangan', label: 'Undangan', disabled: false });
-      }
+      if (!ppdbSettings) return options;
+
+      const currentDate = new Date();
+
+      // Helper function to check if date is within range
+      const isDateInRange = (start: string, end: string) => {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        // Set time to start of day for accurate comparison
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        currentDate.setHours(12, 0, 0, 0);
+        return currentDate >= startDate && currentDate <= endDate;
+      };
+
+      // Helper function to check if date hasn't started yet
+      const isDateBeforeStart = (start: string) => {
+        const startDate = new Date(start);
+        startDate.setHours(0, 0, 0, 0);
+        currentDate.setHours(12, 0, 0, 0);
+        return currentDate < startDate;
+      };
+
+      // Add all jalur but mark them as disabled if not active or out of date range
+      const jalurList = [
+        {
+          value: 'prestasi',
+          label: 'Prestasi',
+          settings: ppdbSettings.jalurPrestasi
+        },
+        {
+          value: 'reguler',
+          label: 'Reguler',
+          settings: ppdbSettings.jalurReguler
+        },
+        {
+          value: 'undangan',
+          label: 'Undangan',
+          settings: ppdbSettings.jalurUndangan
+        }
+      ];
+
+      jalurList.forEach(jalur => {
+        const isAvailable = jalur.settings?.isActive && 
+                           isDateInRange(jalur.settings.start, jalur.settings.end);
+        
+        let label = jalur.label;
+        if (!jalur.settings?.isActive) {
+          label += ' (Tidak Aktif)';
+        } else if (isDateBeforeStart(jalur.settings.start)) {
+          label += ' (Belum Dimulai)';
+        } else if (!isDateInRange(jalur.settings.start, jalur.settings.end)) {
+          label += ' (Sudah Ditutup)';
+        }
+
+        options.push({
+          value: jalur.value,
+          label: label,
+          disabled: !isAvailable
+        });
+      });
 
       return options;
     };
@@ -1489,18 +1538,16 @@ const PPDBFormPage: React.FC = () => {
           <SectionTitle>Data Pribadi</SectionTitle>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {getAvailableJalur().length > 1 && (
-                <Select
-                  label="Pilih Jalur"
-                  name="jalur"
-                  value={formData.jalur}
-                  onChange={handleInputChange}
-                  options={getAvailableJalur()}
-                  required
-                  className={`bg-white ${disabledInputClass}`}
-                  disabled={formStatus === 'submitted'}
-                />
-              )}
+              <Select
+                label="Pilih Jalur"
+                name="jalur"
+                value={formData.jalur}
+                onChange={handleInputChange}
+                options={getAvailableJalur()}
+                required
+                className={`bg-white ${disabledInputClass}`}
+                disabled={formStatus === 'submitted'}
+              />
 
               <Input
                 label="Nama Calon Siswa"
