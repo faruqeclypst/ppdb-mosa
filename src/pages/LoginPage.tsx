@@ -168,14 +168,20 @@ const LoginPage: React.FC = () => {
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5 }}
+                className="flex justify-center items-center"
               >
                 <img
-                  src="images/mosa.png"
-                  alt="Logo"
-                  className="h-20 mx-auto mb-4"
+                  src="/images/mosa.png"
+                  alt="Logo MOSA"
+                  className="h-20 mr-2 p-1"
+                />
+                <img
+                  src="/images/fajar.png"
+                  alt="Logo Fajar Harapan"
+                  className="h-20 ml-2 p-1"
                 />
               </motion.div>
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">
+              <h2 className="text-3xl font-extrabold text-gray-900 mt-4 mb-2">
                 Masuk ke Akun
               </h2>
               <p className="text-sm text-gray-600">

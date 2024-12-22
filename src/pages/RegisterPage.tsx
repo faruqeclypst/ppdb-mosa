@@ -670,14 +670,14 @@ const RegisterPage: React.FC = () => {
             <p>
               Akun PPDB Anda telah berhasil dibuat.
             </p>
-            <div className="bg-yellow-50 p-4 rounded-lg text-left">
+            {/* <div className="bg-yellow-50 p-4 rounded-lg text-left">
               <p className="text-yellow-800 font-medium mb-2">Penting!</p>
               <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
                 <li>Cek email Anda untuk informasi selanjutnya</li>
                 <li>Pastikan cek folder Spam jika email tidak ada di Inbox</li>
                 <li>Simpan email dan password untuk login kembali</li>
               </ul>
-            </div>
+            </div> */}
           </div>
           <div className="flex justify-center gap-4">
             <Button

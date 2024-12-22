@@ -392,15 +392,17 @@ const generateRegistrationCard = async (formData: FormData) => {
     const logoResponse = await fetch(logoPath);
     const logoArrayBuffer = await logoResponse.arrayBuffer();
     const logoImage = await pdfDoc.embedPng(logoArrayBuffer);
-    const logoDims = logoImage.scale(0.09);
+    // Adjust scale based on school
+    const logoScale = formData.school === 'mosa' ? 0.09 : 0.15; // Increase scale for Fajar Harapan
+    const logoDims = logoImage.scale(logoScale);
 
     // Header positioning
     const headerY = height - 80;
 
-    // Draw logo
+    // Draw logo - adjust y position by lowering it 5 points
     page.drawImage(logoImage, {
       x: marginX,
-      y: headerY - logoDims.height/2,
+      y: headerY - logoDims.height/2 - 5, // Added -5 to lower the position
       width: logoDims.width,
       height: logoDims.height,
     });
@@ -518,7 +520,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       });
     };
 
-    // Data pendaftar dengan grouping yang lebih jelas - ubah bagian kabupaten
+    // Data pendaftar dengan grouping yang lebih jelas - ubah bagian alamat
     const fields = [
       { label: 'No. Pendaftaran', value: registrationNumber },
       { label: 'Jalur Pendaftaran', value: formData.jalur.toUpperCase() },
@@ -528,7 +530,8 @@ const generateRegistrationCard = async (formData: FormData) => {
       { label: 'Tempat, Tgl Lahir', value: `${formData.tempatLahir}, ${new Date(formData.tanggalLahir).toLocaleDateString('id-ID')}` },
       { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' },
       { label: 'Asal Sekolah', value: formData.asalSekolah },
-      { label: 'Alamat', value: formData.alamat },
+      { label: 'Alamat', value: `${formData.alamat}, ${formData.kecamatan}` },
+      { label: 'Kabupaten/Kota', value: formData.kabupaten },
       { label: 'Nama Ayah', value: formData.namaAyah },
       { label: 'Nama Ibu', value: formData.namaIbu },
       { label: 'No. HP', value: formData.hpAyah }
