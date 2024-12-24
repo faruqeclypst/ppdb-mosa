@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import HeroSection from '../components/landingpage/HeroSection';
-import FeaturesSection from '../components/landingpage/FeaturesSection';
-import TestimonialsSection from '../components/landingpage/TestimonialsSection';
-import CallToActionSection from '../components/landingpage/CallToActionSection';
-import FAQSection from '../components/landingpage/FAQSection';
+// import HeroSection from '../components/landingpage/HeroSection';
+// import FeaturesSection from '../components/landingpage/FeaturesSection';
+// import TestimonialsSection from '../components/landingpage/TestimonialsSection';
+// import CallToActionSection from '../components/landingpage/CallToActionSection';
+// import FAQSection from '../components/landingpage/FAQSection';
+import Pengumuman from '../components/landingpage/Pengumuman';
 
 const LandingPage: React.FC = () => {
   return (
@@ -14,11 +15,12 @@ const LandingPage: React.FC = () => {
       transition={{ duration: 0.5 }}
       className="overflow-hidden"
     >
-      <HeroSection />
-      <FeaturesSection />
+      {/* <HeroSection /> */}
+      <Pengumuman />
+      {/* <FeaturesSection />
       <TestimonialsSection />
       <FAQSection />
-      <CallToActionSection />
+      <CallToActionSection /> */}
     </motion.div>
   );
 };

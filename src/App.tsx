@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Header from './components/landingpage/Header';
+// import Header from './components/landingpage/Header';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
@@ -8,7 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import PPDBFormPage from './pages/PPDBFormPage';
 import InfoPPDBPage from './pages/InfoPPDBPage';
 import { AuthProvider } from './contexts/AuthContext';
-import Footer from './components/landingpage/Footer';
+// import Footer from './components/landingpage/Footer';
 import ScrollToTop from './components/utils/ScrollToTop';
  
 // Layout wrapper component
@@ -22,11 +22,11 @@ const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
  
   return (
     <div className="flex flex-col min-h-screen">
-      <Header />
+      {/* <Header /> */}
       <main className="flex-grow">
         {children}
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 };
