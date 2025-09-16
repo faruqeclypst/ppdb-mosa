@@ -55,7 +55,7 @@ const HeroSection: React.FC = () => {
               PPDB {getPPDBYears()}{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
-                  SMAN Modal Bangsa & SMAN Fajar Harapan
+                  SMAN Modal Bangsa
                 </span>
               </span>
             </h1>
@@ -81,7 +81,7 @@ const HeroSection: React.FC = () => {
             </div>
 
             <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Program PPDB Bersama SMA Unggulan Aceh. Membentuk generasi unggul dengan pendidikan 
+              PPDB SMAN Modal Bang Aceh. Membentuk generasi unggul dengan pendidikan 
               berkualitas dan karakter yang kuat melalui program pembelajaran yang terintegrasi 
               dan inovatif.
             </p>
@@ -141,14 +141,14 @@ const HeroSection: React.FC = () => {
                   className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
                 />
               </div>
-              <div className="relative w-64">
+              {/* <div className="relative w-64">
                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
                 <img 
                   src="/images/fajar.png" 
                   alt="SMAN 10 Fajar Harapan Logo"
                   className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
                 />
-              </div>
+              </div> */}
             </div>
           </motion.div>
         </div>

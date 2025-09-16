@@ -175,11 +175,11 @@ const LoginPage: React.FC = () => {
                   alt="Logo MOSA"
                   className="h-20 mr-2 p-1"
                 />
-                <img
+                {/* <img
                   src="/images/fajar.png"
                   alt="Logo Fajar Harapan"
                   className="h-20 ml-2 p-1"
-                />
+                /> */}
               </motion.div>
               <h2 className="text-3xl font-extrabold text-gray-900 mt-4 mb-2">
                 Masuk ke Akun

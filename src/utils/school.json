@@ -1,5 +1,10 @@
 [
     {
+        "npsn": "00000000",
+        "nm_sekolah": "SEKOLAH LAIN",
+        "nm_rayon": "-"
+    },
+    {
         "npsn": "10105436",
         "nm_sekolah": "SMP NEGERI 1 BANDA ACEH",
         "nm_rayon": "KOTA BANDA ACEH"

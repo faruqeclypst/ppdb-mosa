@@ -332,7 +332,7 @@ const RegisterPage: React.FC = () => {
                 Selamat Datang di PPDB Online
               </h1>
               <p className="text-lg text-gray-600">
-                SMAN Modal Bangsa dan SMAN 10 Fajar Harapan membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
+                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
               </p>
             </div>
 
@@ -431,7 +431,7 @@ const RegisterPage: React.FC = () => {
                       options={[
                         { value: '', label: '-- Pilih Sekolah --', disabled: true },
                         { value: 'mosa', label: 'SMAN Modal Bangsa' },
-                        { value: 'fajar', label: 'SMAN 10 Fajar Harapan' }
+                        // { value: 'fajar', label: 'SMAN 10 Fajar Harapan' }
                       ]}
                       className="pl-8 md:pl-10"
                     />
