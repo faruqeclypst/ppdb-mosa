@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ref, get, update } from 'firebase/database';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, auth } from '../firebase/config';
+import { db, auth } from '../firebase/config';
+import { uploadToR2 } from '../services/cloudflareR2';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -1079,10 +1079,14 @@ const PPDBFormPage: React.FC = () => {
 
       } else if (file.type === 'application/pdf') {
         try {
-          if (file.size > 500 * 1024) {
-            showAlert('error', 'Ukuran PDF tidak boleh lebih dari 500KB. Silakan kompres terlebih dahulu menggunakan tools online seperti ilovepdf.com');
+          // if (file.size > 500 * 1024) {
+          //   showAlert('error', 'Ukuran PDF tidak boleh lebih dari 500KB. Silakan kompres terlebih dahulu menggunakan tools online seperti ilovepdf.com');
+          //   return;
+          // }
+          if (file.size > 2 * 1024 * 1024) {
+            showAlert('error', 'Ukuran PDF tidak boleh lebih dari 2MB. Silakan kompres terlebih dahulu menggunakan tools online seperti ilovepdf.com');
             return;
-          }
+        }
 
           // Buat file baru dengan nama yang diformat
           compressedFile = new File(
@@ -1300,16 +1304,22 @@ const PPDBFormPage: React.FC = () => {
         throw new Error('Data pendaftar tidak ditemukan');
       }
 
-      // Upload files dengan path yang sesuai
+      // Upload files to Cloudflare R2 dengan path yang sesuai
       const uploadPromises = [];
       const fileUrls: Record<string, string> = {};
 
       for (const [key, file] of Object.entries(formData)) {
         if (file instanceof File) {
-          const fileRef = storageRef(storage, `ppdb_${formData.school}/${user.uid}/${key}`);
+          // Format path: ppdb_{school}/{user.uid}/{key}
+          const path = `ppdb_${formData.school}/${user.uid}/${key}`;
           uploadPromises.push(
-            uploadBytes(fileRef, file).then(() => getDownloadURL(fileRef))
-              .then(url => { fileUrls[key] = url; })
+            uploadToR2({
+              file,
+              path,
+              contentType: file.type
+            }).then(result => {
+              fileUrls[key] = result.url;
+            })
           );
         }
       }

@@ -303,8 +303,8 @@ const RegisterPage: React.FC = () => {
     },
     {
       icon: <ArrowRightIcon className="w-5 h-5 text-blue-600" />,
-      title: "Pendaftaran hanya untuk satu sekolah",
-      description: "Anda harus memilih salah satu, SMAN Modal Bangsa atau SMAN 10 Fajar Harapan"
+      title: "Pendaftaran Mudah",
+      description: "SMAN Modal Bangsa"
     }
   ];
 

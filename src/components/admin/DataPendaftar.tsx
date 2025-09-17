@@ -209,7 +209,8 @@ const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
   );
 };
 
-const SchoolBadge: React.FC<{ school: PPDBData['school'] }> = ({ school }) => {
+// SchoolBadge kept for future use when school column is needed
+export const SchoolBadge: React.FC<{ school: PPDBData['school'] }> = ({ school }) => {
   const getSchoolColor = (school: PPDBData['school']) => {
     switch (school) {
       case 'mosa':
@@ -267,6 +268,8 @@ const DataPendaftar: React.FC = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [showActionDropdown, setShowActionDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -281,6 +284,23 @@ const DataPendaftar: React.FC = () => {
       document.head.removeChild(styleElement);
     };
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showActionDropdown) {
+        const target = event.target as Element;
+        if (!target.closest('.action-dropdown')) {
+          setShowActionDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showActionDropdown]);
 
   const loadData = async () => {
     try {
@@ -426,7 +446,7 @@ const DataPendaftar: React.FC = () => {
   const headers = [
     'No',
     'Nama',
-    ...(userRole?.isMaster ? ['Sekolah'] : []), 
+    // ...(userRole?.isMaster ? ['Sekolah'] : []), // Hide sekolah column
     'Jalur',
     'Asal Sekolah',
     'Status',
@@ -548,8 +568,8 @@ const DataPendaftar: React.FC = () => {
       { header: 'NISN', key: 'nisn', width: 15 },
       { header: 'Nama Lengkap', key: 'namaSiswa', width: 40 },
       { header: 'Email', key: 'email', width: 35 },
-      // Kolom sekolah hanya ditampilkan untuk master admin
-      ...(userRole?.isMaster ? [{ header: 'Sekolah', key: 'school', width: 25 }] : []),
+      // Kolom sekolah hanya ditampilkan untuk master admin - HIDDEN
+      // ...(userRole?.isMaster ? [{ header: 'Sekolah', key: 'school', width: 25 }] : []),
       { header: 'Jalur', key: 'jalur', width: 15 },
       { header: 'Status', key: 'statusKeputusan', width: 15 },
       { header: 'Pemeriksa', key: 'adminName', width: 25 },
@@ -620,7 +640,7 @@ const DataPendaftar: React.FC = () => {
     // Update freeze panes to include the Pemeriksa column
     worksheet.views = [{ 
       state: 'frozen', 
-      xSplit: userRole?.isMaster ? 8 : 7, // Increased by 1 to include Pemeriksa column
+      xSplit: userRole?.isMaster ? 7 : 6, // Adjusted since sekolah column is hidden
       ySplit: 1, 
       activeCell: 'A2' 
     }];
@@ -631,10 +651,10 @@ const DataPendaftar: React.FC = () => {
       nisn: item.nisn,
       namaSiswa: item.namaSiswa,
       email: item.email,
-      // Hanya tambahkan kolom sekolah jika master admin
-      ...(userRole?.isMaster ? {
-        school: item.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'
-      } : {}),
+      // Hanya tambahkan kolom sekolah jika master admin - HIDDEN
+      // ...(userRole?.isMaster ? {
+      //   school: item.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'
+      // } : {}),
       jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
       // Format status keputusan admin
       statusKeputusan: item.adminStatus ? 
@@ -805,53 +825,53 @@ const DataPendaftar: React.FC = () => {
             };
           }
 
-          // Style untuk sekolah (kolom 5)
-          if (colNumber === 5) {
-            const schoolValue = cell.value as string;
-            if (schoolValue.includes('Modal Bangsa')) {
-              cell.fill = { 
-                type: 'pattern' as const, 
-                pattern: 'solid' as const, 
-                fgColor: { argb: 'DBEAFE' } // Light blue
-              };
-              cell.font = { 
-                color: { argb: '1E40AF' }, // Dark blue
-                bold: true 
-              };
-            } else {
-              cell.fill = { 
-                type: 'pattern' as const, 
-                pattern: 'solid' as const, 
-                fgColor: { argb: 'DCFCE7' } // Light green
-              };
-              cell.font = { 
-                color: { argb: '166534' }, // Dark green
-                bold: true 
-              };
-            }
-          }
+          // Style untuk sekolah (kolom 5) - HIDDEN
+          // if (colNumber === 5) {
+          //   const schoolValue = cell.value as string;
+          //   if (schoolValue.includes('Modal Bangsa')) {
+          //     cell.fill = { 
+          //       type: 'pattern' as const, 
+          //       pattern: 'solid' as const, 
+          //       fgColor: { argb: 'DBEAFE' } // Light blue
+          //     };
+          //     cell.font = { 
+          //       color: { argb: '1E40AF' }, // Dark blue
+          //       bold: true 
+          //     };
+          //   } else {
+          //     cell.fill = { 
+          //       type: 'pattern' as const, 
+          //       pattern: 'solid' as const, 
+          //       fgColor: { argb: 'DCFCE7' } // Light green
+          //     };
+          //     cell.font = { 
+          //       color: { argb: '166534' }, // Dark green
+          //       bold: true 
+          //     };
+          //   }
+          // }
 
           // Update centerColumns untuk memastikan semua kolom nilai dan jumlah saudara di-center
           const centerColumns = [
             1,  // No
-            6,  // Jalur
-            7,  // Status Keputusan
-            9,  // Jenis Kelamin
-            13, // Anak Ke
-            14, // Jumlah Saudara
-            15, // Jumlah Saudara Total
-            // Nilai semester (21-35) - pastikan mencakup semua kolom nilai termasuk IPA
-            21, 22, 23, // Agama
-            24, 25, 26, // B.Indo
-            27, 28, 29, // B.Ing
-            30, 31, 32, // MTK
-            33, 34, 35, // IPA - pastikan kolom IPA juga di-center
-            // Dokumen (44-48)
-            44, // Foto
-            45, // Rekomendasi
-            46, // Raport 2
-            47, // Raport 3
-            48  // Raport 4
+            5,  // Jalur (adjusted since sekolah column is hidden)
+            6,  // Status Keputusan
+            8,  // Jenis Kelamin (adjusted)
+            12, // Anak Ke (adjusted)
+            13, // Jumlah Saudara (adjusted)
+            14, // Jumlah Saudara Total (adjusted)
+            // Nilai semester (20-34) - pastikan mencakup semua kolom nilai termasuk IPA (adjusted)
+            20, 21, 22, // Agama
+            23, 24, 25, // B.Indo
+            26, 27, 28, // B.Ing
+            29, 30, 31, // MTK
+            32, 33, 34, // IPA - pastikan kolom IPA juga di-center
+            // Dokumen (43-47) (adjusted)
+            43, // Foto
+            44, // Rekomendasi
+            45, // Raport 2
+            46, // Raport 3
+            47  // Raport 4
           ];
 
           if (centerColumns.includes(colNumber)) {
@@ -862,7 +882,7 @@ const DataPendaftar: React.FC = () => {
           }
 
           // Style untuk alasan penolakan
-          if (colNumber === 8) {
+          if (colNumber === 7) { // Adjusted since sekolah column is hidden
             cell.alignment = { 
               vertical: 'middle' as const,
               wrapText: true // Enable text wrapping
@@ -870,7 +890,7 @@ const DataPendaftar: React.FC = () => {
           }
 
           // Style untuk dokumen
-          if (colNumber >= 44 && colNumber <= 48) {
+          if (colNumber >= 43 && colNumber <= 47) { // Adjusted since sekolah column is hidden
             const cellValue = cell.value as any;
             if (cellValue && typeof cellValue === 'object' && 'hyperlink' in cellValue) {
               cell.font = { 
@@ -1100,22 +1120,20 @@ const DataPendaftar: React.FC = () => {
     if (!dateStr) return '-';
     
     try {
-      const options: Intl.DateTimeFormatOptions = {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Jakarta'
-      };
-
       const date = new Date(dateStr);
       // Cek apakah tanggal valid
       if (isNaN(date.getTime())) {
         return '-';
       }
 
-      return date.toLocaleString('id-ID', options);
+      // Format singkat: 17 Sept - (14.03)
+      const day = date.getDate();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const month = monthNames[date.getMonth()];
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+
+      return `${day} ${month} - ${hours}.${minutes}`;
     } catch (error) {
       console.error('Error formatting date:', dateStr, error);
       return '-';
@@ -1130,6 +1148,7 @@ const DataPendaftar: React.FC = () => {
     // Pre-fill rejection reason if exists
     setAlasanPenolakan(data.alasanPenolakan || '');
     setShowStatusModal(true);
+    setShowActionDropdown(null); // Close dropdown
   };
 
   // Update saat menutup modal
@@ -1180,11 +1199,27 @@ const DataPendaftar: React.FC = () => {
           <p className="text-xs text-gray-500">{item.nisn}</p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusBadge 
-            status={item.status}
-            adminStatus={item.adminStatus}
-            className="text-xs"
-          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (item.adminStatus) {
+                setSelectedData(item);
+                setShowReasonModal(true);
+              }
+            }}
+            className={classNames(
+              "focus:outline-none",
+              item.adminStatus ? "cursor-pointer" : "cursor-default"
+            )}
+            title={item.adminStatus ? (item.adminStatus === 'ditolak' ? 'Lihat alasan penolakan' : 'Lihat status diterima') : undefined}
+          >
+            <StatusBadge 
+              status={item.status}
+              adminStatus={item.adminStatus}
+              className="text-xs"
+            />
+          </button>
           <ChevronDownIcon 
             className={classNames(
               "w-4 h-4 text-gray-400 transition-transform",
@@ -1237,6 +1272,7 @@ const DataPendaftar: React.FC = () => {
               onClick={() => {
                 setSelectedData(item);
                 setShowDetailModal(true);
+                setShowActionDropdown(null);
               }}
               className="flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2 rounded-lg text-xs transition-colors"
             >
@@ -1256,6 +1292,7 @@ const DataPendaftar: React.FC = () => {
               onClick={() => {
                 setSelectedData(item);
                 setShowDeleteModal(true);
+                setShowActionDropdown(null);
               }}
               className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded-lg text-xs transition-colors"
             >
@@ -1441,12 +1478,12 @@ const DataPendaftar: React.FC = () => {
                   <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
                     {item.namaSiswa}
                   </div>,
-                  // Sekolah (jika master admin)
-                  ...(userRole?.isMaster ? [
-                    <div className="text-left">
-                      <SchoolBadge key={item.uid} school={item.school} />
-                    </div>
-                  ] : []),
+                  // Sekolah (jika master admin) - HIDDEN
+                  // ...(userRole?.isMaster ? [
+                  //   <div className="text-left">
+                  //     <SchoolBadge key={item.uid} school={item.school} />
+                  //   </div>
+                  // ] : []),
                   // Jalur
                   <div className="text-left">
                     <JalurBadge key={item.uid} jalur={item.jalur} />
@@ -1457,11 +1494,26 @@ const DataPendaftar: React.FC = () => {
                   </div>,
                   // Status
                   <div className="text-left">
-                    <StatusBadge 
-                      status={item.status}
-                      adminStatus={item.adminStatus}
-                      className="text-xs"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (item.adminStatus) {
+                          setSelectedData(item);
+                          setShowReasonModal(true);
+                        }
+                      }}
+                      className={classNames(
+                        item.adminStatus ? "cursor-pointer" : "cursor-default",
+                        "focus:outline-none"
+                      )}
+                      title={item.adminStatus ? (item.adminStatus === 'ditolak' ? 'Lihat alasan penolakan' : 'Lihat status diterima') : undefined}
+                    >
+                      <StatusBadge 
+                        status={item.status}
+                        adminStatus={item.adminStatus}
+                        className="text-xs"
+                      />
+                    </button>
                   </div>,
                   // Admin
                   <div className="text-left">
@@ -1477,41 +1529,53 @@ const DataPendaftar: React.FC = () => {
                   <div className="text-left">
                     {formatDateTime(item.submittedAt || item.createdAt)}
                   </div>,
-                  // Aksi
-                  <div className="text-left flex items-center gap-1.5">
-                    {/* Tombol-tombol aksi tetap sama */}
-                    <Button
-                      onClick={() => {
-                        setSelectedData(item);
-                        setShowDetailModal(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm transition-colors"
-                      title="Lihat Detail"
+                  // Aksi - Dropdown
+                  <div className="text-left relative action-dropdown">
+                    <button
+                      onClick={() => setShowActionDropdown(showActionDropdown === item.uid ? null : item.uid)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm transition-colors border"
+                      title="Menu Aksi"
                     >
-                      <EyeIcon className="w-4 h-4" />
-                      <span className="hidden lg:inline">Detail</span>
-                    </Button>
+                      <span>Aksi</span>
+                      <ChevronDownIcon className={`w-4 h-4 transition-transform ${showActionDropdown === item.uid ? 'rotate-180' : ''}`} />
+                    </button>
 
-                    <Button
-                      onClick={() => handleOpenStatusModal(item)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-600 rounded-lg text-sm transition-colors"
-                      title="Ubah Status"
-                    >
-                      <CheckCircleIcon className="w-4 h-4" />
-                      <span className="hidden lg:inline">Status</span>
-                    </Button>
-
-                    <Button
-                      onClick={() => {
-                        setSelectedData(item);
-                        setShowDeleteModal(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm transition-colors"
-                      title="Hapus Data"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                      <span className="hidden lg:inline">Hapus</span>
-                    </Button>
+                    {showActionDropdown === item.uid && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
+                        <button
+                          onClick={() => {
+                            setSelectedData(item);
+                            setShowDetailModal(true);
+                            setShowActionDropdown(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                          Lihat Detail
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleOpenStatusModal(item);
+                            setShowActionDropdown(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <CheckCircleIcon className="w-4 h-4" />
+                          Ubah Status
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedData(item);
+                            setShowDeleteModal(true);
+                            setShowActionDropdown(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                          Hapus Data
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ])}
               />
@@ -1919,6 +1983,72 @@ const DataPendaftar: React.FC = () => {
               }
             >
               {modalLoading ? 'Memproses...' : 'Simpan Status'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Alasan / Detail Status */}
+      <Modal
+        isOpen={showReasonModal}
+        onClose={() => {
+          setShowReasonModal(false);
+          setSelectedData(null);
+        }}
+        className="z-[60]"
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className={classNames(
+              "w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center",
+              selectedData?.adminStatus === 'diterima' ? 'bg-green-100' : 'bg-red-100'
+            )}>
+              {selectedData?.adminStatus === 'diterima' ? (
+                <CheckCircleIcon className="w-8 h-8 text-green-600" />
+              ) : (
+                <XCircleIcon className="w-8 h-8 text-red-600" />
+              )}
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {selectedData?.adminStatus === 'diterima' ? 'Pendaftar Diterima' : 'Pendaftar Ditolak'}
+            </h3>
+            <p className="text-gray-600 mt-2">
+              {selectedData?.namaSiswa} • NISN {selectedData?.nisn}
+            </p>
+          </div>
+
+          {selectedData?.adminStatus === 'ditolak' ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-800 font-medium mb-1">Alasan Penolakan</p>
+              <p className="text-sm text-red-700 whitespace-pre-line">
+                {selectedData?.alasanPenolakan || '-'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-green-800">
+                Pendaftar dinyatakan diterima. Silakan lanjutkan proses administrasi sesuai ketentuan sekolah.
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700 mb-6">
+            <div>
+              <span className="text-gray-500">Pemeriksa: </span>
+              <span className="font-medium">{selectedData?.updatedBy?.name || selectedData?.updatedBy?.email?.split('@')[0] || '-'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Waktu Keputusan: </span>
+              <span className="font-medium">{selectedData?.updatedBy?.timestamp ? formatDateTime(selectedData.updatedBy.timestamp) : '-'}</span>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setShowReasonModal(false)}
+              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              Tutup
             </Button>
           </div>
         </div>

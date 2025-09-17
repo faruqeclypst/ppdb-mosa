@@ -70,18 +70,18 @@ const HeroSection: React.FC = () => {
                   className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
                 />
               </div>
-              <div className="relative w-28">
+              {/* <div className="relative w-28">
                 <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
                 <img 
                   src="/images/fajar.png" 
                   alt="SMAN 10 Fajar Harapan Logo"
                   className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
                 />
-              </div>
+              </div> */}
             </div>
 
             <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              PPDB SMAN Modal Bang Aceh. Membentuk generasi unggul dengan pendidikan 
+              PPDB SMAN Modal Bangsa Aceh. Membentuk generasi unggul dengan pendidikan 
               berkualitas dan karakter yang kuat melalui program pembelajaran yang terintegrasi 
               dan inovatif.
             </p>
