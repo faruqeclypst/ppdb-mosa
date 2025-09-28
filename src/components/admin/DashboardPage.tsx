@@ -894,14 +894,14 @@ const DashboardPage: React.FC = () => {
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">No</th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
                   onClick={() => handleSort('namaSiswa')}
                 >
                   <div className="flex items-center gap-1">
                     Nama
                     {sortConfig?.key === 'namaSiswa' && (
-                      <ChevronDownIcon 
+                      <ChevronDownIcon
                         className={`w-4 h-4 transition-transform ${
                           sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
                         }`}
@@ -909,11 +909,11 @@ const DashboardPage: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th 
+                <th
                   className={classNames(
                     "px-4 py-3 text-left text-xs font-medium text-gray-500",
-                    selectedJalur === 'semua' 
-                      ? "cursor-pointer hover:text-blue-600" 
+                    selectedJalur === 'semua'
+                      ? "cursor-pointer hover:text-blue-600"
                       : "opacity-50"
                   )}
                   onClick={() => selectedJalur === 'semua' && handleSort('jalur')}
@@ -921,7 +921,7 @@ const DashboardPage: React.FC = () => {
                   <div className="flex items-center gap-1">
                     Jalur
                     {selectedJalur === 'semua' && sortConfig?.key === 'jalur' && (
-                      <ChevronDownIcon 
+                      <ChevronDownIcon
                         className={`w-4 h-4 transition-transform ${
                           sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
                         }`}
@@ -929,14 +929,14 @@ const DashboardPage: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
                   onClick={() => handleSort('asalSekolah')}
                 >
                   <div className="flex items-center gap-1">
                     Asal Sekolah
                     {sortConfig?.key === 'asalSekolah' && (
-                      <ChevronDownIcon 
+                      <ChevronDownIcon
                         className={`w-4 h-4 transition-transform ${
                           sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
                         }`}
@@ -944,20 +944,19 @@ const DashboardPage: React.FC = () => {
                     )}
                   </div>
                 </th>
-                {/* Header nilai mapel */}
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Agama</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">B.Indo</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">B.Ing</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">MTK</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">IPA</th>
-                <th 
+                <th
                   className="px-4 py-3 text-center text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
                   onClick={() => handleSort('average')}
                 >
                   <div className="flex items-center justify-center gap-1">
                     Rata-rata
                     {sortConfig?.key === 'average' && (
-                      <ChevronDownIcon 
+                      <ChevronDownIcon
                         className={`w-4 h-4 transition-transform ${
                           sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
                         }`}
@@ -969,8 +968,7 @@ const DashboardPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Sekolah</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {getTopStudents().map((student: StudentWithAverage, index) => {
+            <tbody className="divide-y divide-gray-200">{getTopStudents().map((student: StudentWithAverage, index) => {
                 // Hitung rata-rata per mapel
                 const getSubjectAverage = (subject: string) => {
                   const fieldName = subject === 'B.Indo' ? 'nilaiBindo' :
@@ -985,14 +983,11 @@ const DashboardPage: React.FC = () => {
                 };
 
                 return (
-                  <tr key={student.uid} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
-                    <td className="px-4 py-3 max-w-[200px]">
+                  <tr key={student.uid} className="hover:bg-gray-50"><td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td><td className="px-4 py-3 max-w-[200px]">
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {student.namaSiswa}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </td><td className="px-4 py-3">
                       <span className={classNames(
                         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                         student.jalur === 'prestasi' ? 'bg-blue-100 text-blue-800' :
@@ -1001,14 +996,11 @@ const DashboardPage: React.FC = () => {
                       )}>
                         {getJalurLabel(student.jalur)}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 max-w-[200px]">
+                    </td><td className="px-4 py-3 max-w-[200px]">
                       <div className="text-sm text-gray-500 truncate">
                         {student.asalSekolah}
                       </div>
-                    </td>
-                    {/* Nilai per mapel */}
-                    {['nilaiAgama', 'nilaiBindo', 'nilaiBing', 'nilaiMtk', 'nilaiIpa'].map((subject) => (
+                    </td>{['nilaiAgama', 'nilaiBindo', 'nilaiBing', 'nilaiMtk', 'nilaiIpa'].map((subject) => (
                       <td key={subject} className="px-4 py-3">
                         <div className="flex justify-center">
                           <span className={classNames(
@@ -1021,15 +1013,13 @@ const DashboardPage: React.FC = () => {
                           </span>
                         </div>
                       </td>
-                    ))}
-                    <td className="px-4 py-3">
+                    ))}<td className="px-4 py-3">
                       <div className="flex justify-center">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {student.average.toFixed(2)}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </td><td className="px-4 py-3">
                       <div className="flex justify-center">
                         <StatusBadge 
                           status={student.status}
@@ -1037,16 +1027,14 @@ const DashboardPage: React.FC = () => {
                           className="text-xs"
                         />
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
+                    </td><td className="px-4 py-3">
                       <span className={classNames(
                         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                         student.school === 'mosa' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                       )}>
                         {student.school === 'mosa' ? 'MOSA' : 'FAJAR'}
                       </span>
-                    </td>
-                  </tr>
+                    </td></tr>
                 );
               })}
             </tbody>

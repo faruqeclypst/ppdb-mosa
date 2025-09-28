@@ -515,6 +515,15 @@ const DataDraft: React.FC = () => {
       { label: 'IPA', key: 'nilaiIpa' }
     ];
 
+    // Helper function to safely get numeric value
+    const getSafeNumericValue = (value: any) => {
+      if (!value || value === '' || value === null || value === undefined) {
+        return 0;
+      }
+      const numValue = Number(value);
+      return isNaN(numValue) ? 0 : numValue;
+    };
+
     return (
       <div className="bg-white shadow-sm border rounded-xl p-5 h-[300px]">
         <table className="w-full mb-4">
@@ -522,9 +531,7 @@ const DataDraft: React.FC = () => {
             <tr>
               <th className="text-left text-sm font-medium text-gray-500 pb-4">Mapel</th>
               {semesters.map(semester => (
-                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-4">
-                  Sem {semester}
-                </th>
+                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-4">Sem {semester}</th>
               ))}
             </tr>
           </thead>
@@ -533,16 +540,18 @@ const DataDraft: React.FC = () => {
               <tr key={key} className="border-t">
                 <td className="py-3 text-sm font-medium text-gray-600">{label}</td>
                 {semesters.map(semester => {
-                  const nilai = Number(data[`${key}${semester}` as keyof PPDBData]);
+                  const fieldKey = `${key}${semester}` as keyof PPDBData;
+                  const rawValue = data[fieldKey];
+                  const nilai = getSafeNumericValue(rawValue);
                   return (
                     <td key={semester} className="text-center">
                       <span className={classNames(
                         'inline-block px-3 py-1 rounded-full text-sm font-medium',
-                        nilai >= 83
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                        nilai >= 83 ? 'bg-green-100 text-green-700' :
+                        nilai > 0 ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-500'
                       )}>
-                        {nilai || '-'}
+                        {nilai > 0 ? nilai : '-'}
                       </span>
                     </td>
                   );

@@ -949,12 +949,25 @@ const DataPendaftar: React.FC = () => {
       { label: 'IPA', key: 'nilaiIpa' }
     ];
 
+    // Helper function to safely get numeric value
+    const getSafeNumericValue = (value: any) => {
+      if (!value || value === '' || value === null || value === undefined) {
+        return 0;
+      }
+      const numValue = Number(value);
+      return isNaN(numValue) ? 0 : numValue;
+    };
+
+    // Debug logging to identify table structure issues
+    console.log('🔍 DataPendaftar: Rendering academic table for student:', data.namaSiswa);
+    console.log('🔍 DataPendaftar: Table structure - semesters:', semesters.length, 'subjects:', mapelList.length);
+
     return (
-      <div className="bg-white shadow-sm border rounded-xl p-5 h-[300px]"> {/* Sesuaikan padding */}
-        <table className="w-full mb-4"> {/* Tambah margin bottom */}
+      <div className="bg-white shadow-sm border rounded-xl p-5 h-[300px]">
+        <table className="w-full mb-4">
           <thead>
             <tr>
-              <th className="text-left text-sm font-medium text-gray-500 pb-4">Mapel</th> {/* Sesuaikan padding */}
+              <th className="text-left text-sm font-medium text-gray-500 pb-4">Mapel</th>
               {semesters.map(semester => (
                 <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-4">
                   Sem {semester}
@@ -965,18 +978,20 @@ const DataPendaftar: React.FC = () => {
           <tbody>
             {mapelList.map(({ label, key }) => (
               <tr key={key} className="border-t">
-                <td className="py-3 text-sm font-medium text-gray-600">{label}</td> {/* Sesuaikan padding */}
+                <td className="py-3 text-sm font-medium text-gray-600">{label}</td>
                 {semesters.map(semester => {
-                  const nilai = Number(data[`${key}${semester}` as keyof PPDBData]);
+                  const fieldKey = `${key}${semester}` as keyof PPDBData;
+                  const rawValue = data[fieldKey];
+                  const nilai = getSafeNumericValue(rawValue);
                   return (
                     <td key={semester} className="text-center">
                       <span className={classNames(
                         'inline-block px-3 py-1 rounded-full text-sm font-medium',
-                        nilai >= 83
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
+                        nilai >= 83 ? 'bg-green-100 text-green-700' :
+                        nilai > 0 ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-500'
                       )}>
-                        {nilai}
+                        {nilai > 0 ? nilai : '-'}
                       </span>
                     </td>
                   );
@@ -1863,7 +1878,14 @@ const DataPendaftar: React.FC = () => {
                                 <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
                                 <InfoItem 
                                   label="Tempat, Tanggal Lahir" 
-                                  value={`${selectedData?.tempatLahir}, ${new Date(selectedData?.tanggalLahir || '').toLocaleDateString('id-ID')}`}
+                                  value={`${selectedData?.tempatLahir || '-'}, ${selectedData?.tanggalLahir ? (() => {
+                                    try {
+                                      return new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID');
+                                    } catch (error) {
+                                      console.warn('Invalid date format:', selectedData.tanggalLahir);
+                                      return '-';
+                                    }
+                                  })() : '-'}`}
                                 />
                                 <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData?.anakKe} dari ${selectedData?.jumlahSaudara}`} />
                               </div>
@@ -2340,10 +2362,10 @@ const DataPendaftar: React.FC = () => {
   );
 };
 
-const InfoItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const InfoItem: React.FC<{ label: string; value: string | undefined | null }> = ({ label, value }) => (
   <div>
     <p className="text-xs sm:text-sm text-gray-500 mb-0.5">{label}</p>
-    <p className="text-sm sm:text-base font-medium text-gray-900">{value}</p>
+    <p className="text-sm sm:text-base font-medium text-gray-900">{value || '-'}</p>
   </div>
 );
 
