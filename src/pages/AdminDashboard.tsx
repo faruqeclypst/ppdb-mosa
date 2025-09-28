@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/admin/layout/Sidebar';
 import Header from '../components/admin/layout/Header';
 import Footer from '../components/admin/layout/Footer';
-import DataPendaftar from '../components/admin/DataPendaftar';
-import DataDraft from '../components/admin/DataDraft';
-import DashboardPage from '../components/admin/DashboardPage';
-import UserManagement from '../components/admin/UserManagement';
-import PPDBSettings from '../components/admin/PPDBSettings';
+
+// Lazy load admin components
+const DataPendaftar = lazy(() => import('../components/admin/DataPendaftar'));
+const DataDraft = lazy(() => import('../components/admin/DataDraft'));
+const DashboardPage = lazy(() => import('../components/admin/DashboardPage'));
+const UserManagement = lazy(() => import('../components/admin/UserManagement'));
+const PPDBSettings = lazy(() => import('../components/admin/PPDBSettings'));
+
+// Loading component untuk admin
+const AdminLoader: React.FC = () => (
+  <div className="flex items-center justify-center p-8">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  </div>
+);
 import { HomeIcon, UserGroupIcon, Cog6ToothIcon, AdjustmentsHorizontalIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
@@ -40,13 +49,15 @@ const AdminDashboard: React.FC = () => {
 
         <main className="flex-1 pt-16 pb-16">
           <div className="w-full">
-            <Routes>
-              <Route index element={<DashboardPage />} />
-              <Route path="pendaftar" element={<DataPendaftar />} />
-              <Route path="draft" element={<DataDraft />} />
-              <Route path="users" element={<UserManagement />} />
-              <Route path="settings" element={<PPDBSettings />} />
-            </Routes>
+            <Suspense fallback={<AdminLoader />}>
+              <Routes>
+                <Route index element={<DashboardPage />} />
+                <Route path="pendaftar" element={<DataPendaftar />} />
+                <Route path="draft" element={<DataDraft />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="settings" element={<PPDBSettings />} />
+              </Routes>
+            </Suspense>
           </div>
         </main>
 

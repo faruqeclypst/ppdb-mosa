@@ -7,6 +7,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    chunkSizeWarningLimit: 1000, // Increase warning limit for heavy libraries like excel-lib
+    sourcemap: false, // Disable sourcemaps in production for smaller bundle
     rollupOptions: {
       output: {
         assetFileNames: (assetInfo) => {
@@ -23,6 +25,58 @@ export default defineConfig({
         },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
+        // Manual chunks untuk memisahkan vendor libraries
+        manualChunks(id) {
+          // Node modules chunking
+          if (id.includes('node_modules')) {
+            // React ecosystem
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            
+            // AWS SDK
+            if (id.includes('@aws-sdk')) {
+              return 'aws-sdk';
+            }
+            
+            // Firebase - use dynamic approach to avoid resolution issues
+            if (id.includes('firebase')) {
+              return 'firebase';
+            }
+            
+            // UI Libraries
+            if (id.includes('@headlessui') || 
+                id.includes('@heroicons') || 
+                id.includes('framer-motion') ||
+                id.includes('react-hot-toast') ||
+                id.includes('react-intersection-observer') ||
+                id.includes('react-responsive')) {
+              return 'ui-libs';
+            }
+            
+            // Document processing libraries - split into smaller chunks
+            if (id.includes('exceljs')) {
+              return 'excel-lib';
+            }
+            if (id.includes('pdf-lib')) {
+              return 'pdf-lib';
+            }
+            if (id.includes('react-pdf')) {
+              return 'react-pdf';
+            }
+            if (id.includes('file-saver') || id.includes('browser-image-compression')) {
+              return 'file-utils';
+            }
+            
+            // Other vendor libraries
+            if (id.includes('classnames')) {
+              return 'utils';
+            }
+            
+            // Large vendor libraries that should be separate
+            return 'vendor';
+          }
+        },
       },
     },
   },

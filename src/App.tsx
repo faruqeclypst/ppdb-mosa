@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/landingpage/Header';
-import LandingPage from './pages/LandingPage';
-import AdminDashboard from './pages/AdminDashboard';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import PPDBFormPage from './pages/PPDBFormPage';
-import InfoPPDBPage from './pages/InfoPPDBPage';
 import { AuthProvider } from './contexts/AuthContext';
 import Footer from './components/landingpage/Footer';
 import ScrollToTop from './components/utils/ScrollToTop';
+
+// Lazy load pages untuk code splitting
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const PPDBFormPage = lazy(() => import('./pages/PPDBFormPage'));
+const InfoPPDBPage = lazy(() => import('./pages/InfoPPDBPage'));
+
+// Loading component
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+);
  
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -24,7 +33,7 @@ const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow">
-        {children}
+        <Suspense fallback={<PageLoader />}>{children}</Suspense>
       </main>
       <Footer />
     </div>
@@ -40,7 +49,7 @@ const AppRoutes: React.FC = () => {
   if (isAdminRoute) {
     return (
       <Routes>
-        <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/admin/*" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
       </Routes>
     );
   }
@@ -48,7 +57,7 @@ const AppRoutes: React.FC = () => {
   if (isPPDBFormRoute) {
     return (
       <Routes>
-        <Route path="/ppdb/form" element={<PPDBFormPage />} />
+        <Route path="/ppdb/form" element={<Suspense fallback={<PageLoader />}><PPDBFormPage /></Suspense>} />
       </Routes>
     );
   }
@@ -56,12 +65,12 @@ const AppRoutes: React.FC = () => {
   return (
     <PublicLayout>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/info-ppdb" element={<InfoPPDBPage />} />
-        <Route path="/ppdb" element={<PPDBFormPage />} />
-        <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/" element={<Suspense fallback={<PageLoader />}><LandingPage /></Suspense>} />
+        <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
+        <Route path="/register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
+        <Route path="/info-ppdb" element={<Suspense fallback={<PageLoader />}><InfoPPDBPage /></Suspense>} />
+        <Route path="/ppdb" element={<Suspense fallback={<PageLoader />}><PPDBFormPage /></Suspense>} />
+        <Route path="/admin/*" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
       </Routes>
     </PublicLayout>
   );
