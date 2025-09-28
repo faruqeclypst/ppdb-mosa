@@ -5,10 +5,11 @@ import Sidebar from '../components/admin/layout/Sidebar';
 import Header from '../components/admin/layout/Header';
 import Footer from '../components/admin/layout/Footer';
 import DataPendaftar from '../components/admin/DataPendaftar';
+import DataDraft from '../components/admin/DataDraft';
 import DashboardPage from '../components/admin/DashboardPage';
 import UserManagement from '../components/admin/UserManagement';
 import PPDBSettings from '../components/admin/PPDBSettings';
-import { HomeIcon, UserGroupIcon, Cog6ToothIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UserGroupIcon, Cog6ToothIcon, AdjustmentsHorizontalIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
 const AdminDashboard: React.FC = () => {
@@ -21,6 +22,7 @@ const AdminDashboard: React.FC = () => {
   const menuItems = [
     { path: '/admin', icon: HomeIcon, label: 'Home' },
     { path: '/admin/pendaftar', icon: UserGroupIcon, label: 'Pendaftar' },
+    { path: '/admin/draft', icon: DocumentTextIcon, label: 'Draft' },
     { path: '/admin/users', icon: Cog6ToothIcon, label: 'Admin' },
     { path: '/admin/settings', icon: AdjustmentsHorizontalIcon, label: 'Settings' }
   ];
@@ -41,6 +43,7 @@ const AdminDashboard: React.FC = () => {
             <Routes>
               <Route index element={<DashboardPage />} />
               <Route path="pendaftar" element={<DataPendaftar />} />
+              <Route path="draft" element={<DataDraft />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="settings" element={<PPDBSettings />} />
             </Routes>

@@ -5,6 +5,7 @@ import {
   UserGroupIcon,
   Cog6ToothIcon,
   AdjustmentsHorizontalIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 
@@ -29,6 +30,11 @@ const menuItems: MenuItem[] = [
     name: 'Data Pendaftar',
     icon: UserGroupIcon,
     path: '/admin/pendaftar'
+  },
+  {
+    name: 'Data Draft',
+    icon: DocumentTextIcon,
+    path: '/admin/draft'
   },
   {
     name: 'Manajemen Admin',
