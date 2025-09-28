@@ -5,6 +5,7 @@ import Table from '../ui/Table';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import { showAlert } from '../ui/Alert';
+import { deleteFromR2, testR2Connection } from '../../services/cloudflareR2';
 import { 
   CheckCircleIcon, 
   EyeIcon,
@@ -1079,7 +1080,18 @@ const DataPendaftar: React.FC = () => {
     const filteredData = getFilteredData();
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredData.slice(startIndex, endIndex);
+    const pageData = filteredData.slice(startIndex, endIndex);
+    
+    // Always ensure we have exactly itemsPerPage rows by adding empty rows if needed
+    const emptyRowsNeeded = itemsPerPage - pageData.length;
+    if (emptyRowsNeeded > 0 && pageData.length > 0) {
+      // Add empty placeholder objects for remaining rows
+      for (let i = 0; i < emptyRowsNeeded; i++) {
+        pageData.push(null as any); // null indicates empty row
+      }
+    }
+    
+    return pageData;
   };
 
   // Fungsi untuk mendapatkan total halaman
@@ -1092,18 +1104,105 @@ const DataPendaftar: React.FC = () => {
     return window.innerWidth <= 640; // Menggunakan breakpoint sm
   };
 
+  // Helper function to extract file key from R2 URL
+  const extractFileKeyFromUrl = (url: string): string | null => {
+    try {
+      // Extract file key from R2 public URL
+      // URL format: https://your-domain.com/ppdb_{school}/{user.uid}/{filename}
+      const urlObj = new URL(url);
+      // Remove leading slash from pathname to get the file key
+      const fileKey = urlObj.pathname.substring(1);
+      
+      console.log('Extracting file key from URL:', url);
+      console.log('Extracted file key:', fileKey);
+      
+      return fileKey;
+    } catch (error) {
+      console.error('Error extracting file key from URL:', url, error);
+      return null;
+    }
+  };
+
   const handleDeleteData = async () => {
     if (!selectedData || modalLoading) return;
 
     setModalLoading(true);
     try {
-      // Hapus data dari Realtime Database sesuai sekolah
+      // List of file URLs to delete from R2
+      const filesToDelete: string[] = [];
+      
+      // Collect all file URLs from the selected data
+      if (selectedData.photo) filesToDelete.push(selectedData.photo);
+      if (selectedData.rekomendasi) filesToDelete.push(selectedData.rekomendasi);
+      if (selectedData.raport2) filesToDelete.push(selectedData.raport2);
+      if (selectedData.raport3) filesToDelete.push(selectedData.raport3);
+      if (selectedData.raport4) filesToDelete.push(selectedData.raport4);
+      if (selectedData.sertifikat) filesToDelete.push(selectedData.sertifikat);
+
+      // Delete files from Cloudflare R2 first (parallel execution for better performance)
+      if (filesToDelete.length > 0) {
+        console.log('Starting file deletion process...');
+        console.log('Files to delete from R2:', filesToDelete);
+        console.log('Selected data school:', selectedData.school);
+        console.log('Selected data UID:', selectedData.uid);
+        
+        // Test R2 connection first
+        console.log('Testing R2 connection...');
+        const connectionTest = await testR2Connection();
+        console.log('R2 connection test result:', connectionTest);
+        
+        if (!connectionTest.success) {
+          console.warn('R2 connection test failed, but continuing with deletion attempt:', connectionTest.message);
+        }
+        
+        const deletePromises = filesToDelete.map(async (fileUrl, index) => {
+          try {
+            console.log(`Processing file ${index + 1}/${filesToDelete.length}:`, fileUrl);
+            
+            const fileKey = extractFileKeyFromUrl(fileUrl);
+            if (!fileKey) {
+              console.warn('Could not extract file key from URL:', fileUrl);
+              return { success: false, fileUrl, error: 'Could not extract file key' };
+            }
+            
+            console.log('Attempting to delete from R2 with key:', fileKey);
+            await deleteFromR2(fileKey);
+            console.log('✅ Successfully deleted file from R2:', fileKey);
+            
+            return { success: true, fileUrl, fileKey };
+          } catch (error) {
+            // Log error but don't fail the entire deletion process
+            console.error('❌ Failed to delete file from R2:', fileUrl);
+            console.error('Error details:', error);
+            return { success: false, fileUrl, error: error instanceof Error ? error.message : 'Unknown error' };
+          }
+        });
+        
+        // Wait for all file deletions to complete
+        const results = await Promise.allSettled(deletePromises);
+        
+        // Log summary of deletion results
+        const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+        const failed = results.length - successful;
+        
+        console.log(`File deletion summary: ${successful} successful, ${failed} failed`);
+        
+        if (failed > 0) {
+          console.warn('Some files could not be deleted from R2 storage, but database cleanup will continue.');
+          const failedFiles = results
+            .filter(r => r.status === 'fulfilled' && !r.value.success)
+            .map(r => r.status === 'fulfilled' ? r.value.fileUrl : 'unknown');
+          console.warn('Failed files:', failedFiles);
+        }
+      }
+
+      // Delete data from Realtime Database
       await remove(ref(db, `ppdb_${selectedData.school}/${selectedData.uid}`));
 
       // Update state lokal setelah penghapusan berhasil
       setPendaftar(prev => prev.filter(item => item.uid !== selectedData.uid));
       
-      showAlert('success', 'Data pendaftar berhasil dihapus');
+      showAlert('success', 'Data pendaftar dan file terkait berhasil dihapus');
       setShowDeleteModal(false);
       setDeleteConfirmation('');
       setSelectedData(null);
@@ -1469,115 +1568,126 @@ const DataPendaftar: React.FC = () => {
             <div className="hidden md:block">
               <Table 
                 headers={headers}
-                data={getPaginatedData().map((item, index) => [
-                  // No
-                  <div className="text-left text-gray-600">
-                    {((currentPage - 1) * itemsPerPage) + index + 1}
-                  </div>,
-                  // Nama
-                  <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
-                    {item.namaSiswa}
-                  </div>,
-                  // Sekolah (jika master admin) - HIDDEN
-                  // ...(userRole?.isMaster ? [
-                  //   <div className="text-left">
-                  //     <SchoolBadge key={item.uid} school={item.school} />
-                  //   </div>
-                  // ] : []),
-                  // Jalur
-                  <div className="text-left">
-                    <JalurBadge key={item.uid} jalur={item.jalur} />
-                  </div>,
-                  // Asal Sekolah
-                  <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
-                    {item.asalSekolah}
-                  </div>,
-                  // Status
-                  <div className="text-left">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (item.adminStatus) {
-                          setSelectedData(item);
-                          setShowReasonModal(true);
-                        }
-                      }}
-                      className={classNames(
-                        item.adminStatus ? "cursor-pointer" : "cursor-default",
-                        "focus:outline-none"
-                      )}
-                      title={item.adminStatus ? (item.adminStatus === 'ditolak' ? 'Lihat alasan penolakan' : 'Lihat status diterima') : undefined}
-                    >
-                      <StatusBadge 
-                        status={item.status}
-                        adminStatus={item.adminStatus}
-                        className="text-xs"
-                      />
-                    </button>
-                  </div>,
-                  // Admin
-                  <div className="text-left">
-                    {item.updatedBy ? (
-                      <span className="text-sm font-medium text-gray-900">
-                        {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </div>,
-                  // Tanggal Submit
-                  <div className="text-left">
-                    {formatDateTime(item.submittedAt || item.createdAt)}
-                  </div>,
-                  // Aksi - Dropdown
-                  <div className="text-left relative action-dropdown">
-                    <button
-                      onClick={() => setShowActionDropdown(showActionDropdown === item.uid ? null : item.uid)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm transition-colors border"
-                      title="Menu Aksi"
-                    >
-                      <span>Aksi</span>
-                      <ChevronDownIcon className={`w-4 h-4 transition-transform ${showActionDropdown === item.uid ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {showActionDropdown === item.uid && (
-                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
-                        <button
-                          onClick={() => {
-                            setSelectedData(item);
-                            setShowDetailModal(true);
-                            setShowActionDropdown(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <EyeIcon className="w-4 h-4" />
-                          Lihat Detail
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleOpenStatusModal(item);
-                            setShowActionDropdown(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <CheckCircleIcon className="w-4 h-4" />
-                          Ubah Status
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedData(item);
-                            setShowDeleteModal(true);
-                            setShowActionDropdown(null);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                          Hapus Data
-                        </button>
+                data={getPaginatedData().map((item, index) => {
+                  // Handle empty rows (null items)
+                  if (!item) {
+                    return Array(headers.length).fill(
+                      <div className="text-left text-gray-300 py-3">
+                        &nbsp;
                       </div>
-                    )}
-                  </div>
-                ])}
+                    );
+                  }
+                  
+                  return [
+                    // No
+                    <div className="text-left text-gray-600">
+                      {((currentPage - 1) * itemsPerPage) + index + 1}
+                    </div>,
+                    // Nama
+                    <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
+                      {item.namaSiswa}
+                    </div>,
+                    // Sekolah (jika master admin) - HIDDEN
+                    // ...(userRole?.isMaster ? [
+                    //   <div className="text-left">
+                    //     <SchoolBadge key={item.uid} school={item.school} />
+                    //   </div>
+                    // ] : []),
+                    // Jalur
+                    <div className="text-left">
+                      <JalurBadge key={item.uid} jalur={item.jalur} />
+                    </div>,
+                    // Asal Sekolah
+                    <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
+                      {item.asalSekolah}
+                    </div>,
+                    // Status
+                    <div className="text-left">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (item.adminStatus) {
+                            setSelectedData(item);
+                            setShowReasonModal(true);
+                          }
+                        }}
+                        className={classNames(
+                          item.adminStatus ? "cursor-pointer" : "cursor-default",
+                          "focus:outline-none"
+                        )}
+                        title={item.adminStatus ? (item.adminStatus === 'ditolak' ? 'Lihat alasan penolakan' : 'Lihat status diterima') : undefined}
+                      >
+                        <StatusBadge 
+                          status={item.status}
+                          adminStatus={item.adminStatus}
+                          className="text-xs"
+                        />
+                      </button>
+                    </div>,
+                    // Admin
+                    <div className="text-left">
+                      {item.updatedBy ? (
+                        <span className="text-sm font-medium text-gray-900">
+                          {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </div>,
+                    // Tanggal Submit
+                    <div className="text-left">
+                      {formatDateTime(item.submittedAt || item.createdAt)}
+                    </div>,
+                    // Aksi - Dropdown
+                    <div className="text-left relative action-dropdown">
+                      <button
+                        onClick={() => setShowActionDropdown(showActionDropdown === item.uid ? null : item.uid)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm transition-colors border"
+                        title="Menu Aksi"
+                      >
+                        <span>Aksi</span>
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${showActionDropdown === item.uid ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showActionDropdown === item.uid && (
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
+                          <button
+                            onClick={() => {
+                              setSelectedData(item);
+                              setShowDetailModal(true);
+                              setShowActionDropdown(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                            Lihat Detail
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleOpenStatusModal(item);
+                              setShowActionDropdown(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <CheckCircleIcon className="w-4 h-4" />
+                            Ubah Status
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedData(item);
+                              setShowDeleteModal(true);
+                              setShowActionDropdown(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                            Hapus Data
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ];
+                })}
               />
             </div>
 

@@ -134,15 +134,83 @@ export const getSignedUrlForFile = async (key: string, expiresIn: number = 3600)
  */
 export const deleteFromR2 = async (key: string): Promise<void> => {
   try {
+    console.log('R2 Config:', {
+      bucketName: r2Config.bucketName,
+      accountId: r2Config.accountId ? `${r2Config.accountId.slice(0, 8)}...` : 'missing',
+      hasAccessKey: !!r2Config.accessKeyId,
+      hasSecretKey: !!r2Config.secretAccessKey
+    });
+    
     const command = new DeleteObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
     });
 
-    await s3Client.send(command);
+    console.log('Sending delete command to R2 for key:', key);
+    const result = await s3Client.send(command);
+    console.log('R2 delete command result:', result);
+    
   } catch (error) {
     console.error('Error deleting from R2:', error);
-    throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.Code || 'Unknown code',
+      statusCode: (error as any)?.$metadata?.httpStatusCode || 'Unknown status'
+    });
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to delete file from R2';
+    if (error instanceof Error) {
+      if (error.name === 'NoSuchKey') {
+        console.warn('File does not exist in R2 bucket (already deleted?)');
+        return; // Don't throw error if file doesn't exist
+      } else if (error.name === 'AccessDenied') {
+        errorMessage = 'Access denied to R2 bucket. Please check credentials and permissions.';
+      } else if (error.name === 'NoSuchBucket') {
+        errorMessage = 'R2 bucket not found. Please check bucket name.';
+      } else {
+        errorMessage = `R2 deletion failed: ${error.message}`;
+      }
+    }
+    
+    throw new Error(errorMessage);
+  }
+};
+
+/**
+ * Test R2 connection and permissions
+ */
+export const testR2Connection = async (): Promise<{ success: boolean; message: string }> => {
+  try {
+    // Try to list objects (if permitted) or attempt a head operation
+    const testKey = 'test-connection-' + Date.now();
+    
+    // Try to put a small test object
+    const putCommand = new PutObjectCommand({
+      Bucket: r2Config.bucketName,
+      Key: testKey,
+      Body: 'test',
+      ContentType: 'text/plain'
+    });
+    
+    await s3Client.send(putCommand);
+    
+    // Clean up test object
+    const deleteCommand = new DeleteObjectCommand({
+      Bucket: r2Config.bucketName,
+      Key: testKey
+    });
+    
+    await s3Client.send(deleteCommand);
+    
+    return { success: true, message: 'R2 connection test successful' };
+  } catch (error) {
+    console.error('R2 connection test failed:', error);
+    return { 
+      success: false, 
+      message: `R2 connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    };
   }
 };
 
@@ -160,4 +228,5 @@ export default {
   getSignedUrlForFile,
   deleteFromR2,
   fileExistsInR2,
+  testR2Connection,
 };
