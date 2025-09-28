@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    target: 'es2020', // ensure modern semantics for large libs like @aws-sdk
     outDir: 'dist',
     assetsDir: 'assets',
     chunkSizeWarningLimit: 1000, // Increase warning limit for heavy libraries like excel-lib
@@ -32,11 +33,6 @@ export default defineConfig({
             // React ecosystem
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'react-vendor';
-            }
-            
-            // AWS SDK
-            if (id.includes('@aws-sdk')) {
-              return 'aws-sdk';
             }
             
             // Firebase - use dynamic approach to avoid resolution issues
