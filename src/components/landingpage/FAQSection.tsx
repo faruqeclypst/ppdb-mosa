@@ -96,11 +96,7 @@ const FAQSection: React.FC = () => {
   };
 
   return (
-    <section className="py-12 sm:py-20 bg-gradient-to-b from-gray-50 to-blue-50/30 relative overflow-hidden">
-      {/* Decorative Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-100 rounded-full blur-3xl opacity-20" />
-      </div>
+    <section className="py-12 sm:py-20 bg-white relative overflow-hidden">
 
       <Container className="relative">
         <motion.div

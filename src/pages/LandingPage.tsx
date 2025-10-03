@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import HeroSection from '../components/landingpage/HeroSection';
+import AboutSection from '../components/landingpage/AboutSection';
+import AchievementSection from '../components/landingpage/AchievementSection';
 import FeaturesSection from '../components/landingpage/FeaturesSection';
 import TestimonialsSection from '../components/landingpage/TestimonialsSection';
 import CallToActionSection from '../components/landingpage/CallToActionSection';
@@ -15,6 +17,8 @@ const LandingPage: React.FC = () => {
       className="overflow-hidden"
     >
       <HeroSection />
+      <AboutSection />
+      <AchievementSection />
       <FeaturesSection />
       <TestimonialsSection />
       <FAQSection />

@@ -43,50 +43,28 @@ const HeroSection: React.FC = () => {
 
       {/* Content */}
       <Container className="relative z-10 h-full flex items-center py-20 sm:py-24">
-        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center justify-items-center w-full">
+        <div className="flex flex-col gap-8 sm:gap-12 items-center w-full">
           {/* Text Content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center lg:text-left space-y-4 sm:space-y-6 w-full"
+            className="text-center space-y-4 sm:space-y-6 w-full"
           >
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight">
-              PPDB {getPPDBYears()}{' '}
+              Informasi Seputar{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
-                  SMAN Modal Bangsa
+                  SPMB Online SMA Sulteng {getPPDBYears()}
                 </span>
               </span>
             </h1>
-            
-            {/* Logo untuk Mobile */}
-            <div className="lg:hidden flex justify-center items-center gap-8 my-12">
-              <div className="relative w-28">
-                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
-                <img 
-                  src="/images/mosa.png" 
-                  alt="SMAN Modal Bangsa Logo"
-                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
-                />
-              </div>
-              {/* <div className="relative w-28">
-                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
-                <img 
-                  src="/images/fajar.png" 
-                  alt="SMAN 10 Fajar Harapan Logo"
-                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl"
-                />
-              </div> */}
-            </div>
 
-            <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              PPDB SMAN Modal Bangsa Aceh. Membentuk generasi unggul dengan pendidikan 
-              berkualitas dan karakter yang kuat melalui program pembelajaran yang terintegrasi 
-              dan inovatif.
+            <p className="text-base sm:text-lg text-gray-300/90 leading-relaxed max-w-3xl mx-auto">
+              Informasi lengkap seputar Jadwal, syarat, alur pendaftaran dan Informasi sekolah.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 justify-center">
               <Link to="/register" className="w-full sm:w-auto">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -94,9 +72,9 @@ const HeroSection: React.FC = () => {
                 >
                   <Button 
                     onClick={handleRegisterClick}
-                    className="w-full bg-white hover:bg-gray-100 text-gray-900 px-8 py-4 text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2"
+                    className="w-full bg-gray-500 hover:bg-gray-600 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2"
                   >
-                    <span>Daftar PPDB</span>
+                    <span>Masuk</span>
                     <svg 
                       className="w-5 h-5 group-hover:translate-x-1 transition-transform" 
                       fill="none" 
@@ -110,45 +88,48 @@ const HeroSection: React.FC = () => {
               </Link>
 
               <Link to="/info-ppdb" className="w-full sm:w-auto">
-                <Button className="w-full bg-transparent border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-full backdrop-blur-sm transition-all duration-300 flex items-center justify-center gap-2">
-                  <span>Info PPDB</span>
+                <Button className="w-full bg-transparent border-2 border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-lg backdrop-blur-sm transition-all duration-300 flex items-center justify-center gap-2">
+                  <span>Lihat Pengumuman</span>
                   <svg 
                     className="w-5 h-5" 
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Button>
+              </Link>
+
+              <Link to="/info-ppdb" className="w-full sm:w-auto">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center gap-2">
+                  <span>Lihat Kuota Kosong Sekolah</span>
+                  <svg 
+                    className="w-5 h-5" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </Button>
               </Link>
             </div>
           </motion.div>
 
-          {/* Hero Image untuk Desktop */}
+          {/* Hero Image - Gambar Lebar */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-            className="hidden lg:block w-full flex items-center justify-center"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full max-w-6xl"
           >
-            <div className="flex gap-12 justify-center items-center">
-              <div className="relative w-64">
-                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
-                <img 
-                  src="/images/mosa.png" 
-                  alt="SMAN Modal Bangsa Logo"
-                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
-                />
-              </div>
-              {/* <div className="relative w-64">
-                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full transform -translate-y-1/2" />
-                <img 
-                  src="/images/fajar.png" 
-                  alt="SMAN 10 Fajar Harapan Logo"
-                  className="relative w-full h-auto drop-shadow-2xl rounded-2xl transform scale-90" 
-                />
-              </div> */}
+            <div className="relative w-full rounded-2xl overflow-hidden">
+              <img 
+                src="/images/hero-wide.png" 
+                alt="Pejabat Pemerintah Sulawesi Tengah"
+                className="w-full h-auto object-cover"
+              />
             </div>
           </motion.div>
         </div>

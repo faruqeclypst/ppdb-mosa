@@ -227,7 +227,7 @@ const TestimonialsSection: React.FC = () => {
   const rightTestimonials = TESTIMONIALS.slice(TESTIMONIALS.length / 2);
 
   return (
-    <section className="py-16 md:py-20 bg-gradient-to-b from-gray-100 to-white overflow-hidden">
+    <section className="py-16 md:py-20 bg-white overflow-hidden">
       <Container>
         <motion.div 
           className="text-center mb-16"
