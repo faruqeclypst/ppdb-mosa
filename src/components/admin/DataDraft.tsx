@@ -237,8 +237,18 @@ const DataDraft: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [modalLoading, setModalLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    no: true,
+    name: true,
+    jalur: true,
+    school: true,
+    status: true,
+    date: true,
+    actions: true
+  });
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -895,112 +905,120 @@ const DataDraft: React.FC = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Filter dan Search - Enhanced UI sama seperti DataPendaftar */}
-      <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
-        <div className="space-y-6">
-          {/* Search Bar & Export Button */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Cari Nama Siswa, NISN atau Sekolah..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-4 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <Button
-              onClick={exportToExcel}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 px-4 text-sm"
-            >
-              <DocumentArrowDownIcon className="w-4 h-4" />
-              <span className="hidden md:inline">Export Excel</span>
-              <span className="md:hidden">Export</span>
-            </Button>
+    <div className="p-4 md:p-6 space-y-4">
+      {/* Modern Search & Filter Bar */}
+      <div className="bg-white rounded-lg border shadow-sm">
+        {/* Top Row */}
+        <div className="p-4 flex flex-col md:flex-row gap-3 border-b border-gray-200">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari nama siswa, NISN, atau asal sekolah..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
+          <button
+            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+          >
+            <FunnelIcon className="w-4 h-4" />
+            <span>Filters</span>
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+          </button>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            title="Export to Excel"
+          >
+            <DocumentArrowDownIcon className="w-4 h-4" />
+          </button>
+        </div>
 
-          {/* Filter Pills & Sort */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
-              {/* Jalur Filter */}
-              <div className="relative group">
-                <select
-                  value={jalurFilter}
-                  onChange={(e) => setJalurFilter(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="all">Semua Jalur</option>
-                  <option value="prestasi">Prestasi</option>
-                  <option value="reguler">Reguler</option>
-                  <option value="undangan">Undangan</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <div className="w-4 h-4 rounded-full bg-blue-100 group-hover:bg-blue-200 transition-colors" />
+        {/* Filter Dropdown */}
+        {showFilterDropdown && (
+          <div className="border-b border-gray-200">
+            <div className="p-4 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Type</label>
+                  <select
+                    value={jalurFilter}
+                    onChange={(e) => setJalurFilter(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="prestasi">Prestasi</option>
+                    <option value="reguler">Reguler</option>
+                    <option value="undangan">Undangan</option>
+                  </select>
                 </div>
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                  <FunnelIcon className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-
-              {/* Sort */}
-              <div className="relative group col-span-2 md:col-span-1">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="newest">Terbaru</option>
-                  <option value="oldest">Terlama</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <div className="w-4 h-4 rounded-full bg-purple-100 group-hover:bg-purple-200 transition-colors" />
-                </div>
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                  <FunnelIcon className="w-4 h-4 text-gray-400" />
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="newest">All Time</option>
+                    <option value="oldest">Oldest First</option>
+                  </select>
                 </div>
               </div>
             </div>
+            <div className="p-4">
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Display Columns</label>
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    { id: 'no' as const, label: 'No' },
+                    { id: 'name' as const, label: 'Nama' },
+                    { id: 'jalur' as const, label: 'Jalur' },
+                    { id: 'school' as const, label: 'Asal Sekolah' },
+                    { id: 'status' as const, label: 'Status Kelengkapan' },
+                    { id: 'date' as const, label: 'Tanggal Buat' },
+                    { id: 'actions' as const, label: 'Aksi' },
+                  ].map((col) => (
+                    <label key={col.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[col.id]}
+                        onChange={(e) => setVisibleColumns(prev => ({
+                          ...prev,
+                          [col.id]: e.target.checked
+                        }))}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              label="Total Draft"
-              value={getFilteredData().length}
-              icon={<DocumentTextIcon className="w-5 h-5 text-orange-600" />}
-              className="bg-orange-50 border-orange-200"
-              valueColor="text-orange-600"
-            />
-            <StatCard
-              label="Draft Kosong"
-              value={getFilteredData().filter(item => 
-                !item.namaSiswa || item.namaSiswa.trim() === ''
-              ).length}
-              icon={<ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />}
-              className="bg-yellow-50 border-yellow-200"
-              valueColor="text-yellow-600"
-            />
-            <StatCard
-              label="Draft Lengkap"
-              value={getFilteredData().filter(item => 
-                getStatusKelengkapan(item) === 'Lengkap'
-              ).length}
-              icon={<ClockIcon className="w-5 h-5 text-green-600" />}
-              className="bg-green-50 border-green-200"
-              valueColor="text-green-600"
-            />
-            <StatCard
-              label="Total Users"
-              value={getFilteredData().filter(item => item.email).length}
-              icon={<UserGroupIcon className="w-5 h-5 text-blue-600" />}
-              className="bg-blue-50 border-blue-200"
-              valueColor="text-blue-600"
-            />
-          </div>
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          Showing <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> of{' '}
+          <span className="font-medium">{getFilteredData().length}</span> results
+        </p>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-600">Rows per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
         </div>
       </div>
 

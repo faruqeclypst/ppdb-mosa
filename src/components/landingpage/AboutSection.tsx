@@ -6,7 +6,7 @@ const AboutSection: React.FC = () => {
   return (
     <section className="py-16 sm:py-20 lg:py-24 bg-white">
       <Container>
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
           {/* Image Section */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}

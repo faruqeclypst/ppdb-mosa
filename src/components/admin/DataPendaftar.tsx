@@ -259,9 +259,19 @@ const DataPendaftar: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Jumlah item per halaman
-  const [] = useState<string | null>(null);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    no: true,
+    name: true,
+    jalur: true,
+    school: true,
+    status: true,
+    admin: true,
+    date: true,
+    actions: true
+  });
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [alasanPenolakan, setAlasanPenolakan] = useState('');
@@ -443,36 +453,39 @@ const DataPendaftar: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // Modifikasi headers untuk alignment kiri
-  const headers = [
-    'No',
-    'Nama',
-    // ...(userRole?.isMaster ? ['Sekolah'] : []), // Hide sekolah column
-    'Jalur',
-    'Asal Sekolah',
-    'Status',
-    'Pemeriksa', // Ganti dari 'Admin'
-    'Tanggal Kirim', // Ganti dari 'Tanggal Submit'
-    'Aksi'
-  ].map(header => ({
-    content: (
-      <div className="text-left">
-        <button
-          onClick={() => header && handleSort(header)}
-          className="flex items-center gap-1 hover:text-blue-600"
-        >
-          {header}
-          {sortConfig?.key === header && (
-            <ChevronUpIcon 
-              className={`w-4 h-4 transition-transform ${
-                sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-              }`}
-            />
-          )}
-        </button>
-      </div>
-    )
-  }));
+  // Modifikasi headers untuk alignment kiri dengan visible columns
+  const allHeaders = [
+    { key: 'no', label: 'No' },
+    { key: 'name', label: 'Nama' },
+    { key: 'jalur', label: 'Jalur' },
+    { key: 'school', label: 'Asal Sekolah' },
+    { key: 'status', label: 'Status' },
+    { key: 'admin', label: 'Pemeriksa' },
+    { key: 'date', label: 'Tanggal Kirim' },
+    { key: 'actions', label: 'Aksi' }
+  ];
+
+  const headers = allHeaders
+    .filter(h => visibleColumns[h.key as keyof typeof visibleColumns])
+    .map(header => ({
+      content: (
+        <div className="text-left">
+          <button
+            onClick={() => header && handleSort(header.label)}
+            className="flex items-center gap-1 hover:text-blue-600"
+          >
+            {header.label}
+            {sortConfig?.key === header.label && (
+              <ChevronUpIcon 
+                className={`w-4 h-4 transition-transform ${
+                  sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
+                }`}
+              />
+            )}
+          </button>
+        </div>
+      )
+    }));
 
   // Update fungsi exportToExcel
   const exportToExcel = async () => {
@@ -1443,130 +1456,161 @@ const DataPendaftar: React.FC = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* Filter dan Search - Enhanced UI */}
-      <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
-        <div className="space-y-6">
-          {/* Search Bar & Export Button */}
-          <div className="flex flex-col md:flex-row gap-4">
+    <div className="p-4 md:p-6 space-y-4">
+      {/* Modern Search & Filter Bar */}
+      <div className="bg-white rounded-lg border shadow-sm">
+        {/* Top Row: Search, Filters, Buttons */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex flex-col md:flex-row gap-3">
+            {/* Search */}
             <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-              </div>
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Cari Nama Siswa, NISN atau Sekolah..."
+                placeholder="Cari nama siswa, NISN, atau asal sekolah..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-4 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            <Button
-              onClick={exportToExcel}
-              className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 py-2 px-4 text-sm"
-            >
-              <DocumentArrowDownIcon className="w-4 h-4" />
-              <span className="hidden md:inline">Export Excel</span>
-              <span className="md:hidden">Export</span>
-            </Button>
+
+            {/* Buttons Group */}
+            <div className="flex gap-2">
+              {/* Filters Button */}
+              <button
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex-1 md:flex-none justify-center"
+              >
+                <FunnelIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Filters</span>
+                <ChevronDownIcon className={`w-4 h-4 transition-transform ${showFilterDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Export Button */}
+              <button
+                onClick={exportToExcel}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex-1 md:flex-none"
+                title="Export to Excel"
+              >
+                <DocumentArrowDownIcon className="w-4 h-4" />
+              </button>
+
+              {/* Refresh Button */}
+              <button
+                onClick={loadData}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm flex-1 md:flex-none"
+                title="Refresh"
+              >
+                <ArrowPathIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Filter Pills & Sort */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
-              {/* Status Filter */}
-              <div className="relative group">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="all">Semua Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="diterima">Diterima</option>
-                  <option value="ditolak">Ditolak</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <div className="w-4 h-4 rounded-full bg-gray-200 group-hover:bg-gray-300 transition-colors" />
+        {/* Filter Dropdown */}
+        {showFilterDropdown && (
+          <div className="border-b border-gray-200">
+            {/* Filters Section */}
+            <div className="p-4 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="diterima">Diterima</option>
+                    <option value="ditolak">Ditolak</option>
+                  </select>
                 </div>
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                  <FunnelIcon className="w-4 h-4 text-gray-400" />
+
+                {/* Jalur Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Type</label>
+                  <select
+                    value={jalurFilter}
+                    onChange={(e) => setJalurFilter(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="prestasi">Prestasi</option>
+                    <option value="reguler">Reguler</option>
+                    <option value="undangan">Undangan</option>
+                  </select>
+                </div>
+
+                {/* Sort */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="newest">All Time</option>
+                    <option value="oldest">Oldest First</option>
+                  </select>
                 </div>
               </div>
+            </div>
 
-              {/* Jalur Filter */}
-              <div className="relative group">
-                <select
-                  value={jalurFilter}
-                  onChange={(e) => setJalurFilter(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="all">Semua Jalur</option>
-                  <option value="prestasi">Prestasi</option>
-                  <option value="reguler">Reguler</option>
-                  <option value="undangan">Undangan</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <div className="w-4 h-4 rounded-full bg-blue-100 group-hover:bg-blue-200 transition-colors" />
-                </div>
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                  <FunnelIcon className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-
-              {/* Sort */}
-              <div className="relative group col-span-2 md:col-span-1">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-9 pr-8 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="newest">Terbaru</option>
-                  <option value="oldest">Terlama</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <div className="w-4 h-4 rounded-full bg-purple-100 group-hover:bg-purple-200 transition-colors" />
-                </div>
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none">
-                  <FunnelIcon className="w-4 h-4 text-gray-400" />
+            {/* Display Columns Section */}
+            <div className="p-4">
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Display Columns</label>
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    { id: 'no' as const, label: 'No' },
+                    { id: 'name' as const, label: 'Nama' },
+                    { id: 'jalur' as const, label: 'Jalur' },
+                    { id: 'school' as const, label: 'Asal Sekolah' },
+                    { id: 'status' as const, label: 'Status' },
+                    { id: 'admin' as const, label: 'Pemeriksa' },
+                    { id: 'date' as const, label: 'Tanggal Kirim' },
+                    { id: 'actions' as const, label: 'Aksi' },
+                  ].map((col) => (
+                    <label key={col.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[col.id]}
+                        onChange={(e) => setVisibleColumns(prev => ({
+                          ...prev,
+                          [col.id]: e.target.checked
+                        }))}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{col.label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              label="Pendaftar"
-              value={getFilteredData().length}
-              icon={<UserGroupIcon className="w-5 h-5 text-blue-600" />}
-              className="bg-blue-50 border-blue-200"
-              valueColor="text-blue-600"
-            />
-            <StatCard
-              label="Pending"
-              value={getFilteredData().filter(item => 
-                item.status === 'submitted' && !item.adminStatus
-              ).length}
-              icon={<ClockIcon className="w-5 h-5 text-yellow-600" />}
-              className="bg-yellow-50 border-yellow-200"
-              valueColor="text-yellow-600"
-            />
-            <StatCard
-              label="Diterima"
-              value={getFilteredData().filter(item => item.adminStatus === 'diterima').length}
-              icon={<CheckCircleIcon className="w-5 h-5 text-green-600" />}
-              className="bg-green-50 border-green-200"
-              valueColor="text-green-600"
-            />
-            <StatCard
-              label="Ditolak"
-              value={getFilteredData().filter(item => item.adminStatus === 'ditolak').length}
-              icon={<XCircleIcon className="w-5 h-5 text-red-600" />}
-              className="bg-red-50 border-red-200"
-              valueColor="text-red-600"
-            />
-          </div>
+      {/* Results Info & Stats */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">
+          Showing <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> of{' '}
+          <span className="font-medium">{getFilteredData().length}</span> results
+        </p>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-600">Rows per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
         </div>
       </div>
 
@@ -1593,31 +1637,20 @@ const DataPendaftar: React.FC = () => {
                     );
                   }
                   
-                  return [
-                    // No
-                    <div className="text-left text-gray-600">
+                  const allCells = {
+                    no: <div className="text-left text-gray-600">
                       {((currentPage - 1) * itemsPerPage) + index + 1}
                     </div>,
-                    // Nama
-                    <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
+                    name: <div className="text-left truncate max-w-[150px]" title={item.namaSiswa}>
                       {item.namaSiswa}
                     </div>,
-                    // Sekolah (jika master admin) - HIDDEN
-                    // ...(userRole?.isMaster ? [
-                    //   <div className="text-left">
-                    //     <SchoolBadge key={item.uid} school={item.school} />
-                    //   </div>
-                    // ] : []),
-                    // Jalur
-                    <div className="text-left">
+                    jalur: <div className="text-left">
                       <JalurBadge key={item.uid} jalur={item.jalur} />
                     </div>,
-                    // Asal Sekolah
-                    <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
+                    school: <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
                       {item.asalSekolah}
                     </div>,
-                    // Status
-                    <div className="text-left">
+                    status: <div className="text-left">
                       <button
                         type="button"
                         onClick={() => {
@@ -1639,8 +1672,7 @@ const DataPendaftar: React.FC = () => {
                         />
                       </button>
                     </div>,
-                    // Admin
-                    <div className="text-left">
+                    admin: <div className="text-left">
                       {item.updatedBy ? (
                         <span className="text-sm font-medium text-gray-900">
                           {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
@@ -1649,12 +1681,10 @@ const DataPendaftar: React.FC = () => {
                         <span className="text-sm text-gray-400">-</span>
                       )}
                     </div>,
-                    // Tanggal Submit
-                    <div className="text-left">
+                    date: <div className="text-left">
                       {formatDateTime(item.submittedAt || item.createdAt)}
                     </div>,
-                    // Aksi - Dropdown
-                    <div className="text-left relative action-dropdown">
+                    actions: <div className="text-left relative action-dropdown">
                       <button
                         onClick={() => setShowActionDropdown(showActionDropdown === item.uid ? null : item.uid)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm transition-colors border"
@@ -1701,7 +1731,11 @@ const DataPendaftar: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ];
+                  };
+
+                  return allHeaders
+                    .filter(h => visibleColumns[h.key as keyof typeof visibleColumns])
+                    .map(h => allCells[h.key as keyof typeof allCells]);
                 })}
               />
             </div>

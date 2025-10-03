@@ -9,27 +9,44 @@ interface TableProps {
 const Table: React.FC<TableProps> = ({ headers, data, className }) => {
   return (
     <div className={`overflow-x-auto ${className}`}>
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>{headers.map((header, index) => (
+      <table className="min-w-full">
+        {/* Header */}
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            {headers.map((header, index) => (
               <th
                 key={index}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
               >
-                {typeof header === 'string' ? header : header.content}
+                <div className="flex items-center gap-2">
+                  {typeof header === 'string' ? header : header.content}
+                </div>
               </th>
-            ))}</tr>
+            ))}
+          </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">{data.map((row, rowIndex) => (
-            <tr key={rowIndex}>{row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="px-6 py-4 whitespace-nowrap">
+        
+        {/* Body */}
+        <tbody className="bg-white">
+          {data.map((row, rowIndex) => (
+            <tr 
+              key={rowIndex}
+              className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150"
+            >
+              {row.map((cell, cellIndex) => (
+                <td 
+                  key={cellIndex} 
+                  className="px-6 py-4 text-sm text-gray-900"
+                >
                   {cell}
                 </td>
-              ))}</tr>
-          ))}</tbody>
+              ))}
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );
 };
 
-export default Table; 
+export default Table;
