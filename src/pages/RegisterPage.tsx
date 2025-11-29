@@ -65,6 +65,7 @@ const RegisterPage: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(true);
 
   useEffect(() => {
     const checkFirstAdmin = async () => {
@@ -234,6 +235,12 @@ const RegisterPage: React.FC = () => {
         setLoading(false);
         return;
       }
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password tidak boleh kurang dari 6 digit');
+      setLoading(false);
+      return;
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -536,13 +543,29 @@ const RegisterPage: React.FC = () => {
                 <div className="relative">
                   <LockClosedIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-400 absolute top-[2.1rem] left-3" />
                   <Input
-                    label="Password"
+                    label={
+                      <div className="flex items-center justify-between">
+                        <span>Password</span>
+                        <span className={`text-xs ${formData.password.length > 0 && formData.password.length < 6 ? 'text-red-500' : 'text-gray-500'}`}>
+                          {formData.password.length > 0 && formData.password.length < 6 ? 'Minimal 6 karakter' : ''}
+                        </span>
+                      </div>
+                    }
                     type={showPassword ? "text" : "password"}
                     required
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({...formData, password: value});
+                      setIsPasswordValid(value.length >= 6 || value.length === 0);
+                      if (value.length >= 6 || value.length === 0) {
+                        setError('');
+                      }
+                    }}
                     placeholder="Masukkan password"
-                    className="pl-8 pr-10 md:pl-10 text-sm md:text-base py-2 md:py-2.5 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                    className={`pl-8 pr-10 md:pl-10 text-sm md:text-base py-2 md:py-2.5 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden ${
+                      formData.password.length > 0 && formData.password.length < 6 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
                   />
                   <button
                     type="button"
@@ -587,7 +610,7 @@ const RegisterPage: React.FC = () => {
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
                               hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 
                               py-2 md:py-3 rounded-lg transition-all duration-300 text-sm md:text-base"
-                    disabled={loading || (!isFirstAdmin && !isNIKValid)}
+                    disabled={loading || (!isFirstAdmin && !isNIKValid) || !isPasswordValid}
                   >
                     {loading ? (
                       <div className="flex items-center justify-center">
