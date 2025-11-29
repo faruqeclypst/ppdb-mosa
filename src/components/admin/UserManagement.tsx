@@ -6,7 +6,7 @@ import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import { showAlert } from '../ui/Alert';
-import { KeyIcon, TrashIcon, UserPlusIcon, ChevronDownIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { KeyIcon, TrashIcon, UserPlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import classNames from 'classnames';
 
@@ -37,8 +37,6 @@ const UserManagement: React.FC = () => {
   });
   const [schoolFilter, setSchoolFilter] = useState<'all' | 'mosa' | 'fajar'>('all');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   useEffect(() => {
     loadAdmins();
