@@ -53,7 +53,7 @@ const Footer: React.FC = () => {
               />
               <div>
                 <h3 className="text-white font-bold">SMAN Modal Bangsa</h3>
-                <p className="text-sm text-gray-400">Unggul dalam Prestasi</p>
+                <p className="text-sm text-gray-400">Sekolah Para Juara</p>
               </div>
             </div>
             <p className="text-sm text-gray-400">
@@ -107,7 +107,7 @@ const Footer: React.FC = () => {
                   className="text-gray-400 hover:text-white transition-colors duration-200 text-sm flex items-center space-x-2"
                 >
                   <PhoneIcon className="h-4 w-4" />
-                  <span>Rahmat</span>
+                  <span>Alfaruq Asri</span>
                 </a>
               </li>
               <li>
@@ -116,7 +116,7 @@ const Footer: React.FC = () => {
                   className="text-gray-400 hover:text-white transition-colors duration-200 text-sm flex items-center space-x-2"
                 >
                   <EnvelopeIcon className="h-4 w-4" />
-                  <span>admin@sman-modalbangsa.sch.id</span>
+                  <span>info@sman-modalbangsa.sch.id</span>
                 </a>
               </li>
               <li className="flex items-start space-x-2 text-sm">

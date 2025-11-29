@@ -6,7 +6,7 @@ import HeroSection from '../components/landingpage/HeroSection';
 import AboutSection from '../components/landingpage/AboutSection';
 import AchievementSection from '../components/landingpage/AchievementSection';
 import FeaturesSection from '../components/landingpage/FeaturesSection';
-import TestimonialsSection from '../components/landingpage/TestimonialsSection';
+// import TestimonialsSection from '../components/landingpage/TestimonialsSection';
 import CallToActionSection from '../components/landingpage/CallToActionSection';
 import FAQSection from '../components/landingpage/FAQSection';
 import type { PPDBSettings } from '../types/settings';
@@ -53,7 +53,7 @@ const LandingPage: React.FC = () => {
       <AboutSection />
       <AchievementSection />
       <FeaturesSection />
-      <TestimonialsSection />
+      {/* <TestimonialsSection /> */}
       <FAQSection />
       <CallToActionSection />
     </motion.div>

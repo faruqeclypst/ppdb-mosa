@@ -610,7 +610,7 @@ const RegisterPage: React.FC = () => {
                     <p className="text-[10px] md:text-xs text-gray-500">
                       Dengan mendaftar, Anda menyetujui{' '}
                       <Link to="/info-ppdb" className="text-blue-600 hover:text-blue-700">
-                        Syarat & Ketentuan PPDB SMAN Modal Bangsa
+                        Syarat & Ketentuan SPMB Online SMAN Modal Bangsa
                       </Link>
                     </p>
                   </div>

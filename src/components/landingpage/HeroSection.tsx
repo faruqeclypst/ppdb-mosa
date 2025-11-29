@@ -94,7 +94,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
               <span className="relative inline-block">
                 <span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400">
-                  SPMB Online SMAN Modal Bangsa {getPPDBYears()}
+                  SPMB SMAN Modal Bangsa {getPPDBYears()}
                 </span>
               </span>
             </h1>

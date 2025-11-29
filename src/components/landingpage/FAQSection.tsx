@@ -52,7 +52,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Bagaimana cara melakukan perubahan data?",
-    answer: "Anda dapat menghubungi panitia PPDB SMAN Modal Bangsa untuk melakukan perubahan data.",
+    answer: "Anda dapat menghubungi panitia SPMB Online SMAN Modal Bangsa untuk melakukan perubahan data.",
     category: "pendaftaran"
   },
   {
@@ -110,7 +110,7 @@ const FAQSection: React.FC = () => {
             Pertanyaan yang Sering Diajukan
           </h2>
           <p className="text-base sm:text-lg text-gray-600">
-            Temukan jawaban untuk pertanyaan umum seputar PPDB SMAN Modal Bangsa
+            Temukan jawaban untuk pertanyaan umum seputar SPMB Online SMAN Modal Bangsa
           </p>
         </motion.div>
 

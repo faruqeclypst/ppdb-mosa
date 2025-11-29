@@ -16,71 +16,50 @@ const achievements: Achievement[] = [
     id: 1,
     name: "Balqis Daratunnasywa",
     title: "Juara 2 Jurnalistik FLS3N Nasional 2025",
-    image: "https://media.igram.world/get?__sig=G8RAcskBmmsxUD-jT7hknw&__expires=1764391675&uri=https%3A%2F%2Fscontent-lga3-3.cdninstagram.com%2Fv%2Ft51.2885-15%2F588357141_18075651701519084_5796886846560706209_n.webp%3Fstp%3Ddst-jpg_e35_p1080x1080_sh0.08_tt6%26_nc_ht%3Dscontent-lga3-3.cdninstagram.com%26_nc_cat%3D108%26_nc_oc%3DQ6cZ2QEKBsA41MZwY48FiiJGJWqyYWnTKktnVZMRUanMhsZZ6sFH13Nw8DGFtjYRYVDS-osURbIATdzCQv7nTeae_R-V%26_nc_ohc%3DpzhpEwBmOd0Q7kNvwE2wyF1%26_nc_gid%3DThNOV6n1FbZsyakJ-ZOOcQ%26edm%3DANTKIIoBAAAA%26ccb%3D7-5%26oh%3D00_AfhfV7GOhdv6ZTb0vQ8oaJdrbiLQ9ktqvENHMkBBgcW9ig%26oe%3D69303F12%26_nc_sid%3Dd885a2&filename=588357141_18075651701519084_5796886846560706209_n.webp",
+    image: "/images/prestasi/1.webp",
     description: "Juara 2 Jurnalistik FLS3N Nasional 2025"
   },
   {
     id: 2,
     name: "Teuku Fatih Ahmad Hasan",
     title: "Juara 3 Cipta Puisi FLS3N Nasional 2025",
-    image: "https://media.igram.world/get?__sig=hVORlAB1uz8vYkSeN_bCRw&__expires=1764391451&uri=https%3A%2F%2Fscontent-lga3-3.cdninstagram.com%2Fv%2Ft51.2885-15%2F588437376_18075651986519084_4405781779317762385_n.webp%3Fstp%3Ddst-jpg_e35_p1080x1080_sh0.08_tt6%26_nc_ht%3Dscontent-lga3-3.cdninstagram.com%26_nc_cat%3D108%26_nc_oc%3DQ6cZ2QHs0vyM_mnkgATlqvnjGkPLuOZzvuwfOPuwUEvSPkVgBu01ZztsSazmJabry2ZSYtf-wjAU8O5skU0DkLxZdrii%26_nc_ohc%3DJjiVrKWJeSEQ7kNvwG5dZMt%26_nc_gid%3D4pyOViOLsPlpaw2B-bwQVQ%26edm%3DANTKIIoBAAAA%26ccb%3D7-5%26oh%3D00_Afis8KQhRJ3V8L1QnVfy5f6XwcniAK0mMIiDFBZyVkpwYA%26oe%3D69304F8B%26_nc_sid%3Dd885a2&filename=588437376_18075651986519084_4405781779317762385_n.webp",
+    image: "/images/prestasi/2.webp",
     description: "Juara 3 Cipta Puisi FLS3N Nasional 2025"
   },
   {
     id: 3,
-    name: "xxx",
+    name: "Rekha Vista, Zalfa Zahiya, Siti Endah Dinara, Tahta Zilli Arsyika, M. Fawwaz Al-Zaidan,Zulfadhli Azmi",
     title: "Mosa Raih Medali Emas pada ajang NSIF (National Science & Innovation Fair)",
-    image: "https://media.igram.world/get?__sig=zpsziThFC15QoFAqwAeX5Q&__expires=1764391756&uri=https%3A%2F%2Fscontent-lga3-3.cdninstagram.com%2Fv%2Ft51.2885-15%2F582756749_18075072770519084_7468241418466491391_n.webp%3Fstp%3Ddst-jpg_e35_p1080x1080_sh0.08_tt6%26_nc_ht%3Dscontent-lga3-3.cdninstagram.com%26_nc_cat%3D108%26_nc_oc%3DQ6cZ2QEVcltBqzN41tJt9jG-ausMfiMQLDpm7t-SS9A_SpYpY8By2D6p49YXu75LttRzp6D4st0fqYbPVdiqfDW0Wso0%26_nc_ohc%3DUe1G9pznz3EQ7kNvwErqKEB%26_nc_gid%3DL82c30hvN3wJASyaoLWSvg%26edm%3DANTKIIoBAAAA%26ccb%3D7-5%26oh%3D00_Afh_ER860q3Oi-NNkJblkNb7bxjuihNYv5G1aY-UGnE0ZQ%26oe%3D69305DFC%26_nc_sid%3Dd885a2&filename=582756749_18075072770519084_7468241418466491391_n.webp",
+    image: "/images/prestasi/3.webp",
     description: "Mosa Raih Medali Emas pada ajang NSIF (National Science & Innovation Fair)"
   },
   {
     id: 4,
     name: "Dzakwan Dhiya Ramadhana",
     title: "Silver Medal OSN FISIKA 2025",
-    image: "https://media.igram.world/get?__sig=TOJPXfd8T5lfmi3zlr8AuQ&__expires=1764391856&uri=https%3A%2F%2Fscontent-lga3-3.cdninstagram.com%2Fv%2Ft51.2885-15%2F565044113_18071688467519084_4745486145144925239_n.webp%3Fstp%3Ddst-jpg_e35_p1080x1080_sh0.08_tt6%26_nc_ht%3Dscontent-lga3-3.cdninstagram.com%26_nc_cat%3D108%26_nc_oc%3DQ6cZ2QEsi06MDXTP_7FO6_PLpOoQpBoH-gj9lDAGqpoCqb3mWlta5zgfGLn5SjBz5RoRCy3a154QqswkIirRAwGM6OkV%26_nc_ohc%3D8I11oKJ7T68Q7kNvwGeLjk5%26_nc_gid%3DHYdjyNxxbN4JLmuepL-zLg%26edm%3DANTKIIoBAAAA%26ccb%3D7-5%26oh%3D00_AfiH3wqDQgUHktS0WFgvzOO7pnRVQn2D3iQj8B9q1t6C6Q%26oe%3D69305203%26_nc_sid%3Dd885a2&filename=565044113_18071688467519084_4745486145144925239_n.webp",
+    image: "/images/prestasi/4.webp",
     description: "Silver Medal OSN FISIKA 2025"
   },
   {
     id: 5,
-    name: "Siti Nurhaliza",
-    title: "Juara 2 Lomba Karya Ilmiah Remaja (LKIR) Tingkat Nasional",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop",
-    description: "Penelitian tentang energi terbarukan"
+    name: "Ika Putri Maulidza",
+    title: "Juara 1 Lomba Menulis Esai Jenjang SMA/SMK Tingkat Provinsi Tahun 2025",
+    image: "/images/prestasi/5.webp",
+    description: "Juara 1 Lomba Menulis Esai Jenjang SMA/SMK Tingkat Provinsi Tahun 2025"
   },
   {
     id: 6,
-    name: "Muhammad Rizki",
-    title: "Juara 1 Kompetisi Robotika Nasional 2024",
-    image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=500&fit=crop",
-    description: "Mengembangkan robot untuk pertanian"
+    name: "Muhammad Khairil Fata, Farrel Zhafirsya Arief, dan Rafif Juhaidi ",
+    title: "Juara 1 Lomba Cerdas Cermat DAMASSQUSS",
+    image: "/images/prestasi/6.webp",
+    description: "Juara 1 Lomba Cerdas Cermat DAMASSQUSS"
   },
   {
     id: 7,
-    name: "Putri Ayu Lestari",
-    title: "Best Speaker Debat Bahasa Inggris Tingkat Provinsi",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop",
-    description: "Juara debat bahasa Inggris se-Aceh"
-  },
-  {
-    id: 8,
-    name: "Dimas Pratama",
-    title: "Juara 3 Olimpiade Astronomi Tingkat Nasional",
-    image: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=400&h=500&fit=crop",
-    description: "Medali perunggu OSN Astronomi"
-  },
-  {
-    id: 9,
-    name: "Aisyah Kamila",
-    title: "Juara 1 Festival Seni Tari Tradisional Nasional",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=500&fit=crop",
-    description: "Menampilkan tari Saman di tingkat nasional"
-  },
-  {
-    id: 10,
-    name: "Farhan Maulana",
-    title: "Juara 2 Kompetisi Esai Sejarah Indonesia Tingkat Nasional",
-    image: "https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400&h=500&fit=crop",
-    description: "Esai tentang pahlawan nasional Aceh"
+    name: "Gazali Sulaiman",
+    title: "Juara 3 Olimpiade Kimia  Chemistry Fair HMK Universitas Syiah Kuala",
+    image: "/images/prestasi/7.webp",
+    description: "Juara 3 Olimpiade Kimia  Chemistry Fair HMK Universitas Syiah Kuala"
   }
 ];
 
@@ -215,7 +194,7 @@ const AchievementSection: React.FC = () => {
           >
             <div className="relative max-w-md mx-auto">
               {/* Phone Frame */}
-              <div className="relative bg-gradient-to-br from-blue-500 to-blue-500 rounded-3xl p-4 shadow-2xl">
+              <div className="relative bg-gradient-to-br from-gray-50 to-gray-50 rounded-3xl p-4 shadow-2xl">
                 <div className="rounded-2xl overflow-hidden bg-gray-900">
                   <AnimatePresence mode="wait">
                     <motion.div
