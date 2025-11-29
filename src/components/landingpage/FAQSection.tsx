@@ -22,7 +22,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
   {
     question: "Berapa nilai minimal untuk mendaftar?",
-    answer: "Nilai minimal untuk mendaftar berbeda-beda setiap jalur:\n\n• Jalur Prestasi: Minimal rata-rata 83 untuk semester 2,3 dan 4\n• Jalur Reguler: Minimal rata-rata 83 untuk semester 2,3 dan 4\n• Jalur Undangan: Minimal rata-rata 83 untuk semester 2,3 dan 4",
+    answer: "Nilai minimal untuk mendaftar setiap jalur:\n\n• Jalur Prestasi: Minimal rata-rata 85 untuk semester 2,3 dan 4\n• Jalur Reguler: Minimal rata-rata 85 untuk semester 2,3 dan 4\n• Jalur Undangan: Minimal rata-rata 85 untuk semester 2,3 dan 4",
     category: "persyaratan"
   },
   {

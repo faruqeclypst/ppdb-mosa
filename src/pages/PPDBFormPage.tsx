@@ -184,8 +184,8 @@ const VALIDATION_CONFIG = {
   // Nilai minimum per sekolah dan jalur
   MIN_NILAI: {
     mosa: {
-      prestasi: 83,
-      reguler: 83,
+      prestasi: 85,
+      reguler: 85,
       undangan: 83
     },
     fajar: {
@@ -648,7 +648,7 @@ const generateRegistrationCard = async (formData: FormData) => {
     // Save PDF
     const pdfBytes = await pdfDoc.save();
     const schoolAbbr = formData.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan';
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
     saveAs(blob, `Kartu_Pendaftaran_${schoolAbbr}_${formData.namaSiswa}.pdf`);
 
   } catch (error) {

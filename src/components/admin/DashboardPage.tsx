@@ -1005,7 +1005,7 @@ const DashboardPage: React.FC = () => {
                         <div className="flex justify-center">
                           <span className={classNames(
                             "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                            parseFloat(getSubjectAverage(subject)) >= 83
+                            parseFloat(getSubjectAverage(subject)) >= 85
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           )}>
@@ -1109,7 +1109,7 @@ const DashboardPage: React.FC = () => {
                               </div>
                               <span className={classNames(
                                 "px-2 py-0.5 rounded-full text-xs font-medium",
-                                parseFloat(nilai) >= 83
+                                parseFloat(nilai) >= 85
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
                               )}>
