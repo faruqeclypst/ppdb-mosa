@@ -100,7 +100,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-gray-300/90 leading-relaxed max-w-3xl mx-auto">
-              Informasi lengkap seputar Jadwal, syarat, alur pendaftaran dan Informasi sekolah.
+            Informasi seputar jadwal, persyaratan, alur pendaftaran, dan profil sekolah.
             </p>
 
             <div className="flex flex-row gap-2 md:gap-3 pt-2 md:pt-4 justify-center flex-wrap">

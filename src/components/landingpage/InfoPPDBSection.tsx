@@ -125,7 +125,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
             className="text-center mb-8 md:mb-16"
           >
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 md:mb-6">
-              Jalur PPDB{' '}
+              Informasi Jalur SPMB Online {' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
                 {settings?.academicYear || '2025/2026'}
               </span>
