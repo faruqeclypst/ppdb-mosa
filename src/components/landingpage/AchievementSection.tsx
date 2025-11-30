@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Container from '../ui/Container';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
-import { ChevronLeftIcon, ChevronRightIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+// import { ChevronLeftIcon, ChevronRightIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon} from '@heroicons/react/24/outline';
 
 interface Achievement {
   id: number;
@@ -63,32 +64,32 @@ const achievements: Achievement[] = [
   }
 ];
 
-const stats = [
-  {
-    icon: <UserGroupIcon className="w-8 h-8" />,
-    label: "Tingkat Kab/Kota",
-    value: "213 Siswa",
-    color: "bg-green-100 text-green-600"
-  },
-  {
-    icon: <UserGroupIcon className="w-8 h-8" />,
-    label: "Tingkat Provinsi",
-    value: "110 Siswa",
-    color: "bg-emerald-100 text-emerald-600"
-  },
-  {
-    icon: <UserGroupIcon className="w-8 h-8" />,
-    label: "Tingkat Nasional",
-    value: "56 Siswa",
-    color: "bg-blue-100 text-blue-600"
-  },
-  {
-    icon: <UserGroupIcon className="w-8 h-8" />,
-    label: "Tingkat Internasional",
-    value: "4 Siswa",
-    color: "bg-orange-100 text-orange-600"
-  }
-];
+// const stats = [
+//   {
+//     icon: <UserGroupIcon className="w-8 h-8" />,
+//     label: "Tingkat Kab/Kota",
+//     value: "213 Siswa",
+//     color: "bg-green-100 text-green-600"
+//   },
+//   {
+//     icon: <UserGroupIcon className="w-8 h-8" />,
+//     label: "Tingkat Provinsi",
+//     value: "110 Siswa",
+//     color: "bg-emerald-100 text-emerald-600"
+//   },
+//   {
+//     icon: <UserGroupIcon className="w-8 h-8" />,
+//     label: "Tingkat Nasional",
+//     value: "56 Siswa",
+//     color: "bg-blue-100 text-blue-600"
+//   },
+//   {
+//     icon: <UserGroupIcon className="w-8 h-8" />,
+//     label: "Tingkat Internasional",
+//     value: "4 Siswa",
+//     color: "bg-orange-100 text-orange-600"
+//   }
+// ];
 
 const AchievementSection: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -153,7 +154,7 @@ const AchievementSection: React.FC = () => {
         </motion.div>
 
         {/* Stats Grid */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -180,7 +181,7 @@ const AchievementSection: React.FC = () => {
               </div>
             </motion.div>
           ))}
-        </motion.div>
+        </motion.div> */}
 
         {/* Achievement Carousel */}
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">

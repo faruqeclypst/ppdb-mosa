@@ -5,7 +5,7 @@ import { db } from '../firebase/config';
 import HeroSection from '../components/landingpage/HeroSection';
 import AboutSection from '../components/landingpage/AboutSection';
 import AchievementSection from '../components/landingpage/AchievementSection';
-// import FeaturesSection from '../components/landingpage/FeaturesSection';
+import FeaturesSection from '../components/landingpage/FeaturesSection';
 // import TestimonialsSection from '../components/landingpage/TestimonialsSection';
 import CallToActionSection from '../components/landingpage/CallToActionSection';
 import FAQSection from '../components/landingpage/FAQSection';
@@ -52,7 +52,7 @@ const LandingPage: React.FC = () => {
       <HeroSection settings={settings} />
       <AboutSection />
       <AchievementSection />
-      {/* <FeaturesSection /> */}
+      <FeaturesSection />
       {/* <TestimonialsSection /> */}
       <FAQSection />
       <CallToActionSection />

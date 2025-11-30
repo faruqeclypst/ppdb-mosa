@@ -36,8 +36,6 @@ const AboutSection: React.FC = () => {
 >
   {/* Card diperbesar */}
   <div className="bg-white border border-gray-200 rounded-2xl p-8 md:p-10 w-full">
-    <p className="text-blue-600 font-semibold text-sm mb-3">Tentang Sekolah</p>
-
     {/* Logo + Judul (lebih besar) */}
     <div className="flex items-center gap-5 mb-4">
       <img
@@ -77,17 +75,17 @@ const AboutSection: React.FC = () => {
     {/* Stats lebih besar & rapi */}
     <div className="mt-8 grid grid-cols-3 gap-6 text-center">
       <div>
-        <div className="text-xl sm:text-2xl font-bold text-gray-900">1.200+</div>
+        <div className="text-xl sm:text-2xl font-bold text-gray-900">8000+</div>
         <div className="text-sm text-gray-500">Siswa Terdaftar</div>
       </div>
 
       <div>
-        <div className="text-xl sm:text-2xl font-bold text-gray-900">85</div>
+        <div className="text-xl sm:text-2xl font-bold text-gray-900">200+</div>
         <div className="text-sm text-gray-500">Prestasi Nasional</div>
       </div>
 
       <div>
-        <div className="text-xl sm:text-2xl font-bold text-gray-900">10</div>
+        <div className="text-xl sm:text-2xl font-bold text-gray-900">31</div>
         <div className="text-sm text-gray-500">Tahun Berdiri</div>
       </div>
     </div>

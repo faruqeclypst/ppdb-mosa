@@ -14,12 +14,12 @@ const CallToActionSection: React.FC = () => {
     },
     {
       icon: <UserGroupIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
-      value: "1500+",
+      value: "1000+",
       label: "Alumni Sukses"
     },
     {
       icon: <TrophyIcon className="w-6 h-6 sm:w-8 sm:h-8" />,
-      value: "500+",
+      value: "1000+",
       label: "Prestasi"
     }
   ];
