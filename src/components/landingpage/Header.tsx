@@ -75,13 +75,33 @@ const Header: React.FC = () => {
         <div className="relative">
           <nav className="flex items-center justify-between">
             {/* Brand Name */}
-            <Link to="/">
-              {/* <span className={`
-                font-bold text-lg transition-colors duration-300
-                ${isTransparent ? 'text-white' : 'text-blue-600'}
-              `}>
-                SMAN Modal Bangsa
-              </span> */}
+            <Link to="/" className="flex items-center gap-3">
+              <img
+                src="/images/mosa.png"
+                alt="Logo SMAN Modal Bangsa"
+                className={`
+                  w-10 h-10 object-contain transition-opacity duration-300
+                  ${isTransparent ? 'opacity-100' : 'opacity-90'}
+                `}
+              />
+              <div className="leading-tight">
+                <span
+                  className={`
+                    block font-bold text-base transition-colors duration-300
+                    ${isTransparent ? 'text-white' : 'text-blue-700'}
+                  `}
+                >
+                  SMAN Modal Bangsa
+                </span>
+                <span
+                  className={`
+                    block text-xs font-medium opacity-80 transition-colors duration-300
+                    ${isTransparent ? 'text-white' : 'text-gray-600'}
+                  `}
+                >
+                  Sekolah Para Juara
+                </span>
+              </div>
             </Link>
 
             {/* Desktop Navigation */}

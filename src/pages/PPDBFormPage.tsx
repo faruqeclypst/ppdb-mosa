@@ -2330,7 +2330,7 @@ const PPDBFormPage: React.FC = () => {
               <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div className="flex-1 min-w-0 space-y-2">
                   <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
-                    Formulir Pendaftaran PPDB
+                    Formulir Pendaftaran SPMB
                   </h1>
                   <h2 className="text-base md:text-lg text-gray-600">
                     SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}

@@ -339,7 +339,7 @@ const RegisterPage: React.FC = () => {
                 Selamat Datang di SPMB Online
               </h1>
               <p className="text-lg text-gray-600">
-                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
+                SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran {ppdbSettings?.academicYear || '2026/2027'}
               </p>
             </div>
 
@@ -401,12 +401,12 @@ const RegisterPage: React.FC = () => {
               {/* Header - Ukuran font lebih kecil di mobile */}
               <div className="text-center mb-4 md:mb-8">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1 md:mb-2">
-                  {isFirstAdmin ? 'Setup Admin' : 'Daftar Akun PPDB'}
+                  {isFirstAdmin ? 'Setup Admin' : 'Daftar Akun SPMB'}
                 </h2>
                 <p className="text-xs md:text-sm text-gray-600">
                   {isFirstAdmin 
                     ? 'Buat akun admin pertama untuk mengelola sistem'
-                    : 'Lengkapi data berikut untuk membuat akun PPDB'}
+                    : 'Lengkapi data berikut untuk membuat akun SPMB'}
                 </p>
               </div>
 
@@ -618,7 +618,7 @@ const RegisterPage: React.FC = () => {
                         {isFirstAdmin ? 'Membuat Admin...' : 'Mendaftar...'}
                       </div>
                     ) : (
-                      isFirstAdmin ? 'Buat Admin' : 'Daftar PPDB'
+                      isFirstAdmin ? 'Buat Admin' : 'Daftar SPMB'
                     )}
                   </Button>
 
@@ -691,7 +691,7 @@ const RegisterPage: React.FC = () => {
           </h3>
           <div className="text-gray-600 space-y-4 mb-6">
             <p>
-              Akun PPDB Anda telah berhasil dibuat.
+              Akun SPMB Anda telah berhasil dibuat.
             </p>
             {/* <div className="bg-yellow-50 p-4 rounded-lg text-left">
               <p className="text-yellow-800 font-medium mb-2">Penting!</p>
@@ -707,7 +707,7 @@ const RegisterPage: React.FC = () => {
               onClick={() => navigate('/ppdb/form')}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Lanjut ke Form PPDB
+              Lanjut ke Form SPMB
             </Button>
           </div>
         </div>

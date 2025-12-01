@@ -169,14 +169,14 @@ const Footer: React.FC = () => {
         <div className="border-t border-gray-700 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-400">
-              &copy; {currentYear} SMAN Modal Bangsa. All rights reserved.
+              &copy; {currentYear} Alfaruq Asri, S.Pd - SMAN Modal Bangsa. All rights reserved.
             </p>
             <div className="flex space-x-6">
-              <Link to="/privacy" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                Privacy Policy
+              <Link to="/info-spmb" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">
+                Syarat & Ketentuan
               </Link>
-              <Link to="/terms" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">
-                Terms of Service
+              <Link to="/info-spmb" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">
+                Help Desk
               </Link>
             </div>
           </div>

@@ -110,7 +110,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
                 className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-blue-600 px-4 md:px-5 py-2 md:py-2.5 text-sm md:text-base font-medium rounded-lg shadow-lg transition-all duration-300"
                 ariaLabel="Daftar SPMB"
               >
-                Daftar
+                Daftar SPMB
               </ActionButton>
 
               <ActionButton

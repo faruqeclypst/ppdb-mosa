@@ -127,7 +127,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 md:mb-6">
               Informasi Jalur SPMB Online {' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
-                {settings?.academicYear || '2025/2026'}
+                {settings?.academicYear || '2026/2027'}
               </span>
             </h2>
             <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
@@ -343,7 +343,7 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                     {/* Info tambahan */}
                     <div className="text-xs text-white/90 bg-white/10 backdrop-blur-sm rounded-xl p-3 mt-auto">
                       <p className="font-medium">Catatan:</p>
-                      <p>Keputusan panitia PPDB bersifat final. Peserta yang tidak melakukan daftar ulang dianggap mengundurkan diri.</p>
+                      <p>Keputusan panitia SPMB SMAN Modal Bangsa bersifat final. Peserta yang tidak melakukan daftar ulang dianggap mengundurkan diri.</p>
                     </div>
                   </div>
                 </div>
