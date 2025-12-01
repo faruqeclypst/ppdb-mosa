@@ -6,7 +6,7 @@ const Footer: React.FC = () => {
       <div className="w-full px-4">
         <div className="text-center text-sm text-gray-600">
           <p className="text-xs md:text-sm">&copy; {new Date().getFullYear()} SMAN Modal Bangsa - Admin Panel</p>
-          <p className="text-xs mt-1 hidden md:block">Version 1.0.0</p>
+          <p className="text-xs mt-1 hidden md:block">Version 2.1.0</p>
         </div>
       </div>
     </footer>

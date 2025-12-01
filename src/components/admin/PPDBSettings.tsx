@@ -257,13 +257,13 @@ const PPDBSettings: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Status PPDB */}
+      {/* Status SPMB */}
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-6 rounded-xl border border-blue-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-blue-900">Status PPDB</h3>
+            <h3 className="text-base md:text-lg font-semibold text-blue-900">Status SPMB</h3>
             <p className="text-xs md:text-sm text-blue-700 mt-1">
-              {settings.isActive ? 'PPDB sedang berlangsung' : 'PPDB belum dimulai'}
+              {settings.isActive ? 'SPMB sedang berlangsung' : 'SPMB belum dimulai'}
             </p>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -692,10 +692,10 @@ const PPDBSettings: React.FC = () => {
               Konfirmasi Simpan Pengaturan
             </h3>
             <p className="text-sm text-gray-600">
-              Apakah Anda yakin ingin menyimpan perubahan pengaturan PPDB?
+              Apakah Anda yakin ingin menyimpan perubahan pengaturan SPMB?
               <br />
               <span className="text-yellow-600 mt-2 block">
-                Perubahan ini akan langsung mempengaruhi sistem PPDB.
+                Perubahan ini akan langsung mempengaruhi sistem SPMB.
               </span>
             </p>
           </div>

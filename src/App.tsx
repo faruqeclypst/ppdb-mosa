@@ -68,7 +68,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<Suspense fallback={<PageLoader />}><LandingPage /></Suspense>} />
         <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
-        <Route path="/info-ppdb" element={<Suspense fallback={<PageLoader />}><InfoPPDBPage /></Suspense>} />
+        <Route path="/info-spmb" element={<Suspense fallback={<PageLoader />}><InfoPPDBPage /></Suspense>} />
         <Route path="/ppdb" element={<Suspense fallback={<PageLoader />}><PPDBFormPage /></Suspense>} />
         <Route path="/admin/*" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
       </Routes>

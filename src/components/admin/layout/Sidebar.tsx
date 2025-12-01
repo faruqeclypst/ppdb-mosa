@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
     path: '/admin/users'
   },
   {
-    name: 'Pengaturan PPDB',
+    name: 'Pengaturan SPMB',
     icon: AdjustmentsHorizontalIcon,
     path: '/admin/settings'
   }
@@ -141,8 +141,8 @@ const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
             'flex-1 transition-all duration-300 overflow-hidden text-left',
             isCollapsed ? 'w-0 ml-0' : 'ml-3'
           )}>
-            <p className="text-xs font-medium text-gray-900 truncate whitespace-nowrap">v1.0.0</p>
-            <p className="text-[10px] text-gray-500 truncate whitespace-nowrap">© 2024 PPDB MOSA</p>
+            <p className="text-xs font-medium text-gray-900 truncate whitespace-nowrap">v2.1.0</p>
+            <p className="text-[10px] text-gray-500 truncate whitespace-nowrap">&copy; {new Date().getFullYear()} SPMB MOSA</p>
           </div>
         </div>
       </div>

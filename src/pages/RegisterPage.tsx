@@ -336,7 +336,7 @@ const RegisterPage: React.FC = () => {
           <div className="hidden md:block text-center md:text-left space-y-8">
             <div className="space-y-4">
               <h1 className="text-3xl font-bold text-gray-900">
-                Selamat Datang di PPDB Online
+                Selamat Datang di SPMB Online
               </h1>
               <p className="text-lg text-gray-600">
                 SMAN Modal Bangsa membuka pendaftaran peserta didik baru tahun ajaran 2025/2026
@@ -632,7 +632,7 @@ const RegisterPage: React.FC = () => {
 
                     <p className="text-[10px] md:text-xs text-gray-500">
                       Dengan mendaftar, Anda menyetujui{' '}
-                      <Link to="/info-ppdb" className="text-blue-600 hover:text-blue-700">
+                      <Link to="/info-spmb" className="text-blue-600 hover:text-blue-700">
                         Syarat & Ketentuan SPMB Online SMAN Modal Bangsa
                       </Link>
                     </p>
@@ -658,10 +658,10 @@ const RegisterPage: React.FC = () => {
               <XMarkIcon className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              PPDB Belum Dimulai
+              SPMB Belum Dimulai
             </h3>
             <p className="text-sm text-gray-600">
-              Mohon maaf, pendaftaran PPDB belum dibuka. Silakan cek kembali nanti.
+              Mohon maaf, pendaftaran SPMB belum dibuka. Silakan cek kembali nanti.
             </p>
           </div>
           <div className="flex justify-center gap-3">

@@ -16,7 +16,7 @@ const Header: React.FC = () => {
 
   const navLinks = [
     { to: '/', label: 'Beranda' },
-    { to: '/info-ppdb', label: 'Info PPDB' },
+    { to: '/info-spmb', label: 'Info SPMB' },
   ];
 
   useEffect(() => {

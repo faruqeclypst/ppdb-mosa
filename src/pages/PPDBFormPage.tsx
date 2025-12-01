@@ -932,7 +932,7 @@ const PPDBFormPage: React.FC = () => {
     const checkPPDBStatus = async () => {
       const isPPDBActive = await getPPDBStatus();
       if (!isPPDBActive) {
-        showAlert('error', 'PPDB belum dimulai');
+        showAlert('error', 'SPMB belum dimulai');
         navigate('/');
       }
     };
@@ -2170,7 +2170,7 @@ const PPDBFormPage: React.FC = () => {
     }
   };
 
-  // Tambahkan useEffect untuk memuat pengaturan PPDB
+  // Tambahkan useEffect untuk memuat pengaturan SPMB
   useEffect(() => {
     const loadPPDBSettings = async () => {
       try {

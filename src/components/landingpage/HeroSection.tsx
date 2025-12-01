@@ -108,22 +108,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
                 to="/register"
                 onClick={handleRegisterClick}
                 className="bg-blue-600 hover:bg-blue-700 text-white border-2 border-blue-600 px-4 md:px-5 py-2 md:py-2.5 text-sm md:text-base font-medium rounded-lg shadow-lg transition-all duration-300"
-                ariaLabel="Daftar PPDB"
+                ariaLabel="Daftar SPMB"
               >
                 Daftar
               </ActionButton>
 
               <ActionButton
-                to="/info-ppdb"
+                to="/info-spmb"
                 className="bg-transparent border-2 border-white/40 text-white hover:bg-white/10 px-4 md:px-5 py-2 md:py-2.5 text-sm md:text-base font-medium rounded-lg backdrop-blur-sm transition-all duration-300"
-                ariaLabel="Info PPDB"
+                ariaLabel="Info SPMB"
               >
-                Info PPDB
+                Info SPMB
               </ActionButton>
 
               {hasAnnouncement && (
                 <ActionButton
-                  to="/info-ppdb"
+                  to="/info-spmb"
                   className="bg-white/10 border-2 border-white/20 text-white hover:bg-white/20 px-4 md:px-5 py-2 md:py-2.5 text-sm md:text-base font-medium rounded-lg backdrop-blur-sm transition-all duration-300"
                   ariaLabel="Lihat Pengumuman"
                 >
@@ -161,8 +161,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
             <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
               <XMarkIcon className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">PPDB Belum Dimulai</h3>
-            <p className="text-sm text-gray-600">Mohon maaf, pendaftaran PPDB belum dibuka. Silakan cek kembali nanti.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">SPMB Belum Dimulai</h3>
+            <p className="text-sm text-gray-600">Mohon maaf, pendaftaran SPMB belum dibuka. Silakan cek kembali nanti.</p>
           </div>
           <div className="flex justify-center">
             <Button onClick={() => setShowPPDBClosedModal(false)} className="bg-gray-100 text-gray-700 hover:bg-gray-200">

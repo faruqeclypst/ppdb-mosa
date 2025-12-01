@@ -154,12 +154,12 @@ const CallToActionSection: React.FC = () => {
                 </motion.div>
               </Link>
 
-              <Link to="/info-ppdb" className="w-full sm:w-auto">
+              <Link to="/info-spmb" className="w-full sm:w-auto">
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button className="w-full bg-transparent border-2 border-white/30 
                                    text-white hover:bg-white/10 px-6 sm:px-8 py-3 sm:py-4 
                                    text-base sm:text-lg font-semibold rounded-lg sm:rounded-xl">
-                    Info PPDB
+                    Info SPMB
                   </Button>
                 </motion.div>
               </Link>

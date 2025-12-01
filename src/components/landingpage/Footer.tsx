@@ -74,7 +74,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-2">
               {[
                 { label: 'Beranda', path: '/' },
-                { label: 'Info PPDB', path: '/info-ppdb' },
+                { label: 'Info SPMB', path: '/info-spmb' },
                 { label: 'Pendaftaran', path: '/register' },
                 { label: 'Kontak', path: '/contact' }
               ].map((link) => (

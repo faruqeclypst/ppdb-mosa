@@ -16,7 +16,7 @@ const FAQ_ITEMS: FAQItem[] = [
     category: "pendaftaran"
   },
   {
-    question: "Bagaimana cara mendaftar PPDB Online?",
+    question: "Bagaimana cara mendaftar SPMB Online?",
     answer: "Pendaftaran dapat dilakukan melalui website ini dengan mengklik tombol 'Daftar Sekarang'. Ikuti langkah-langkah yang ada dan lengkapi dokumen yang diperlukan.",
     category: "pendaftaran"
   },
