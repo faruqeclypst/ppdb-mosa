@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import Container from '../ui/Container';
 import Button from '../ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,6 +38,7 @@ const ActionButton: React.FC<{
 
 const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
   const [showPPDBClosedModal, setShowPPDBClosedModal] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
   const navigate = useNavigate();
 
   const getPPDBYears = useCallback(() => {
@@ -67,6 +68,13 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
     }
     navigate('/register');
   }, [navigate]);
+
+  // Handle custom modal display
+  useEffect(() => {
+    if (settings?.customModal?.isEnabled) {
+      setShowCustomModal(true);
+    }
+  }, [settings?.customModal?.isEnabled]);
 
   return (
     <section className="relative min-h-screen w-full flex items-center overflow-hidden pb-28 md:pb-36">
@@ -171,6 +179,99 @@ const HeroSection: React.FC<HeroSectionProps> = ({ settings }) => {
           </div>
         </div>
       </Modal>
+
+      {/* Custom Modal - Simple Formal Design */}
+      {showCustomModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setShowCustomModal(false)}
+        >
+          <div 
+            className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button positioned outside */}
+            <button 
+              onClick={() => setShowCustomModal(false)}
+              className="absolute -top-10 right-0 text-gray-600 hover:text-gray-800 z-10 transition-colors"
+              aria-label="Close modal"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+            
+            {/* Scrollable Content Container */}
+            <div className="overflow-y-auto max-h-[90vh]">
+              {/* Header Section */}
+              <div className="bg-gray-50 p-6 border-b">
+                <div className="text-center">
+                  <h2 className="text-xl md:text-2xl font-semibold text-gray-900">
+                    {settings?.customModal?.title || 'Informasi Penting'}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="p-6">
+                {/* Image Section - Large and Responsive */}
+                {settings?.customModal?.image && (
+                  <div className="mb-6">
+                    <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                      <img
+                        src={settings.customModal.image}
+                        alt="Modal content"
+                        className="w-full h-auto object-contain min-h-[300px] max-h-[60vh]"
+                        style={{ 
+                          minHeight: '300px',
+                          maxHeight: '60vh'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Message Section */}
+                <div className="mb-6">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-gray-700 whitespace-pre-line leading-relaxed">
+                      {settings?.customModal?.message || 'Tidak ada pesan yang ditampilkan.'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Button Section */}
+                {settings?.customModal?.linkText && settings?.customModal?.linkUrl && (
+                  <div className="mb-6">
+                    <div className="text-center">
+                      <Button
+                        onClick={() => {
+                          if (settings.customModal.linkUrl?.startsWith('http')) {
+                            window.open(settings.customModal.linkUrl, '_blank');
+                          } else if (settings.customModal.linkUrl) {
+                            navigate(settings.customModal.linkUrl);
+                          }
+                        }}
+                        className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2 rounded-lg font-medium"
+                      >
+                        {settings.customModal.linkText}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Close Button */}
+                <div className="text-center pt-4 border-t flex justify-end border-gray-200">
+                  <Button 
+                    onClick={() => setShowCustomModal(false)} 
+                    className="bg-gray-100 text-gray-700 hover:bg-gray-300 px-6 py-2 rounded-lg"
+                  >
+                    Tutup
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

@@ -3,9 +3,11 @@ import { ref, get, set } from 'firebase/database';
 import { db } from '../../firebase/config';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import FileUpload from '../ui/FileUpload';
 import { showAlert } from '../ui/Alert';
 import type { PPDBSettings as PPDBSettingsType } from '../../types/settings';
 import Modal from '../ui/Modal';
+import { uploadToR2, deleteFromR2 } from '../../services/cloudflareR2';
 
 const initialSettings: PPDBSettingsType = {
   academicYear: '',
@@ -51,6 +53,14 @@ const initialSettings: PPDBSettingsType = {
       name: '',
       whatsapp: ''
     }
+  },
+  customModal: {
+    isEnabled: false,
+    title: '',
+    message: '',
+    image: '',
+    linkText: '',
+    linkUrl: ''
   }
 };
 
@@ -153,10 +163,106 @@ const PPDBSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
 
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const handleImageUpload = async (file: File | null) => {
+    if (!file) {
+      setSettings(prev => ({ 
+        ...prev, 
+        customModal: { 
+          ...prev.customModal, 
+          image: '' 
+        } 
+      }));
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      // Create unique filename with timestamp
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `modal-image-${Date.now()}.${fileExtension}`;
+      const filePath = `modal-images/${fileName}`;
+
+      // Upload to R2
+      const result = await uploadToR2({
+        file,
+        path: filePath,
+        contentType: file.type,
+      });
+
+      // Update settings with the uploaded image URL
+      const updatedSettings = {
+        ...settings,
+        customModal: {
+          ...settings.customModal,
+          image: result.publicUrl
+        }
+      };
+      
+      setSettings(updatedSettings);
+
+      // Automatically save to database
+      await set(ref(db, 'settings/ppdb'), updatedSettings);
+
+      showAlert('success', 'Gambar berhasil diupload dan pengaturan disimpan');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showAlert('error', 'Gagal mengupload gambar. Silakan coba lagi.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageDelete = () => {
+    if (!settings.customModal.image) return;
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmImageDelete = async () => {
+    setShowDeleteConfirmModal(false);
+    setDeletingImage(true);
+    
+    try {
+      // Extract the key from the URL to delete from R2
+      const imageUrl = settings.customModal.image;
+      if (!imageUrl) return;
+      
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `modal-images/${fileName}`;
+
+      // Delete from R2
+      await deleteFromR2(filePath);
+
+      // Update settings with empty image
+      const updatedSettings = {
+        ...settings,
+        customModal: {
+          ...settings.customModal,
+          image: ''
+        }
+      };
+      
+      setSettings(updatedSettings);
+
+      // Automatically save to database
+      await set(ref(db, 'settings/ppdb'), updatedSettings);
+
+      showAlert('success', 'Gambar berhasil dihapus dan pengaturan disimpan');
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      showAlert('error', 'Gagal menghapus gambar. Silakan coba lagi.');
+    } finally {
+      setDeletingImage(false);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -186,6 +292,10 @@ const PPDBSettings: React.FC = () => {
           contactWhatsapp: {
             ...initialSettings.contactWhatsapp,
             ...dbSettings.contactWhatsapp
+          },
+          customModal: {
+            ...initialSettings.customModal,
+            ...dbSettings.customModal
           }
         });
       }
@@ -280,6 +390,136 @@ const PPDBSettings: React.FC = () => {
             />
           </div>
         </div>
+      </div>
+
+      {/* Custom Modal Settings */}
+      <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-3 md:p-6 rounded-xl border border-purple-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base md:text-lg font-semibold text-purple-900">Modal Khusus di Hero</h3>
+            <p className="text-xs md:text-sm text-purple-700 mt-1">
+              Kelola modal yang muncul di halaman hero dengan pesan kustom
+            </p>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className={`px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
+              settings.customModal.isEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+            }`}>
+              {settings.customModal.isEnabled ? 'Aktif' : 'Nonaktif'}
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.customModal.isEnabled}
+              onChange={(e) => setSettings(prev => ({ 
+                ...prev, 
+                customModal: { 
+                  ...prev.customModal, 
+                  isEnabled: e.target.checked 
+                } 
+              }))}
+              className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-purple-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+            />
+          </div>
+        </div>
+
+        {settings.customModal.isEnabled && (
+          <div className="bg-white rounded-lg p-4 space-y-4">
+            <Input
+              label="Judul Modal"
+              value={settings.customModal.title}
+              onChange={(e) => setSettings(prev => ({ 
+                ...prev, 
+                customModal: { 
+                  ...prev.customModal, 
+                  title: e.target.value 
+                } 
+              }))}
+              placeholder="Contoh: Penting! Perubahan Jadwal"
+              required
+            />
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pesan Modal
+              </label>
+              <textarea
+                value={settings.customModal.message}
+                onChange={(e) => setSettings(prev => ({ 
+                  ...prev, 
+                  customModal: { 
+                    ...prev.customModal, 
+                    message: e.target.value 
+                  } 
+                }))}
+                placeholder="Tulis pesan yang akan ditampilkan dalam modal..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                required
+              />
+            </div>
+
+            <div>
+              <FileUpload
+                label="Gambar Modal (Opsional)"
+                name="modalImage"
+                accept="image/*"
+                value={settings.customModal.image}
+                onChange={handleImageUpload}
+                onDelete={handleImageDelete}
+                showPreview={true}
+                maxSize={5}
+                className={uploadingImage || deletingImage ? 'opacity-50' : ''}
+                isDeleting={deletingImage}
+              />
+              {uploadingImage && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Mengupload gambar...</span>
+                </div>
+              )}
+              {deletingImage && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                  <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Menghapus gambar...</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Teks Link (Opsional)"
+                value={settings.customModal.linkText}
+                onChange={(e) => setSettings(prev => ({ 
+                  ...prev, 
+                  customModal: { 
+                    ...prev.customModal, 
+                    linkText: e.target.value 
+                  } 
+                }))}
+                placeholder="Contoh: Lihat Detail"
+              />
+
+              <Input
+                label="URL Link (Opsional)"
+                value={settings.customModal.linkUrl}
+                onChange={(e) => setSettings(prev => ({ 
+                  ...prev, 
+                  customModal: { 
+                    ...prev.customModal, 
+                    linkUrl: e.target.value 
+                  } 
+                }))}
+                placeholder="https://example.com/link"
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Preview:</strong> Modal akan muncul di halaman hero dengan konten di atas.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pengaturan Umum */}
@@ -674,6 +914,57 @@ const PPDBSettings: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        className="z-50"
+      >
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Konfirmasi Penghapusan Gambar
+            </h3>
+            <p className="text-sm text-gray-600">
+              Apakah Anda yakin ingin menghapus gambar ini?
+              <br />
+              <span className="text-red-600 mt-2 block">
+                Tindakan ini tidak dapat dibatalkan.
+              </span>
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowDeleteConfirmModal(false)}
+              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              disabled={deletingImage}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={confirmImageDelete}
+              className="flex-1 bg-red-600 text-white hover:bg-red-700"
+              disabled={deletingImage}
+            >
+              {deletingImage ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Menghapus...</span>
+                </div>
+              ) : (
+                'Ya, Hapus'
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Konfirmasi */}
       <Modal

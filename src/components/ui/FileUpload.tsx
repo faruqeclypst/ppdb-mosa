@@ -7,12 +7,15 @@ type FileUploadProps = {
   name: string;
   accept?: string;
   onChange: (file: File | null) => void;
+  onDelete?: () => void;
   className?: string;
   maxSize?: number;
   required?: boolean;
   showPreview?: boolean;
   value?: File | string | null;
   id?: string;
+  showDeleteButton?: boolean;
+  isDeleting?: boolean;
 };
 
 const FileUpload: React.FC<FileUploadProps> = ({ 
@@ -20,12 +23,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
   name, 
   accept, 
   onChange, 
+  onDelete,
   className,
   maxSize = 4,
   required,
   showPreview = false,
   value,
-  id
+  id,
+  showDeleteButton = true,
+  isDeleting = false
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,13 +143,32 @@ const FileUpload: React.FC<FileUploadProps> = ({
               </button>
             </div>
             {typeof value === 'string' && (
-              <button
-                type="button"
-                onClick={() => window.open(value, '_blank')}
-                className="ml-4 px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm flex-shrink-0"
-              >
-                Lihat File
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.open(value, '_blank')}
+                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm flex-shrink-0"
+                >
+                  Lihat File
+                </button>
+                {showDeleteButton && onDelete && (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    disabled={isDeleting}
+                    className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Hapus</span>
+                      </div>
+                    ) : (
+                      'Hapus'
+                    )}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}

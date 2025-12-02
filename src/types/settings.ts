@@ -12,6 +12,15 @@ export type AdminContact = {
   whatsapp: string;
 };
 
+export type CustomModalContent = {
+  isEnabled: boolean;
+  title: string;
+  message: string;
+  image?: string;
+  linkText?: string;
+  linkUrl?: string;
+};
+
 export type PPDBSettings = {
   academicYear: string;
   jalurPrestasi: JalurPeriod;
@@ -25,4 +34,5 @@ export type PPDBSettings = {
     admin4: AdminContact;
   };
   announcementDate?: string;
+  customModal: CustomModalContent;
 }; 
