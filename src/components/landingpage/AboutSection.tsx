@@ -1,27 +1,45 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Container from '../ui/Container';
 import { motion } from 'framer-motion';
 
 const AboutSection: React.FC = () => {
+  const images = ['/images/siswa.png', '/images/siswa-2.png'];
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-12 sm:py-16 lg:py-20 bg-white">
       <Container>
         <div className="grid lg:grid-cols-2 gap-8 items-center">
+
           {/* Image Section */}
           <motion.div
             initial={{ opacity: 0, x: -24, scale: 0.99 }}
             whileInView={{ opacity: 1, x: 0, scale: 1 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 1.6 }}
             className="relative overflow-visible"
           >
             <div className="relative w-full max-w-md mx-auto lg:mx-0">
-              {/* Decorative rounded background (no shadow) */}
+              {/* Decorative rounded background */}
               <div className="absolute -left-6 top-6 w-[420px] h-[520px] rounded-[40px] bg-blue-50 -z-10 hidden md:block" />
-              <img
-                src="/images/siswa.png"
+
+              {/* Gambar otomatis berganti */}
+              <motion.img
+                key={currentIndex}
+                src={images[currentIndex]}
                 alt="Siswa SMAN Modal Bangsa"
                 className="w-full h-auto object-cover rounded-2xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.4, ease: "easeInOut" }} 
               />
             </div>
           </motion.div>
