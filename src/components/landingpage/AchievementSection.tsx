@@ -259,15 +259,15 @@ const AchievementSection: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="space-y-4"
           >
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
+            {/* <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
               Siswa Berprestasi
             </h3>
-            <div className="w-16 h-1 bg-blue-600 mb-8" />
+            <div className="w-16 h-1 bg-blue-600 mb-8" /> */}
 
             {/* Scrollable List Container */}
             <div 
               className="relative overflow-hidden"
-              style={{ height: achievements.length > 6 ? '500px' : 'auto' }}
+              style={{ height: achievements.length > 6 ? '600px' : 'auto' }}
             >
               <motion.div 
                 ref={containerRef}
