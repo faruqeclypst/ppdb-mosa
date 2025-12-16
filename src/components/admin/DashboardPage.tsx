@@ -25,6 +25,7 @@ type PPDBData = {
   namaSiswa: string;
   nisn: string;
   asalSekolah: string;
+  asalSekolahManual?: string;
   nilaiAgama2: string;
   nilaiAgama3: string;
   nilaiAgama4: string;
@@ -1072,7 +1073,7 @@ const DashboardPage: React.FC = () => {
                         </h3>
                         <div className="flex flex-col gap-2">
                           <span className="text-xs text-gray-500 line-clamp-1">
-                            {student.asalSekolah}
+                            {student.asalSekolah === 'SEKOLAH LAIN' ? (student.asalSekolahManual ? `${student.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : student.asalSekolah}
                           </span>
                           <span className={classNames(
                             "text-xs font-medium",

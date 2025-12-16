@@ -63,6 +63,7 @@ type FormData = {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
+  asalSekolahManual?: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -116,7 +117,8 @@ const INITIAL_FORM_DATA: FormData = {
   kecamatan: '',
   kabupaten: '',
   asalSekolah: '',
-  
+  asalSekolahManual: '',
+
   // Akademik
   nilaiAgama2: '',
   nilaiAgama3: '',
@@ -529,7 +531,7 @@ const generateRegistrationCard = async (formData: FormData) => {
       { label: 'NIK', value: formData.nik },
       { label: 'Tempat, Tgl Lahir', value: `${formData.tempatLahir}, ${new Date(formData.tanggalLahir).toLocaleDateString('id-ID')}` },
       { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' },
-      { label: 'Asal Sekolah', value: formData.asalSekolah },
+      { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah },
       { label: 'Alamat', value: `${formData.alamat}, ${formData.kecamatan}` },
       { label: 'Kabupaten/Kota', value: formData.kabupaten },
       { label: 'Nama Ayah', value: formData.namaAyah },
@@ -710,6 +712,7 @@ interface SavedData {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
+  asalSekolahManual: string;
 
   // Data akademik
   nilaiAgama2: string;
@@ -912,7 +915,8 @@ const PPDBFormPage: React.FC = () => {
             uid: user.uid,
             // Isi otomatis nama dan NIK dari data register 
             namaSiswa: userData.fullName || '',
-            nik: userData.nik || ''
+            nik: userData.nik || '',
+            asalSekolahManual: userData.asalSekolahManual || ''
           });
           setFormStatus(userData.status || 'draft');
           setLastUpdated(userData.lastUpdated || '');
@@ -1009,7 +1013,11 @@ const PPDBFormPage: React.FC = () => {
       return;
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'asalSekolah' && value !== 'SEKOLAH LAIN') {
+      setFormData(prev => ({ ...prev, [name]: value, asalSekolahManual: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
@@ -1150,10 +1158,16 @@ const PPDBFormPage: React.FC = () => {
     });
 
     if (missingInfoSiswa.length > 0) {
-      const missingLabels = missingInfoSiswa.map(field => 
+      const missingLabels = missingInfoSiswa.map(field =>
         VALIDATION_CONFIG.FIELD_LABELS[field as keyof typeof VALIDATION_CONFIG.FIELD_LABELS]
       );
       setError(`Data Siswa yang masih kosong: ${missingLabels.join(', ')}`);
+      return false;
+    }
+
+    // Validasi asalSekolahManual jika memilih "SEKOLAH LAIN"
+    if (formData.asalSekolah === 'SEKOLAH LAIN' && (!formData.asalSekolahManual || formData.asalSekolahManual.trim() === '')) {
+      setError('Nama Sekolah harus diisi jika memilih "SEKOLAH LAIN"');
       return false;
     }
 
@@ -1358,6 +1372,7 @@ const PPDBFormPage: React.FC = () => {
         kecamatan: String(formData.kecamatan || ''),
         kabupaten: String(formData.kabupaten || ''),
         asalSekolah: String(formData.asalSekolah || ''),
+        asalSekolahManual: String(formData.asalSekolahManual || ''),
 
         // Data akademik
         nilaiAgama2: String(formData.nilaiAgama2 || ''),
@@ -1754,6 +1769,19 @@ const PPDBFormPage: React.FC = () => {
             className={`bg-white ${disabledInputClass}`}
             disabled={formStatus === 'submitted'}
           />
+          {formData.asalSekolah === 'SEKOLAH LAIN' && (
+            <div className="mt-4">
+              <Input
+                label="Nama Sekolah"
+                name="asalSekolahManual"
+                value={formData.asalSekolahManual || ''}
+                onChange={handleInputChange}
+                required
+                className={disabledInputClass}
+                disabled={formStatus === 'submitted'}
+              />
+            </div>
+          )}
         </div>
       </div>
     );

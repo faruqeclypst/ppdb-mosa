@@ -46,6 +46,7 @@ type PPDBData = {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
+  asalSekolahManual?: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -823,7 +824,7 @@ const DataDraft: React.FC = () => {
             )}
             <div>
               <p className="text-xs text-gray-500">Asal Sekolah</p>
-              <p className="text-sm text-gray-900">{item.asalSekolah || '-'}</p>
+              <p className="text-sm text-gray-900">{item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah || '-'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Status Kelengkapan</p>
@@ -1057,8 +1058,8 @@ const DataDraft: React.FC = () => {
                       {item.jalur ? <JalurBadge jalur={item.jalur} /> : <span className="text-gray-400">-</span>}
                     </div>,
                     // Asal Sekolah
-                    <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
-                      {item.asalSekolah || '-'}
+                    <div className="text-left truncate max-w-[150px]" title={item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah}>
+                      {item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah || '-'}
                     </div>,
                     // Status Kelengkapan - Clickable
                     <div className="text-left">
@@ -1307,7 +1308,7 @@ const DataDraft: React.FC = () => {
                         <div className={`bg-gray-50 ${isMobile() ? 'p-2.5 rounded-md' : 'p-4 rounded-lg'}`}>
                           <h4 className={`font-medium text-gray-900 ${isMobile() ? 'mb-2 text-sm' : 'mb-3'}`}>Asal Sekolah</h4>
                           <div>
-                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah} />
+                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah === 'SEKOLAH LAIN' ? (selectedData.asalSekolahManual ? `${selectedData.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : selectedData?.asalSekolah} />
                           </div>
                         </div>
                       </div>

@@ -52,6 +52,7 @@ type PPDBData = {
   kecamatan: string;
   kabupaten: string;
   asalSekolah: string;
+  asalSekolahManual?: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -312,6 +313,11 @@ const DataPendaftar: React.FC = () => {
     };
   }, [showActionDropdown]);
 
+  // Reset pagination when filters/search/sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, jalurFilter, schoolFilter, sortBy, sortConfig, itemsPerPage]);
+
   const loadData = async () => {
     try {
       if (!userRole) return;
@@ -418,7 +424,7 @@ const DataPendaftar: React.FC = () => {
   };
 
   const getFilteredData = () => {
-    return pendaftar
+    const filtered = pendaftar
       .filter(item => item.status === 'submitted') // Hanya tampilkan yang sudah submit
       .filter(item => {
         const matchSearch = 
@@ -439,6 +445,65 @@ const DataPendaftar: React.FC = () => {
         
         return matchSearch && matchStatus && matchJalur && matchSchool;
       });
+
+    // Helper: extract comparable values per column key
+    const getSortValue = (item: PPDBData, key: string): string | number => {
+      switch (key) {
+        case 'no':
+          return 0; // derived from pagination index; not sortable meaningfully
+        case 'name':
+          return item.namaSiswa || '';
+        case 'jalur':
+          return item.jalur || '';
+        case 'school':
+          return item.asalSekolah || '';
+        case 'status': {
+          // Sort by logical order instead of alphabet: pending -> diterima -> ditolak
+          const order: Record<string, number> = { pending: 0, diterima: 1, ditolak: 2 };
+          return order[item.adminStatus ?? 'pending'] ?? 0;
+        }
+        case 'admin':
+          return item.updatedBy?.name || item.updatedBy?.email || '';
+        case 'date': {
+          const date = new Date(item.submittedAt || item.createdAt);
+          const time = date.getTime();
+          return Number.isFinite(time) ? time : 0;
+        }
+        default:
+          return '';
+      }
+    };
+
+    const comparePrimitive = (a: string | number, b: string | number) => {
+      if (typeof a === 'number' && typeof b === 'number') return a - b;
+      return String(a).localeCompare(String(b), 'id-ID', { sensitivity: 'base' });
+    };
+
+    // Always keep a deterministic secondary sort by date (based on Date Range dropdown)
+    const compareByDateRange = (a: PPDBData, b: PPDBData) => {
+      const dateA = getSortValue(a, 'date') as number;
+      const dateB = getSortValue(b, 'date') as number;
+      return sortBy === 'newest' ? dateB - dateA : dateA - dateB;
+    };
+
+    // Apply column sort when user clicks table header; otherwise default to Date Range sort
+    if (sortConfig?.key) {
+      const { key, direction } = sortConfig;
+      const dir = direction === 'asc' ? 1 : -1;
+
+      return filtered
+        .slice()
+        .sort((a, b) => {
+          const primary = comparePrimitive(getSortValue(a, key), getSortValue(b, key)) * dir;
+          if (primary !== 0) return primary;
+
+          // If sorting by date already, no need for tie-breaker
+          if (key === 'date') return 0;
+          return compareByDateRange(a, b);
+        });
+    }
+
+    return filtered.slice().sort(compareByDateRange);
   };
 
   // Tambahkan fungsi untuk sorting
@@ -464,24 +529,31 @@ const DataPendaftar: React.FC = () => {
     { key: 'actions', label: 'Aksi' }
   ];
 
+  const sortableHeaderKeys = new Set(['name', 'jalur', 'school', 'status', 'admin', 'date']);
+
   const headers = allHeaders
     .filter(h => visibleColumns[h.key as keyof typeof visibleColumns])
     .map(header => ({
       content: (
         <div className="text-left">
-          <button
-            onClick={() => header && handleSort(header.label)}
-            className="flex items-center gap-1 hover:text-blue-600"
-          >
-            {header.label}
-            {sortConfig?.key === header.label && (
-              <ChevronUpIcon 
-                className={`w-4 h-4 transition-transform ${
-                  sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                }`}
-              />
-            )}
-          </button>
+          {sortableHeaderKeys.has(header.key) ? (
+            <button
+              onClick={() => handleSort(header.key)}
+              className="flex items-center gap-1 hover:text-blue-600"
+              type="button"
+            >
+              {header.label}
+              {sortConfig?.key === header.key && (
+                <ChevronUpIcon 
+                  className={`w-4 h-4 transition-transform ${
+                    sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
+                  }`}
+                />
+              )}
+            </button>
+          ) : (
+            <span className="font-medium text-gray-700">{header.label}</span>
+          )}
         </div>
       )
     }));
@@ -685,7 +757,7 @@ const DataPendaftar: React.FC = () => {
       alamat: item.alamat,
       kecamatan: item.kecamatan,
       kabupaten: item.kabupaten,
-      asalSekolah: item.asalSekolah,
+      asalSekolah: item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah,
       // Nilai Akademik
       nilaiAgama2: item.nilaiAgama2,
       nilaiAgama3: item.nilaiAgama3,
@@ -1366,7 +1438,7 @@ const DataPendaftar: React.FC = () => {
             </div>
             <div>
               <p className="text-xs text-gray-500">Asal Sekolah</p>
-              <p className="text-sm text-gray-900">{item.asalSekolah}</p>
+              <p className="text-sm text-gray-900">{item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah}</p>
             </div>
             {/* Info pemeriksa */}
             <div>
@@ -1646,8 +1718,8 @@ const DataPendaftar: React.FC = () => {
                     jalur: <div className="text-left">
                       <JalurBadge key={item.uid} jalur={item.jalur} />
                     </div>,
-                    school: <div className="text-left truncate max-w-[150px]" title={item.asalSekolah}>
-                      {item.asalSekolah}
+                    school: <div className="text-left truncate max-w-[150px]" title={item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah}>
+                      {item.asalSekolah === 'SEKOLAH LAIN' ? (item.asalSekolahManual ? `${item.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : item.asalSekolah}
                     </div>,
                     status: <div className="text-left">
                       <button
@@ -1941,7 +2013,7 @@ const DataPendaftar: React.FC = () => {
                         <div className={`bg-gray-50 ${isMobile() ? 'p-2.5 rounded-md' : 'p-4 rounded-lg'}`}>
                           <h4 className={`font-medium text-gray-900 ${isMobile() ? 'mb-2 text-sm' : 'mb-3'}`}>Asal Sekolah</h4>
                           <div>
-                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah} />
+                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah === 'SEKOLAH LAIN' ? (selectedData.asalSekolahManual ? `${selectedData.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : selectedData?.asalSekolah} />
                           </div>
                         </div>
                       </div>
