@@ -999,7 +999,7 @@ const DashboardPage: React.FC = () => {
                       </span>
                     </td><td className="px-4 py-3 max-w-[200px]">
                       <div className="text-sm text-gray-500 truncate">
-                        {student.asalSekolah}
+                        {student.asalSekolah === 'SEKOLAH LAIN' ? (student.asalSekolahManual ? `${student.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : student.asalSekolah}
                       </div>
                     </td>{['nilaiAgama', 'nilaiBindo', 'nilaiBing', 'nilaiMtk', 'nilaiIpa'].map((subject) => (
                       <td key={subject} className="px-4 py-3">
