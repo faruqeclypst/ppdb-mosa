@@ -35,74 +35,75 @@ type School = 'mosa' | 'fajar';
 type SchoolFilter = School | 'all';
 
 type PPDBData = {
-  uid: string;
-  school: 'mosa' | 'fajar';
-  email: string;
-  // Informasi Siswa
-  jalur: 'prestasi' | 'reguler' | 'undangan';
-  namaSiswa: string;
-  nik: string;
-  nisn: string;
-  jenisKelamin: string;
-  tempatLahir: string;
-  tanggalLahir: string;
-  anakKe: string;
-  jumlahSaudara: string;
-  alamat: string;
-  kecamatan: string;
-  kabupaten: string;
-  asalSekolah: string;
-  asalSekolahManual?: string;
+   uid: string;
+   school: 'mosa' | 'fajar';
+   email: string;
+   // Informasi Siswa
+   jalur: 'prestasi' | 'reguler' | 'undangan';
+   namaSiswa: string;
+   nik: string;
+   nisn: string;
+   jenisKelamin: string;
+   tempatLahir: string;
+   tanggalLahir: string;
+   anakKe: string;
+   jumlahSaudara: string;
+   alamat: string;
+   kecamatan: string;
+   kabupaten: string;
+   asalSekolah: string;
+   asalSekolahManual?: string;
 
-  // Akademik
-  nilaiAgama2: string;
-  nilaiAgama3: string;
-  nilaiAgama4: string;
-  nilaiBindo2: string;
-  nilaiBindo3: string;
-  nilaiBindo4: string;
-  nilaiBing2: string;
-  nilaiBing3: string;
-  nilaiBing4: string;
-  nilaiMtk2: string;
-  nilaiMtk3: string;
-  nilaiMtk4: string;
-  nilaiIpa2: string;
-  nilaiIpa3: string;
-  nilaiIpa4: string;
+   // Akademik
+   nilaiAgama2: string;
+   nilaiAgama3: string;
+   nilaiAgama4: string;
+   nilaiBindo2: string;
+   nilaiBindo3: string;
+   nilaiBindo4: string;
+   nilaiBing2: string;
+   nilaiBing3: string;
+   nilaiBing4: string;
+   nilaiMtk2: string;
+   nilaiMtk3: string;
+   nilaiMtk4: string;
+   nilaiIpa2: string;
+   nilaiIpa3: string;
+   nilaiIpa4: string;
 
-  // Informasi Orang Tua
-  namaAyah: string;
-  pekerjaanAyah: string;
-  instansiAyah: string;
-  hpAyah: string;
-  namaIbu: string;
-  pekerjaanIbu: string;
-  instansiIbu: string;
-  hpIbu: string;
+   // Informasi Orang Tua
+   namaAyah: string;
+   pekerjaanAyah: string;
+   instansiAyah: string;
+   hpAyah: string;
+   namaIbu: string;
+   pekerjaanIbu: string;
+   instansiIbu: string;
+   hpIbu: string;
 
-  // Files
-  rekomendasi?: string;
-  raport2?: string;
-  raport3?: string;
-  raport4?: string;
-  photo?: string;
-  sertifikat?: string; // Tambahkan field sertifikat
+   // Files
+   rekomendasi?: string;
+   raport2?: string;
+   raport3?: string;
+   raport4?: string;
+   photo?: string;
+   sertifikat?: string; // Tambahkan field sertifikat
 
-  // Status dan Metadata
-  status: 'pending' | 'submitted' | 'draft';
-  adminStatus?: 'diterima' | 'ditolak';
-  createdAt: string;
-  lastUpdated?: string;
-  submittedAt?: string;
-  alasanPenolakan?: string;
-  // Tambah field untuk tracking admin
-  updatedBy?: {
-    email: string;
-    name?: string;
-    school: 'mosa' | 'fajar';
-    timestamp: string;
-  };
+   // Status dan Metadata
+   status: 'pending' | 'submitted' | 'draft';
+   adminStatus?: 'diterima' | 'ditolak';
+   createdAt: string;
+   lastUpdated?: string;
+   submittedAt?: string;
+   alasanPenolakan?: string;
+   // Tambah field untuk tracking admin
+   updatedBy?: {
+     email: string;
+     name?: string;
+     school: 'mosa' | 'fajar' | 'master';
+     timestamp: string;
+   };
+   registrationNumber?: string;
 };
 
 type BadgeProps = {
@@ -390,7 +391,7 @@ const DataPendaftar: React.FC = () => {
       // Define the type for updatedBy
       type UpdatedByData = {
         email: string;
-        school: 'mosa' | 'fajar';
+        school: 'mosa' | 'fajar' | 'master';
         timestamp: string;
         name: string;
       };
@@ -398,7 +399,7 @@ const DataPendaftar: React.FC = () => {
       // Create updatedBy object with the correct type
       const updatedBy: UpdatedByData = {
         email: currentUser?.email || 'unknown',
-        school: userRole.school as 'mosa' | 'fajar',
+        school: userRole.isMaster ? 'master' : (userRole.school as 'mosa' | 'fajar'),
         timestamp: new Date().toISOString(),
         name: adminData?.fullName || adminData?.name || currentUser?.email?.split('@')[0] || 'Admin'
       };
@@ -650,6 +651,7 @@ const DataPendaftar: React.FC = () => {
     // Definisi kolom - sesuaikan berdasarkan role
     const columns = [
       { header: 'No', key: 'no', width: 5 },
+      { header: 'No. Pendaftaran', key: 'registrationNumber', width: 20 },
       { header: 'NISN', key: 'nisn', width: 15 },
       { header: 'Nama Lengkap', key: 'namaSiswa', width: 40 },
       { header: 'Email', key: 'email', width: 35 },
@@ -723,16 +725,17 @@ const DataPendaftar: React.FC = () => {
     });
 
     // Update freeze panes to include the Pemeriksa column
-    worksheet.views = [{ 
-      state: 'frozen', 
-      xSplit: userRole?.isMaster ? 7 : 6, // Adjusted since sekolah column is hidden
-      ySplit: 1, 
-      activeCell: 'A2' 
+    worksheet.views = [{
+      state: 'frozen',
+      xSplit: 7, // Adjusted for added registration number column
+      ySplit: 1,
+      activeCell: 'A2'
     }];
 
     // Add data dengan format yang sesuai role
     const rowData = data.map((item, index) => ({
       no: index + 1,
+      registrationNumber: item.registrationNumber || '-',
       nisn: item.nisn,
       namaSiswa: item.namaSiswa,
       email: item.email,
@@ -814,7 +817,7 @@ const DataPendaftar: React.FC = () => {
       lastUpdated: item.lastUpdated ? new Date(item.lastUpdated).toLocaleString('id-ID') : '-',
       // Tambah info admin
       updatedByEmail: item.updatedBy?.name || item.updatedBy?.email.split('@')[0] || '-',
-      updatedBySchool: item.updatedBy?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan',
+      updatedBySchool: item.updatedBy?.school === 'mosa' ? 'SMAN Modal Bangsa' : item.updatedBy?.school === 'fajar' ? 'SMAN 10 Fajar Harapan' : 'Admin Master',
       updatedByTime: item.updatedBy?.timestamp ? 
         new Date(item.updatedBy.timestamp).toLocaleString('id-ID') : '-',
       // Add raw links
@@ -939,24 +942,24 @@ const DataPendaftar: React.FC = () => {
           // Update centerColumns untuk memastikan semua kolom nilai dan jumlah saudara di-center
           const centerColumns = [
             1,  // No
-            5,  // Jalur (adjusted since sekolah column is hidden)
-            6,  // Status Keputusan
-            8,  // Jenis Kelamin (adjusted)
-            12, // Anak Ke (adjusted)
-            13, // Jumlah Saudara (adjusted)
-            14, // Jumlah Saudara Total (adjusted)
-            // Nilai semester (20-34) - pastikan mencakup semua kolom nilai termasuk IPA (adjusted)
+            2,  // No. Pendaftaran
+            6,  // Jalur
+            7,  // Status Keputusan
+            11, // Jenis Kelamin
+            14, // Anak Ke
+            15, // Jumlah Saudara
+            // Nilai semester (20-34)
             20, 21, 22, // Agama
             23, 24, 25, // B.Indo
             26, 27, 28, // B.Ing
             29, 30, 31, // MTK
-            32, 33, 34, // IPA - pastikan kolom IPA juga di-center
-            // Dokumen (43-47) (adjusted)
-            43, // Foto
-            44, // Rekomendasi
-            45, // Raport 2
-            46, // Raport 3
-            47  // Raport 4
+            32, 33, 34, // IPA
+            // Dokumen (39-43)
+            39, // Foto
+            40, // Rekomendasi
+            41, // Raport 2
+            42, // Raport 3
+            43  // Raport 4
           ];
 
           if (centerColumns.includes(colNumber)) {
@@ -967,20 +970,20 @@ const DataPendaftar: React.FC = () => {
           }
 
           // Style untuk alasan penolakan
-          if (colNumber === 7) { // Adjusted since sekolah column is hidden
-            cell.alignment = { 
+          if (colNumber === 9) { // Adjusted for added registration number column
+            cell.alignment = {
               vertical: 'middle' as const,
               wrapText: true // Enable text wrapping
             };
           }
 
           // Style untuk dokumen
-          if (colNumber >= 43 && colNumber <= 47) { // Adjusted since sekolah column is hidden
+          if (colNumber >= 39 && colNumber <= 43) { // Adjusted for added registration number column
             const cellValue = cell.value as any;
             if (cellValue && typeof cellValue === 'object' && 'hyperlink' in cellValue) {
-              cell.font = { 
-                color: { argb: '0000FF' }, 
-                underline: true 
+              cell.font = {
+                color: { argb: '0000FF' },
+                underline: true
               };
             }
           }
@@ -1445,9 +1448,14 @@ const DataPendaftar: React.FC = () => {
               <p className="text-xs text-gray-500">Pemeriksa</p>
               <p className="text-sm text-gray-900">
                 {item.updatedBy ? (
-                  <span className="font-medium">
-                    {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
-                  </span>
+                  <>
+                    <span className="font-medium">
+                      {item.updatedBy.name || item.updatedBy.email.split('@')[0]}
+                    </span>
+                    {item.updatedBy.school === 'master' && (
+                      <div className="text-xs text-blue-600 font-medium">Admin Master</div>
+                    )}
+                  </>
                 ) : (
                   <span className="text-gray-400">-</span>
                 )}
@@ -1750,6 +1758,9 @@ const DataPendaftar: React.FC = () => {
                         </span>
                       ) : (
                         <span className="text-sm text-gray-400">-</span>
+                      )}
+                      {item.updatedBy?.school === 'master' && (
+                        <div className="text-xs text-blue-600 font-medium">Admin Master</div>
                       )}
                     </div>,
                     date: <div className="text-left">
@@ -2273,6 +2284,9 @@ const DataPendaftar: React.FC = () => {
             <div>
               <span className="text-gray-500">Pemeriksa: </span>
               <span className="font-medium">{selectedData?.updatedBy?.name || selectedData?.updatedBy?.email?.split('@')[0] || '-'}</span>
+              {selectedData?.updatedBy?.school === 'master' && (
+                <span className="text-blue-600 font-medium"> (Admin Master)</span>
+              )}
             </div>
             <div>
               <span className="text-gray-500">Waktu Keputusan: </span>
