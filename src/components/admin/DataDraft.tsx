@@ -97,6 +97,7 @@ type PPDBData = {
     school: 'mosa' | 'fajar';
     timestamp: string;
   };
+  registrationNumber?: string;
 };
 
 type BadgeProps = {

@@ -314,7 +314,7 @@ const KABUPATEN_LIST: KabupatenData[] = [
   { kode: '24', nama: 'LUAR DAERAH' }
 ];
 
-// Update fungsi formatRegistrationNumber - hapus parameter jalur yang tidak digunakan
+// Update fungsi formatRegistrationNumber - fix untuk menghindari duplikasi nomor saat data dihapus
 const formatRegistrationNumber = async (school: 'mosa' | 'fajar', kabupatenKode: string) => {
   try {
     const { yearCode } = getPPDBYear();
@@ -323,23 +323,45 @@ const formatRegistrationNumber = async (school: 'mosa' | 'fajar', kabupatenKode:
     const ppdbRef = ref(db, `ppdb_${school}`);
     const snapshot = await get(ppdbRef);
     
-    let registrationNumber = 1;
+    let nextRegistrationNumber = 1;
     if (snapshot.exists()) {
       const data = snapshot.val();
-      const existingRegistrations = Object.values(data as Record<string, any>)
-        .filter((item: any) => item.status === 'submitted');
-      registrationNumber = existingRegistrations.length + 1;
+      
+      // Ekstrak semua nomor pendaftaran yang ada untuk tahun ini
+      const existingRegistrationNumbers: number[] = [];
+      
+      Object.values(data as Record<string, any>).forEach((item: any) => {
+        if (item.registrationNumber && item.status === 'submitted') {
+          // Ekstrak bagian nomor urut dari registrationNumber
+          // Format: XYXY010001 (yearCode + kode kabupaten + nomor urut)
+          const registrationNumStr = item.registrationNumber.toString();
+          
+          // Pastikan nomor pendaftaran memiliki format yang benar
+          if (registrationNumStr.startsWith(yearCode) && registrationNumStr.length === 10) {
+            const extractedNumber = parseInt(registrationNumStr.substring(6), 10); // Ambil 4 digit terakhir
+            if (!isNaN(extractedNumber)) {
+              existingRegistrationNumbers.push(extractedNumber);
+            }
+          }
+        }
+      });
+      
+      // Jika ada nomor yang sudah digunakan, ambil yang maksimal dan tambahkan 1
+      if (existingRegistrationNumbers.length > 0) {
+        const maxUsedNumber = Math.max(...existingRegistrationNumbers);
+        nextRegistrationNumber = maxUsedNumber + 1;
+      }
     }
 
     // Format nomor urut dengan padding 4 digit
-    const paddedNumber = registrationNumber.toString().padStart(4, '0');
+    const paddedNumber = nextRegistrationNumber.toString().padStart(4, '0');
     
     // Format: XYXY010001 (yearCode + kode kabupaten + nomor urut)
     return `${yearCode}${kabupatenKode}${paddedNumber}`;
   } catch (error) {
     console.error('Error generating registration number:', error);
     const { yearCode } = getPPDBYear();
-    return `${yearCode}000000`; // Fallback jika error
+    return `${yearCode}${kabupatenKode}0001`; // Fallback jika error, mulai dari 0001
   }
 };
 
@@ -879,6 +901,38 @@ const PPDBFormPage: React.FC = () => {
   const [isReset, setIsReset] = useState(false);
   // Tambahkan state untuk melacak status duplikasi NIK
   const [isDuplicateNIK, setIsDuplicateNIK] = useState(false);
+
+  // Helper function to check if selected jalur period is open
+  const isJalurPeriodOpen = (jalur: string, ppdbSettings: PPDBSettings | null): boolean => {
+    if (!ppdbSettings || !jalur) return false;
+
+    let selectedJalur;
+    switch (jalur) {
+      case 'prestasi':
+        selectedJalur = ppdbSettings.jalurPrestasi;
+        break;
+      case 'reguler':
+        selectedJalur = ppdbSettings.jalurReguler;
+        break;
+      case 'undangan':
+        selectedJalur = ppdbSettings.jalurUndangan;
+        break;
+      default:
+        return false;
+    }
+
+    if (!selectedJalur || !selectedJalur.isActive) return false;
+
+    const currentDate = new Date();
+    const startDate = new Date(selectedJalur.start);
+    const endDate = new Date(selectedJalur.end);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    currentDate.setHours(12, 0, 0, 0);
+
+    return currentDate >= startDate && currentDate <= endDate;
+  };
 
   useEffect(() => {
     if (!user) {
@@ -2616,6 +2670,11 @@ const PPDBFormPage: React.FC = () => {
                       className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
                       disabled={loading || !canAccessTab(currentStep) || isDuplicateNIK}
                       onClick={async () => {
+                        if (!isJalurPeriodOpen(formData.jalur, ppdbSettings)) {
+                          setError('Periode pendaftaran untuk jalur ini sudah ditutup. Tidak dapat mengirim formulir.');
+                          return;
+                        }
+
                         const isValid = await validateForm();
                         if (!isValid) {
                           return;
