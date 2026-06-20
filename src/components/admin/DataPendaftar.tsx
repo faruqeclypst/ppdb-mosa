@@ -39,7 +39,7 @@ type PPDBData = {
    school: 'mosa' | 'fajar';
    email: string;
    // Informasi Siswa
-   jalur: 'prestasi' | 'reguler' | 'undangan';
+   jalur: 'prestasi' | 'reguler' | 'undangan' | 'pjj';
    namaSiswa: string;
    nik: string;
    nisn: string;
@@ -164,7 +164,8 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
   const labels = {
     prestasi: 'Prestasi',
     reguler: 'Reguler', 
-    undangan: 'Undangan'
+    undangan: 'Undangan',
+    pjj: 'PJJ'
   };
   return labels[jalur];
 };
@@ -196,6 +197,8 @@ const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
         return 'text-green-600 bg-green-50';
       case 'undangan':
         return 'text-purple-600 bg-purple-50';
+      case 'pjj':
+        return 'text-amber-600 bg-amber-50';
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -254,7 +257,7 @@ const DataPendaftar: React.FC = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'diterima' | 'ditolak'>('all');
-  const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan'>('all');
+  const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan' | 'pjj'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [modalLoading, setModalLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -576,11 +579,13 @@ const DataPendaftar: React.FC = () => {
         const dataModalBangsaPrestasi = dataModalBangsa.filter(item => item.jalur === 'prestasi');
         const dataModalBangsaReguler = dataModalBangsa.filter(item => item.jalur === 'reguler');
         const dataModalBangsaUndangan = dataModalBangsa.filter(item => item.jalur === 'undangan');
+        const dataModalBangsaPjj = dataModalBangsa.filter(item => item.jalur === 'pjj');
 
         // Data per jalur untuk Fajar Harapan
         const dataFajarHarapanPrestasi = dataFajarHarapan.filter(item => item.jalur === 'prestasi');
         const dataFajarHarapanReguler = dataFajarHarapan.filter(item => item.jalur === 'reguler');
         const dataFajarHarapanUndangan = dataFajarHarapan.filter(item => item.jalur === 'undangan');
+        const dataFajarHarapanPjj = dataFajarHarapan.filter(item => item.jalur === 'pjj');
 
         // Setup worksheet untuk semua data
         setupWorksheet(workbook, 'Semua Data', allData);
@@ -590,12 +595,14 @@ const DataPendaftar: React.FC = () => {
         setupWorksheet(workbook, 'Modal Bangsa - Prestasi', dataModalBangsaPrestasi);
         setupWorksheet(workbook, 'Modal Bangsa - Reguler', dataModalBangsaReguler);
         setupWorksheet(workbook, 'Modal Bangsa - Undangan', dataModalBangsaUndangan);
+        setupWorksheet(workbook, 'Modal Bangsa - PJJ', dataModalBangsaPjj);
 
         // Setup worksheet untuk Fajar Harapan
         setupWorksheet(workbook, 'Fajar Harapan - Semua', dataFajarHarapan);
         setupWorksheet(workbook, 'Fajar Harapan - Prestasi', dataFajarHarapanPrestasi);
         setupWorksheet(workbook, 'Fajar Harapan - Reguler', dataFajarHarapanReguler);
         setupWorksheet(workbook, 'Fajar Harapan - Undangan', dataFajarHarapanUndangan);
+        setupWorksheet(workbook, 'Fajar Harapan - PJJ', dataFajarHarapanPjj);
       } else {
         // Admin biasa - export hanya data sekolahnya
         const schoolName = userRole?.school === 'mosa' ? 'Modal Bangsa' : 'Fajar Harapan';
@@ -604,12 +611,14 @@ const DataPendaftar: React.FC = () => {
         const dataPrestasi = allData.filter(item => item.jalur === 'prestasi');
         const dataReguler = allData.filter(item => item.jalur === 'reguler');
         const dataUndangan = allData.filter(item => item.jalur === 'undangan');
+        const dataPjj = allData.filter(item => item.jalur === 'pjj');
 
         // Setup worksheet
         setupWorksheet(workbook, 'Semua Data', allData);
         setupWorksheet(workbook, `${schoolName} - Prestasi`, dataPrestasi);
         setupWorksheet(workbook, `${schoolName} - Reguler`, dataReguler);
         setupWorksheet(workbook, `${schoolName} - Undangan`, dataUndangan);
+        setupWorksheet(workbook, `${schoolName} - PJJ`, dataPjj);
       }
 
       // Generate Excel file dengan nama yang sesuai
@@ -743,7 +752,7 @@ const DataPendaftar: React.FC = () => {
       // ...(userRole?.isMaster ? {
       //   school: item.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'
       // } : {}),
-      jalur: item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1),
+      jalur: item.jalur ? getJalurLabel(item.jalur) : '-',
       // Format status keputusan admin
       statusKeputusan: item.adminStatus ? 
         (item.adminStatus === 'diterima' ? 'DITERIMA' : 'DITOLAK') : 
@@ -1619,6 +1628,7 @@ const DataPendaftar: React.FC = () => {
                     <option value="prestasi">Prestasi</option>
                     <option value="reguler">Reguler</option>
                     <option value="undangan">Undangan</option>
+                    <option value="pjj">PJJ</option>
                   </select>
                 </div>
 
@@ -1919,7 +1929,9 @@ const DataPendaftar: React.FC = () => {
                       ? 'bg-blue-100 text-blue-800'
                       : selectedData?.jalur === 'reguler'
                       ? 'bg-green-100 text-green-800'
-                      : 'bg-purple-100 text-purple-800'
+                      : selectedData?.jalur === 'undangan'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-amber-100 text-amber-800'
                   )}>
                     {getJalurLabel(selectedData?.jalur || 'reguler')}
                   </span>

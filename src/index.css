@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,6 +12,11 @@
   body {
     @apply bg-gray-50 text-gray-900;
     font-family: 'DM Sans', sans-serif;
+  }
+
+  ::selection {
+    background: rgba(21, 128, 61, 0.1);
+    color: #15803d;
   }
 }
 
@@ -27,6 +32,14 @@
   }
   .input {
     @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-['DM_Sans'];
+  }
+  
+  /* Hover behaviors with real mass physics transitions */
+  .btn-swiss {
+    transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-swiss:active {
+    transform: scale(0.98);
   }
 }
 
@@ -49,5 +62,24 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Swiss typography utilities */
+  .tracking-tightest {
+    letter-spacing: -0.04em;
+  }
+
+  /* Film grain background noise */
+  .noise-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    content: "";
+    opacity: 0.025;
+    z-index: 99;
+    pointer-events: none;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }

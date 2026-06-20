@@ -35,6 +35,14 @@ const initialSettings: PPDBSettingsType = {
     announcementDate: '',
     requirements: []
   },
+  jalurPjj: {
+    start: '',
+    end: '',
+    isActive: true,
+    testDate: '',
+    announcementDate: '',
+    requirements: []
+  },
   isActive: true,
   contactWhatsapp: {
     admin1: {
@@ -65,7 +73,7 @@ const initialSettings: PPDBSettingsType = {
 };
 
 const RequirementsSection: React.FC<{
-  jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan';
+  jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan' | 'jalurPjj';
   requirements: string[];
   onAdd: () => void;
   onRemove: (index: number) => void;
@@ -83,6 +91,10 @@ const RequirementsSection: React.FC<{
     jalurUndangan: {
       color: 'purple',
       label: 'Undangan'
+    },
+    jalurPjj: {
+      color: 'amber',
+      label: 'PJJ'
     }
   };
 
@@ -289,6 +301,11 @@ const PPDBSettings: React.FC = () => {
             ...dbSettings.jalurUndangan,
             requirements: dbSettings.jalurUndangan?.requirements || []
           },
+          jalurPjj: {
+            ...initialSettings.jalurPjj,
+            ...dbSettings.jalurPjj,
+            requirements: dbSettings.jalurPjj?.requirements || []
+          },
           contactWhatsapp: {
             ...initialSettings.contactWhatsapp,
             ...dbSettings.contactWhatsapp
@@ -321,7 +338,7 @@ const PPDBSettings: React.FC = () => {
     }
   };
 
-  const handleAddRequirement = (jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan') => {
+  const handleAddRequirement = (jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan' | 'jalurPjj') => {
     setSettings(prev => ({
       ...prev,
       [jalur]: {
@@ -331,7 +348,7 @@ const PPDBSettings: React.FC = () => {
     }));
   };
 
-  const handleRemoveRequirement = (jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan', index: number) => {
+  const handleRemoveRequirement = (jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan' | 'jalurPjj', index: number) => {
     setSettings(prev => ({
       ...prev,
       [jalur]: {
@@ -342,7 +359,7 @@ const PPDBSettings: React.FC = () => {
   };
 
   const handleUpdateRequirement = (
-    jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan', 
+    jalur: 'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan' | 'jalurPjj', 
     index: number, 
     value: string
   ) => {
@@ -537,7 +554,7 @@ const PPDBSettings: React.FC = () => {
       </div>
 
       {/* Jalur Pendaftaran - Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Jalur Prestasi */}
         <div className="bg-white rounded-xl p-3 md:p-6 border shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -750,6 +767,78 @@ const PPDBSettings: React.FC = () => {
               onAdd={() => handleAddRequirement('jalurUndangan')}
               onRemove={(index) => handleRemoveRequirement('jalurUndangan', index)}
               onUpdate={(index, value) => handleUpdateRequirement('jalurUndangan', index, value)}
+            />
+          </div>
+        </div>
+
+        {/* Jalur PJJ */}
+        <div className="bg-white rounded-xl p-3 md:p-6 border shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Jalur PJJ</h3>
+            <div className="flex items-center gap-2">
+              <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
+                settings.jalurPjj?.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {settings.jalurPjj?.isActive ? 'Aktif' : 'Nonaktif'}
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.jalurPjj?.isActive || false}
+                onChange={(e) => setSettings(prev => ({
+                  ...prev,
+                  jalurPjj: { ...prev.jalurPjj, isActive: e.target.checked }
+                }))}
+                className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
+              />
+            </div>
+          </div>
+          <div className="space-y-6">
+            <Input
+              label="Tanggal Mulai"
+              type="date"
+              value={settings.jalurPjj?.start || ''}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                jalurPjj: { ...prev.jalurPjj, start: e.target.value }
+              }))}
+              required
+            />
+            <Input
+              label="Tanggal Selesai"
+              type="date"
+              value={settings.jalurPjj?.end || ''}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                jalurPjj: { ...prev.jalurPjj, end: e.target.value }
+              }))}
+              required
+            />
+            <Input
+              label="Tanggal Tes"
+              type="date"
+              value={settings.jalurPjj?.testDate || ''}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                jalurPjj: { ...prev.jalurPjj, testDate: e.target.value }
+              }))}
+              required
+            />
+            <Input
+              label="Tanggal Pengumuman"
+              type="date"
+              value={settings.jalurPjj?.announcementDate || ''}
+              onChange={(e) => setSettings(prev => ({
+                ...prev,
+                jalurPjj: { ...prev.jalurPjj, announcementDate: e.target.value }
+              }))}
+              required
+            />
+            <RequirementsSection
+              jalur="jalurPjj"
+              requirements={settings.jalurPjj?.requirements || []}
+              onAdd={() => handleAddRequirement('jalurPjj')}
+              onRemove={(index) => handleRemoveRequirement('jalurPjj', index)}
+              onUpdate={(index, value) => handleUpdateRequirement('jalurPjj', index, value)}
             />
           </div>
         </div>

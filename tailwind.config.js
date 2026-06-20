@@ -9,6 +9,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['DM Sans', 'sans-serif'],
+        serif: ['Playfair Display', 'serif'],
       },
       colors: {
         primary: {
@@ -22,6 +23,20 @@ export default {
           700: '#0369a1',
           800: '#075985',
           900: '#0c4a6e',
+        },
+        'mosa-green': {
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
+          950: '#052e16',
+        },
+        'mosa-gold': {
+          400: '#facc15',
+          500: '#eab308',
+          600: '#d97706',
         },
       },
     },

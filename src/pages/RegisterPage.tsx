@@ -385,6 +385,12 @@ const RegisterPage: React.FC = () => {
                         {formatDate(ppdbSettings.jalurUndangan.start)} - {formatDate(ppdbSettings.jalurUndangan.end)}
                       </span>
                     </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Jalur PJJ</span>
+                      <span className="text-blue-700 font-medium">
+                        {ppdbSettings.jalurPjj ? `${formatDate(ppdbSettings.jalurPjj.start)} - ${formatDate(ppdbSettings.jalurPjj.end)}` : '-'}
+                      </span>
+                    </div>
                   </>
                 )}
               </div>

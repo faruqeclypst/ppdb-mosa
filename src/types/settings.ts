@@ -26,6 +26,7 @@ export type PPDBSettings = {
   jalurPrestasi: JalurPeriod;
   jalurReguler: JalurPeriod;
   jalurUndangan: JalurPeriod;
+  jalurPjj: JalurPeriod;
   isActive: boolean;
   contactWhatsapp: {
     admin1: AdminContact;

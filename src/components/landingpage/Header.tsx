@@ -7,25 +7,15 @@ import { ref, get } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const Header: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'ppdb' | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isHomePage = location.pathname === '/';
 
   const navLinks = [
-    { to: '/', label: 'Beranda' },
-    { to: '/info-spmb', label: 'Info SPMB' },
+    { to: '/', label: 'Info SPMB', isExternal: false },
+    { to: 'https://sman-modalbangsa.sch.id/', label: 'Web Utama Sekolah', isExternal: true },
   ];
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Check user role
   useEffect(() => {
@@ -60,7 +50,7 @@ const Header: React.FC = () => {
     }
   };
 
-  const isTransparent = isHomePage && !isScrolled;
+  const isTransparent = false;
 
   return (
     <header 
@@ -108,28 +98,30 @@ const Header: React.FC = () => {
             <div className="hidden md:flex items-center">
               {/* Menu Links */}
               <div className="flex items-center mr-8">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className={`
-                      relative px-5 py-2 text-sm font-medium transition-colors duration-300
-                      ${isTransparent 
-                        ? 'text-white hover:text-white/80' 
-                        : 'text-gray-600 hover:text-blue-600'}
-                    `}
-                  >
-                    {link.label}
-                    {location.pathname === link.to && (
-                      <div 
-                        className={`
-                          absolute bottom-0 left-3 right-3 h-0.5 rounded-full
-                          ${isTransparent ? 'bg-white' : 'bg-blue-600'}
-                        `}
-                      />
-                    )}
-                  </Link>
-                ))}
+                {navLinks.map((link) =>
+                  link.isExternal ? (
+                    <a
+                      key={link.to}
+                      href={link.to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-5 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors duration-300"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className="relative px-5 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors duration-300"
+                    >
+                      {link.label}
+                      {location.pathname === link.to && (
+                        <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600 rounded-full" />
+                      )}
+                    </Link>
+                  )
+                )}
               </div>
 
               {/* Auth Button */}
@@ -173,22 +165,35 @@ const Header: React.FC = () => {
                 <div className="absolute inset-0 bg-white rounded-2xl shadow-2xl" />
                 <nav className="relative p-4">
                   <div className="space-y-1">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.to}
-                        to={link.to}
-                        className={`
-                          block px-4 py-3 text-sm font-medium rounded-xl
-                          transition-colors duration-300
-                          ${location.pathname === link.to
-                            ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600'
-                            : 'text-gray-600 hover:bg-gray-50'}
-                        `}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
+                    {navLinks.map((link) =>
+                      link.isExternal ? (
+                        <a
+                          key={link.to}
+                          href={link.to}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block px-4 py-3 text-sm font-medium rounded-xl text-gray-600 hover:bg-gray-50 transition-colors duration-300"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          className={`
+                            block px-4 py-3 text-sm font-medium rounded-xl
+                            transition-colors duration-300
+                            ${location.pathname === link.to
+                              ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-600'
+                              : 'text-gray-600 hover:bg-gray-50'}
+                          `}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      )
+                    )}
                   </div>
                   <div className="mt-4 p-2">
                     <button

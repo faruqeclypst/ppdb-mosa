@@ -2,11 +2,9 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/landingpage/Header';
 import { AuthProvider } from './contexts/AuthContext';
-import Footer from './components/landingpage/Footer';
 import ScrollToTop from './components/utils/ScrollToTop';
 
 // Lazy load pages untuk code splitting
-const LandingPage = lazy(() => import('./pages/LandingPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
@@ -23,7 +21,7 @@ const PageLoader: React.FC = () => (
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const isAuthPage = ['/login', '/register'].includes(location.pathname);
+  const isAuthPage = ['/', '/login', '/register'].includes(location.pathname);
  
   if (isAuthPage) {
     return <>{children}</>;
@@ -35,7 +33,6 @@ const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       <main className="flex-grow">
         <Suspense fallback={<PageLoader />}>{children}</Suspense>
       </main>
-      <Footer />
     </div>
   );
 };
@@ -65,7 +62,7 @@ const AppRoutes: React.FC = () => {
   return (
     <PublicLayout>
       <Routes>
-        <Route path="/" element={<Suspense fallback={<PageLoader />}><LandingPage /></Suspense>} />
+        <Route path="/" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
         <Route path="/info-spmb" element={<Suspense fallback={<PageLoader />}><InfoPPDBPage /></Suspense>} />

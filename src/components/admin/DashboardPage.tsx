@@ -21,7 +21,7 @@ import Pagination from '../ui/Pagination';
 type PPDBData = {
   uid: string;
   school: 'mosa' | 'fajar';
-  jalur: 'prestasi' | 'reguler' | 'undangan';
+  jalur: 'prestasi' | 'reguler' | 'undangan' | 'pjj';
   namaSiswa: string;
   nisn: string;
   asalSekolah: string;
@@ -68,6 +68,7 @@ type DashboardStats = {
   jalurPrestasi: number;
   jalurReguler: number;
   jalurUndangan: number;
+  jalurPjj: number;
   recentPendaftar: RecentPendaftar[];
 };
 
@@ -131,7 +132,8 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
   const labels = {
     prestasi: 'Prestasi',
     reguler: 'Reguler', 
-    undangan: 'Undangan'
+    undangan: 'Undangan',
+    pjj: 'PJJ'
   };
   return labels[jalur];
 };
@@ -201,6 +203,13 @@ const JALUR_COLORS = {
     border: 'border-purple-200',
     gradient: 'from-purple-50',
     accent: 'bg-purple-500'
+  },
+  pjj: {
+    bg: 'bg-amber-100',
+    text: 'text-amber-600',
+    border: 'border-amber-200',
+    gradient: 'from-amber-50',
+    accent: 'bg-amber-500'
   }
 };
 
@@ -219,13 +228,14 @@ const DashboardPage: React.FC = () => {
     jalurPrestasi: 0,
     jalurReguler: 0,
     jalurUndangan: 0,
+    jalurPjj: 0,
     recentPendaftar: []
   });
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PPDBData[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
-  const [selectedJalur, setSelectedJalur] = useState<'semua' | 'prestasi' | 'reguler' | 'undangan'>('semua');
+  const [selectedJalur, setSelectedJalur] = useState<'semua' | 'prestasi' | 'reguler' | 'undangan' | 'pjj'>('semua');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -281,6 +291,7 @@ const DashboardPage: React.FC = () => {
           jalurPrestasi: submittedData.filter(item => item.jalur === 'prestasi').length,
           jalurReguler: submittedData.filter(item => item.jalur === 'reguler').length,
           jalurUndangan: submittedData.filter(item => item.jalur === 'undangan').length,
+          jalurPjj: submittedData.filter(item => item.jalur === 'pjj').length,
           recentPendaftar
         });
       } catch (error) {
@@ -381,6 +392,12 @@ const DashboardPage: React.FC = () => {
         return (
           <div className={`p-2 ${JALUR_COLORS.undangan.bg} rounded-lg`}>
             <DocumentTextIcon className={`w-5 h-5 ${JALUR_COLORS.undangan.text}`} />
+          </div>
+        );
+      case 'pjj': 
+        return (
+          <div className={`p-2 ${JALUR_COLORS.pjj.bg} rounded-lg`}>
+            <ChartBarIcon className={`w-5 h-5 ${JALUR_COLORS.pjj.text}`} />
           </div>
         );
       default: 
@@ -595,6 +612,12 @@ const DashboardPage: React.FC = () => {
                 value: stats.jalurUndangan, 
                 icon: <DocumentTextIcon className="w-4 h-4 md:w-5 md:h-5" />, 
                 colors: JALUR_COLORS.undangan 
+              },
+              { 
+                label: 'PJJ', 
+                value: stats.jalurPjj, 
+                icon: <ChartBarIcon className="w-4 h-4 md:w-5 md:h-5" />, 
+                colors: JALUR_COLORS.pjj 
               }
             ].map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-2 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -730,6 +753,12 @@ const DashboardPage: React.FC = () => {
                 avg: calculateJalurAverage(data, 'undangan'),
                 colors: JALUR_COLORS.undangan,
                 icon: <DocumentTextIcon className="w-4 h-4 md:w-5 md:h-5" />
+              },
+              { 
+                label: 'PJJ', 
+                avg: calculateJalurAverage(data, 'pjj'),
+                colors: JALUR_COLORS.pjj,
+                icon: <ChartBarIcon className="w-4 h-4 md:w-5 md:h-5" />
               }
             ].map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-2 md:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -761,7 +790,7 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Detail Nilai per Jalur dan Mapel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
         {[
           { 
             label: 'Prestasi', 
@@ -780,6 +809,12 @@ const DashboardPage: React.FC = () => {
             jalur: 'undangan',
             colors: JALUR_COLORS.undangan,
             icon: <DocumentTextIcon className="w-4 h-4" />
+          },
+          { 
+            label: 'PJJ', 
+            jalur: 'pjj',
+            colors: JALUR_COLORS.pjj,
+            icon: <ChartBarIcon className="w-4 h-4" />
           }
         ].map((jalurItem, idx) => (
           <Card key={idx} className="p-2 md:p-4 lg:p-6 h-full flex flex-col">
@@ -871,6 +906,7 @@ const DashboardPage: React.FC = () => {
                 <option value="prestasi">Jalur Prestasi</option>
                 <option value="reguler">Jalur Reguler</option>
                 <option value="undangan">Jalur Undangan</option>
+                <option value="pjj">Jalur PJJ</option>
               </select>
               <FunnelIcon className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <ChevronDownIcon className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
@@ -993,7 +1029,8 @@ const DashboardPage: React.FC = () => {
                         "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                         student.jalur === 'prestasi' ? 'bg-blue-100 text-blue-800' :
                         student.jalur === 'reguler' ? 'bg-green-100 text-green-800' :
-                        'bg-purple-100 text-purple-800'
+                        student.jalur === 'undangan' ? 'bg-purple-100 text-purple-800' :
+                        'bg-amber-100 text-amber-800'
                       )}>
                         {getJalurLabel(student.jalur)}
                       </span>
@@ -1079,7 +1116,8 @@ const DashboardPage: React.FC = () => {
                             "text-xs font-medium",
                             student.jalur === 'prestasi' ? 'text-blue-600' :
                             student.jalur === 'reguler' ? 'text-green-600' :
-                            'text-purple-600'
+                            student.jalur === 'undangan' ? 'text-purple-600' :
+                            'text-amber-600'
                           )}>
                             {getJalurLabel(student.jalur)}
                           </span>

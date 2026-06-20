@@ -33,7 +33,7 @@ type PPDBData = {
   school: 'mosa' | 'fajar';
   email: string;
   // Informasi Siswa
-  jalur: 'prestasi' | 'reguler' | 'undangan';
+  jalur: 'prestasi' | 'reguler' | 'undangan' | 'pjj';
   namaSiswa: string;
   nik: string;
   nisn: string;
@@ -158,7 +158,8 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
   const labels = {
     prestasi: 'Prestasi',
     reguler: 'Reguler', 
-    undangan: 'Undangan'
+    undangan: 'Undangan',
+    pjj: 'PJJ'
   };
   return labels[jalur];
 };
@@ -174,6 +175,8 @@ const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
         return 'text-green-600 bg-green-50';
       case 'undangan':
         return 'text-purple-600 bg-purple-50';
+      case 'pjj':
+        return 'text-amber-600 bg-amber-50';
       default:
         return 'text-gray-600 bg-gray-50';
     }
@@ -231,7 +234,7 @@ const DataDraft: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan'>('all');
+  const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan' | 'pjj'>('all');
   const [activeTab, setActiveTab] = useState(0);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [modalLoading, setModalLoading] = useState(false);
@@ -487,7 +490,7 @@ const DataDraft: React.FC = () => {
         namaSiswa: item.namaSiswa || '-',
         email: item.email || '-',
         nisn: item.nisn || '-',
-        jalur: item.jalur ? item.jalur.charAt(0).toUpperCase() + item.jalur.slice(1) : '-',
+        jalur: item.jalur ? getJalurLabel(item.jalur) : '-',
         statusKelengkapan: getStatusKelengkapan(item),
         status: item.status === 'draft' ? 'Draft' : 'Pending',
         createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('id-ID') : '-',
@@ -952,6 +955,7 @@ const DataDraft: React.FC = () => {
                     <option value="prestasi">Prestasi</option>
                     <option value="reguler">Reguler</option>
                     <option value="undangan">Undangan</option>
+                    <option value="pjj">PJJ</option>
                   </select>
                 </div>
                 <div>

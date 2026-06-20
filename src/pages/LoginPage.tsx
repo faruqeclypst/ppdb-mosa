@@ -135,8 +135,8 @@ const LoginPage: React.FC = () => {
  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <Link
-        to="/"
+      <a
+        href="https://sman-modalbangsa.sch.id/"
         className="fixed top-4 left-4 md:top-8 md:left-8 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border transition-colors"
       >
         <svg 
@@ -153,7 +153,7 @@ const LoginPage: React.FC = () => {
           />
         </svg>
         <span className="font-medium">Kembali ke Beranda</span>
-      </Link>
+      </a>
  
       <Container className="max-w-md w-full">
         <motion.div

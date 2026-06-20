@@ -39,6 +39,7 @@ export type PPDBSettings = {
   jalurPrestasi: JalurPeriod;
   jalurReguler: JalurPeriod;
   jalurUndangan: JalurPeriod;
+  jalurPjj: JalurPeriod;
   announcementDate: string;   // Format: YYYY-MM-DD
   isActive: boolean;
 };
@@ -188,12 +189,14 @@ const VALIDATION_CONFIG = {
     mosa: {
       prestasi: 85,
       reguler: 85,
-      undangan: 83
+      undangan: 83,
+      pjj: 80
     },
     fajar: {
       prestasi: 85,
       reguler: 85,
-      undangan: 85
+      undangan: 85,
+      pjj: 80
     }
   },
 
@@ -201,7 +204,8 @@ const VALIDATION_CONFIG = {
   SEMESTER_CONFIG: {
     reguler: ['3', '4'],
     prestasi: ['2', '3', '4'],
-    undangan: ['2', '3', '4']
+    undangan: ['2', '3', '4'],
+    pjj: ['2', '3', '4']
   },
 
   // Mata pelajaran yang divalidasi
@@ -917,6 +921,9 @@ const PPDBFormPage: React.FC = () => {
       case 'undangan':
         selectedJalur = ppdbSettings.jalurUndangan;
         break;
+      case 'pjj':
+        selectedJalur = ppdbSettings.jalurPjj;
+        break;
       default:
         return false;
     }
@@ -1497,8 +1504,8 @@ const PPDBFormPage: React.FC = () => {
 
   const handleJalurChange = () => {
     // Tentukan semester yang perlu direset berdasarkan jalur baru
-    const oldSemesters = formData.jalur === 'reguler' ? ['3', '4'] : ['2', '3'];
-    const newSemesters = newJalurValue === 'reguler' ? ['3', '4'] : ['2', '3'];
+    const oldSemesters = getRequiredSemesters(formData.jalur);
+    const newSemesters = getRequiredSemesters(newJalurValue);
     
     // Buat object untuk reset nilai dan dokumen
     const resetData: Partial<FormData> = {
@@ -1585,6 +1592,11 @@ const PPDBFormPage: React.FC = () => {
           value: 'undangan',
           label: 'Undangan',
           settings: ppdbSettings.jalurUndangan
+        },
+        {
+          value: 'pjj',
+          label: 'Pendidikan Jarak Jauh',
+          settings: ppdbSettings.jalurPjj
         }
       ];
 
@@ -2221,6 +2233,9 @@ const PPDBFormPage: React.FC = () => {
         case 'undangan':
           selectedJalur = ppdbSettings.jalurUndangan;
           break;
+        case 'pjj':
+          selectedJalur = ppdbSettings.jalurPjj;
+          break;
         default:
           return {
             start: '-',
@@ -2426,7 +2441,8 @@ const PPDBFormPage: React.FC = () => {
                         <span className="font-medium text-blue-700">
                           {formData.jalur === 'prestasi' ? 'Prestasi' :
                            formData.jalur === 'reguler' ? 'Reguler' :
-                           formData.jalur === 'undangan' ? 'Undangan' : '-'}
+                           formData.jalur === 'undangan' ? 'Undangan' :
+                           formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh' : '-'}
                         </span>
                       </div>
                     )}

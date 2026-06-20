@@ -13,7 +13,6 @@ import {
   ArrowLongRightIcon,
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
-import FAQSection from './FAQSection';
 import classNames from 'classnames';
 
 type InfoPPDBSectionProps = {
@@ -101,13 +100,33 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
         isActive: settings?.jalurUndangan?.isActive || false,
         isClosed: settings?.jalurUndangan?.end ? new Date(settings.jalurUndangan.end) < now : false,
         hasNotStarted: settings?.jalurUndangan?.start ? new Date(settings.jalurUndangan.start) > now : false
+      },
+      {
+        name: 'PJJ',
+        description: 'Jalur Pendidikan Jarak Jauh (Distance Learning)',
+        period: settings?.jalurPjj ? 
+          `${formatDate(settings.jalurPjj.start)} - ${formatDate(settings.jalurPjj.end)}` : 
+          'Belum ditentukan',
+        testDate: settings?.jalurPjj?.testDate || null,
+        announcementDate: settings?.jalurPjj?.announcementDate,
+        icon: DocumentCheckIcon,
+        bgColor: 'bg-amber-500',
+        requirements: settings?.jalurPjj?.requirements || [],
+        semester: 'Semester 2-4',
+        isActive: settings?.jalurPjj?.isActive || false,
+        isClosed: settings?.jalurPjj?.end ? new Date(settings.jalurPjj.end) < now : false,
+        hasNotStarted: settings?.jalurPjj?.start ? new Date(settings.jalurPjj.start) > now : false
       }
     ];
 
     return jalur;
   };
 
-  const activeJalur = React.useMemo(() => getActiveJalur(), [settings]);
+  const activeJalur = React.useMemo(() => {
+    const list = getActiveJalur();
+    const activeList = list.filter(jalur => jalur.isActive);
+    return activeList.length > 0 ? activeList : list;
+  }, [settings]);
 
   const handleViewRequirements = () => {
     setShowModal(true);
@@ -138,7 +157,13 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
           {/* Main Content */}
           <div className="max-w-7xl mx-auto flex-grow">
             {/* Jalur Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+            <div className={classNames(
+              "grid gap-4 md:gap-6 justify-center",
+              activeJalur.length === 1 ? "grid-cols-1 max-w-md mx-auto" :
+              activeJalur.length === 2 ? "grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto" :
+              activeJalur.length === 3 ? "grid-cols-1 md:grid-cols-3 max-w-5xl mx-auto" :
+              "grid-cols-1 md:grid-cols-2 xl:grid-cols-4"
+            )}>
               {activeJalur.map((jalur, index) => (
                 <motion.div
                   key={jalur.name}
@@ -338,6 +363,18 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
                           <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
                         )}
                       </div>
+
+                      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                        <p className="font-medium">Jalur PJJ</p>
+                        <p className="text-sm text-white/80">
+                          {settings?.jalurPjj?.announcementDate 
+                            ? formatDate(settings.jalurPjj.announcementDate)
+                            : 'Belum ditentukan'}
+                        </p>
+                        {!settings?.jalurPjj?.isActive && (
+                          <p className="text-xs text-white/60 mt-1">*Jalur belum dibuka</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Info tambahan */}
@@ -413,7 +450,6 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
           </div>
         </Container>
       </section>
-      <FAQSection />
 
       {/* Modal */}
       {showModal && (
