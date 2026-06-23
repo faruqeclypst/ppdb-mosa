@@ -134,21 +134,12 @@ export const getSignedUrlForFile = async (key: string, expiresIn: number = 3600)
  */
 export const deleteFromR2 = async (key: string): Promise<void> => {
   try {
-    console.log('R2 Config:', {
-      bucketName: r2Config.bucketName,
-      accountId: r2Config.accountId ? `${r2Config.accountId.slice(0, 8)}...` : 'missing',
-      hasAccessKey: !!r2Config.accessKeyId,
-      hasSecretKey: !!r2Config.secretAccessKey
-    });
-    
     const command = new DeleteObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
     });
 
-    console.log('Sending delete command to R2 for key:', key);
-    const result = await s3Client.send(command);
-    console.log('R2 delete command result:', result);
+    await s3Client.send(command);
     
   } catch (error) {
     console.error('Error deleting from R2:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ref, get, update } from 'firebase/database';
@@ -6,25 +6,22 @@ import { db, auth } from '../firebase/config';
 import { uploadToR2 } from '../services/cloudflareR2';
 import Container from '../components/ui/Container';
 import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
-import Select from '../components/ui/Select';
-import DatePicker from '../components/ui/DatePicker';
-import FileUpload from '../components/ui/FileUpload';
 import Button from '../components/ui/Button';
-import Alert from '../components/ui/Alert';
+import Alert, { showAlert } from '../components/ui/Alert';
 import Tabs from '../components/ui/Tabs';
-import { compressFile } from '../utils/fileCompression';
-import { showAlert } from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { signOut } from 'firebase/auth';
 import { getPPDBStatus } from '../utils/ppdbStatus';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { saveAs } from 'file-saver';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import { query, orderByChild, equalTo, get as getDb } from 'firebase/database';
-import schoolData from '../utils/school.json';
-import { useState as useStateLocal } from 'react'; // Rename untuk menghindari konflik
+import { compressFile } from '../utils/fileCompression';
+
+// Modular imports
+import StudentInfoForm from '../components/ppdb/StudentInfoForm';
+import AcademicForm from '../components/ppdb/AcademicForm';
+import ParentInfoForm from '../components/ppdb/ParentInfoForm';
+import DocumentUploadForm from '../components/ppdb/DocumentUploadForm';
+import { generateRegistrationCard } from '../utils/pdfGenerator';
+import { generateAtomicRegistrationNumber } from '../utils/registrationNumber';
 
 // Types
 export type JalurPeriod = {
@@ -44,13 +41,9 @@ export type PPDBSettings = {
   isActive: boolean;
 };
 
-// Tambahkan di bagian atas file, setelah imports
 type FormData = {
-  // Tambahkan uid dan school
   uid?: string;
   school: 'mosa' | 'fajar';
-  
-  // Informasi Siswa
   jalur: string;
   namaSiswa: string;
   nik: string;
@@ -65,6 +58,8 @@ type FormData = {
   kabupaten: string;
   asalSekolah: string;
   asalSekolahManual?: string;
+  registrationNumber?: string;
+  createdAt?: string;
 
   // Akademik
   nilaiAgama2: string;
@@ -105,10 +100,9 @@ type FormData = {
   lampiranB?: File | string;
 };
 
-// Tambahkan INITIAL_FORM_DATA
 const INITIAL_FORM_DATA: FormData = {
   uid: undefined,
-  school: 'mosa', // Default value, will be overwritten when loading data
+  school: 'mosa',
   jalur: '',
   namaSiswa: '',
   nik: '',
@@ -123,8 +117,8 @@ const INITIAL_FORM_DATA: FormData = {
   kabupaten: '',
   asalSekolah: '',
   asalSekolahManual: '',
+  registrationNumber: '',
 
-  // Akademik
   nilaiAgama2: '',
   nilaiAgama3: '',
   nilaiAgama4: '',
@@ -141,7 +135,6 @@ const INITIAL_FORM_DATA: FormData = {
   nilaiIpa3: '',
   nilaiIpa4: '',
   
-  // Informasi Orang Tua
   namaAyah: '',
   pekerjaanAyah: '',
   instansiAyah: '',
@@ -151,34 +144,28 @@ const INITIAL_FORM_DATA: FormData = {
   instansiIbu: '',
   hpIbu: '',
 
-  // PJJ Files
   ijazah: undefined,
   kartuKeluarga: undefined,
   lampiranA: undefined,
   lampiranB: undefined
 };
 
-// Tambahkan komponen SectionTitle
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <h3 className="text-lg font-semibold text-gray-900 mb-4">{children}</h3>
 );
 
-// Fungsi helper di luar komponen
 const getAcademicYear = () => {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth(); // 0-11
+  const currentMonth = currentDate.getMonth();
 
-  // Jika sudah lewat bulan Juli (index 6), gunakan tahun berikutnya
   const startYear = currentMonth >= 6 ? currentYear + 1 : currentYear;
   const endYear = startYear + 1;
 
   return `${startYear}/${endYear}`;
 };
 
-// Tambahkan konstanta untuk validasi
 const VALIDATION_CONFIG = {
-  // Mapping field ke label untuk pesan error
   FIELD_LABELS: {
     namaSiswa: 'Nama Siswa',
     nik: 'NIK',
@@ -193,21 +180,13 @@ const VALIDATION_CONFIG = {
     kabupaten: 'Kabupaten',
     asalSekolah: 'Asal Sekolah'
   },
-
-  
-
-  // Semester yang diperlukan per jalur
   SEMESTER_CONFIG: {
     reguler: ['3', '4'],
     prestasi: ['2', '3', '4'],
     undangan: ['2', '3', '4'],
     pjj: []
   },
-
-  // Mata pelajaran yang divalidasi
   MAPEL: ['Agama', 'Bindo', 'Bing', 'Mtk', 'Ipa'],
-
-  // Tambahkan required fields untuk setiap tab
   REQUIRED_FIELDS: {
     SISWA: [
       'namaSiswa', 'nik', 'nisn', 'jenisKelamin', 'tempatLahir', 'tanggalLahir',
@@ -221,7 +200,6 @@ const VALIDATION_CONFIG = {
   }
 };
 
-// Helper functions
 const getRequiredSemesters = (jalur: string): string[] => {
   return (VALIDATION_CONFIG.SEMESTER_CONFIG[jalur as keyof typeof VALIDATION_CONFIG.SEMESTER_CONFIG] as string[]) || [];
 };
@@ -232,55 +210,15 @@ const getNilaiFields = (semesters: string[]) => {
   );
 };
 
-// Update fungsi validateNilai
-const validateNilai = (nilai: string, _jalur: string, _school: 'mosa' | 'fajar'): { isValid: boolean; error?: string } => {
+const validateNilai = (nilai: string): { isValid: boolean; error?: string } => {
   if (!nilai) return { isValid: false, error: 'Nilai harus diisi' };
-
   const nilaiNum = parseFloat(nilai);
-
-  // Validasi format nilai
-  if (isNaN(nilaiNum)) {
-    return { isValid: false, error: 'Nilai harus berupa angka' };
-  }
-
-  // Validasi rentang nilai
-  if (nilaiNum < 0 || nilaiNum > 100) {
-    return { isValid: false, error: 'Nilai harus antara 0-100' };
-  }
-
-  // Minimum nilai validation removed
-
+  if (isNaN(nilaiNum)) return { isValid: false, error: 'Nilai harus berupa angka' };
+  if (nilaiNum < 0 || nilaiNum > 100) return { isValid: false, error: 'Nilai harus antara 0-100' };
   return { isValid: true };
 };
 
-// Update fungsi getPPDBYear untuk mengembalikan kode tahun
-const getPPDBYear = () => {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth(); // 0-11
-
-  // Jika sudah lewat bulan Juli (index 6), gunakan tahun berikutnya
-  const startYear = currentMonth >= 6 ? currentYear + 1 : currentYear;
-  const endYear = startYear + 1;
-
-  // Format tahun untuk nomor pendaftaran: XYXY (contoh: 2526 untuk 2025/2026)
-  const yearCode = `${startYear.toString().slice(-2)}${endYear.toString().slice(-2)}`;
-
-  return {
-    start: startYear,
-    end: endYear,
-    yearCode // tambahkan yearCode
-  };
-};
-
-// Tambahkan interface untuk KabupatenData
-interface KabupatenData {
-  kode: string;
-  nama: string;
-}
-
-// Tambahkan data kabupaten/kota
-const KABUPATEN_LIST: KabupatenData[] = [
+const KABUPATEN_LIST = [
   { kode: '01', nama: 'KOTA BANDA ACEH' },
   { kode: '02', nama: 'KOTA SABANG' },
   { kode: '03', nama: 'KOTA LHOKSEUMAWE' },
@@ -307,577 +245,30 @@ const KABUPATEN_LIST: KabupatenData[] = [
   { kode: '24', nama: 'LUAR DAERAH' }
 ];
 
-// Update fungsi formatRegistrationNumber - fix untuk menghindari duplikasi nomor saat data dihapus
-const formatRegistrationNumber = async (school: 'mosa' | 'fajar', kabupatenKode: string) => {
-  try {
-    const { yearCode } = getPPDBYear();
-    
-    // Ambil data pendaftar untuk menghitung nomor urut
-    const ppdbRef = ref(db, `ppdb_${school}`);
-    const snapshot = await get(ppdbRef);
-    
-    let nextRegistrationNumber = 1;
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      
-      // Ekstrak semua nomor pendaftaran yang ada untuk tahun ini
-      const existingRegistrationNumbers: number[] = [];
-      
-      Object.values(data as Record<string, any>).forEach((item: any) => {
-        if (item.registrationNumber && item.status === 'submitted') {
-          // Ekstrak bagian nomor urut dari registrationNumber
-          // Format: XYXY010001 (yearCode + kode kabupaten + nomor urut)
-          const registrationNumStr = item.registrationNumber.toString();
-          
-          // Pastikan nomor pendaftaran memiliki format yang benar
-          if (registrationNumStr.startsWith(yearCode) && registrationNumStr.length === 10) {
-            const extractedNumber = parseInt(registrationNumStr.substring(6), 10); // Ambil 4 digit terakhir
-            if (!isNaN(extractedNumber)) {
-              existingRegistrationNumbers.push(extractedNumber);
-            }
-          }
-        }
-      });
-      
-      // Jika ada nomor yang sudah digunakan, ambil yang maksimal dan tambahkan 1
-      if (existingRegistrationNumbers.length > 0) {
-        const maxUsedNumber = Math.max(...existingRegistrationNumbers);
-        nextRegistrationNumber = maxUsedNumber + 1;
-      }
-    }
-
-    // Format nomor urut dengan padding 4 digit
-    const paddedNumber = nextRegistrationNumber.toString().padStart(4, '0');
-    
-    // Format: XYXY010001 (yearCode + kode kabupaten + nomor urut)
-    return `${yearCode}${kabupatenKode}${paddedNumber}`;
-  } catch (error) {
-    console.error('Error generating registration number:', error);
-    const { yearCode } = getPPDBYear();
-    return `${yearCode}${kabupatenKode}0001`; // Fallback jika error, mulai dari 0001
-  }
-};
-
-// Tambahkan fungsi untuk memecah teks panjang
-const wrapText = (text: string, maxLength: number): string[] => {
-  if (text.length <= maxLength) return [text];
-  
-  const words = text.split(' ');
-  const lines: string[] = [];
-  let currentLine = words[0];
-
-  for (let i = 1; i < words.length; i++) {
-    const word = words[i];
-    if ((currentLine + ' ' + word).length <= maxLength) {
-      currentLine += ' ' + word;
-    } else {
-      lines.push(currentLine);
-      currentLine = word;
-    }
-  }
-  lines.push(currentLine);
-
-  return lines;
-};
-
-// Update fungsi generateRegistrationCard, tambahkan fungsi drawSignatureBox dan konstanta yang diperlukan
-const generateRegistrationCard = async (formData: FormData) => {
-  try {
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4 size
-    const { width, height } = page.getSize();
-
-    // Tambahkan border dengan margin 20 points dari tepi
-    const borderMargin = 20;
-    page.drawRectangle({
-      x: borderMargin,
-      y: borderMargin,
-      width: width - (borderMargin * 2),
-      height: height - (borderMargin * 2),
-      borderColor: rgb(0.7, 0.7, 0.7),
-      borderWidth: 1,
-    });
-
-    const marginX = 50;
-
-    // Load fonts
-    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    // Load logo sekolah sesuai dengan sekolah yang dipilih
-    const logoPath = formData.school === 'mosa' ? '/images/mosa.png' : '/images/fajar.png';
-    const logoResponse = await fetch(logoPath);
-    const logoArrayBuffer = await logoResponse.arrayBuffer();
-    const logoImage = await pdfDoc.embedPng(logoArrayBuffer);
-    // Adjust scale based on school
-    const logoScale = formData.school === 'mosa' ? 0.09 : 0.15; // Increase scale for Fajar Harapan
-    const logoDims = logoImage.scale(logoScale);
-
-    // Header positioning
-    const headerY = height - 80;
-
-    // Draw logo - adjust y position by lowering it 5 points
-    page.drawImage(logoImage, {
-      x: marginX,
-      y: headerY - logoDims.height/2 - 5, // Added -5 to lower the position
-      width: logoDims.width,
-      height: logoDims.height,
-    });
-
-    // Header text dengan alignment yang lebih baik
-    const headerTextX = marginX + logoDims.width + 30;
-    
-    page.drawText('PENERIMAAN PESERTA DIDIK BARU', {
-      x: headerTextX,
-      y: headerY + 15,
-      size: 16,
-      font: helveticaBold,
-      color: rgb(0, 0, 0),
-    });
-
-    // Sesuaikan nama sekolah berdasarkan school
-    const schoolName = formData.school === 'mosa' ? 'SMAN MODAL BANGSA' : 'SMAN 10 FAJAR HARAPAN';
-    page.drawText(schoolName, {
-      x: headerTextX,
-      y: headerY - 10,
-      size: 14,
-      font: helveticaBold,
-      color: rgb(0, 0, 0),
-    });
-
-    // Sisanya tetap sama seperti sebelumnya...
-    const { start, end } = getPPDBYear();
-    page.drawText(`TAHUN PELAJARAN ${start}/${end}`, {
-      x: headerTextX,
-      y: headerY - 35,
-      size: 12,
-      font: helveticaFont,
-      color: rgb(0, 0, 0),
-    });
-
-    // Garis pemisah yang lebih panjang
-    const lineY = headerY - 60;
-    page.drawLine({
-      start: { x: marginX, y: lineY },
-      end: { x: width - marginX, y: lineY },
-      thickness: 1,
-      color: rgb(0.7, 0.7, 0.7),
-    });
-
-    // Judul bukti pendaftaran dengan spacing yang lebih baik
-    page.drawText('BUKTI PENDAFTARAN', {
-      x: (width - helveticaBold.widthOfTextAtSize('BUKTI PENDAFTARAN', 14)) / 2,
-      y: lineY - 35,
-      size: 14,
-      font: helveticaBold,
-      color: rgb(0, 0, 0),
-    });
-
-    // Area foto dengan border yang lebih halus
-    const photoWidth = 3 * 28.35;
-    const photoHeight = 4 * 28.35;
-    const photoX = width - photoWidth - marginX;
-    const photoY = lineY - photoHeight - 20;
-
-    // Border foto dengan sudut rounded
-    page.drawRectangle({
-      x: photoX,
-      y: photoY,
-      width: photoWidth,
-      height: photoHeight,
-      borderColor: rgb(0.8, 0.8, 0.8),
-      borderWidth: 0.75,
-    });
-
-    // Teks petunjuk foto yang lebih rapi
-    const textColor = rgb(0.5, 0.5, 0.5);
-    page.drawText('Tempel', {
-      x: photoX + photoWidth/2 - 12,
-      y: photoY + photoHeight/2 + 10,
-      size: 8,
-      font: helveticaFont,
-      color: textColor,
-    });
-
-    page.drawText('Pas Foto 3x4', {
-      x: photoX + photoWidth/2 - 20,
-      y: photoY + photoHeight/2 - 5,
-      size: 8,
-      font: helveticaFont,
-      color: textColor,
-    });
-
-    // Dapatkan kode kabupaten dari nama kabupaten yang dipilih
-    const kabupatenData = KABUPATEN_LIST.find(kab => kab.nama === formData.kabupaten);
-    const kabupatenKode = kabupatenData?.kode || '00';
-
-    // Format nomor pendaftaran dengan kode kabupaten
-    const registrationNumber = await formatRegistrationNumber(formData.school, kabupatenKode);
-
-    // Informasi pendaftar dengan layout yang lebih rapi
-    const startY = lineY - 80;
-    const lineHeight = 25;
-    let currentY = startY;
-
-    const drawField = (label: string, value: string, y: number) => {
-      page.drawText(label, {
-        x: marginX,
-        y,
-        size: 10,
-        font: helveticaBold,
-        color: rgb(0, 0, 0),
-      });
-
-      page.drawText(': ' + value, {
-        x: marginX + 150, // Sejajarkan semua nilai
-        y,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0, 0, 0),
-      });
-    };
-
-    // Data pendaftar dengan grouping yang lebih jelas - ubah bagian alamat
-    const fields = [
-      { label: 'No. Pendaftaran', value: registrationNumber },
-      { label: 'Jalur Pendaftaran', value: formData.jalur.toUpperCase() },
-      { label: 'Nama Lengkap', value: formData.namaSiswa },
-      { label: 'NISN', value: formData.nisn },
-      { label: 'NIK', value: formData.nik },
-      { label: 'Tempat, Tgl Lahir', value: `${formData.tempatLahir}, ${new Date(formData.tanggalLahir).toLocaleDateString('id-ID')}` },
-      { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' },
-      { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah },
-      { label: 'Alamat', value: `${formData.alamat}, ${formData.kecamatan}` },
-      { label: 'Kabupaten/Kota', value: formData.kabupaten },
-      { label: 'Nama Ayah', value: formData.namaAyah },
-      { label: 'Nama Ibu', value: formData.namaIbu },
-      { label: 'No. HP', value: formData.hpAyah }
-    ];
-
-    fields.forEach((field) => {
-      drawField(field.label, field.value, currentY);
-      currentY -= lineHeight;
-    });
-
-    // Catatan dengan style yang lebih baik
-    currentY -= 30;
-    page.drawText('Catatan:', {
-      x: marginX,
-      y: currentY,
-      size: 10,
-      font: helveticaBold,
-      color: rgb(0, 0, 0),
-    });
-
-    const notes = [
-      `Kartu ini sebagai bukti pendaftaran PPDB ${formData.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}`
-    ];
-
-    notes.forEach((note) => {
-      currentY -= 20;
-      page.drawText(note, {
-        x: marginX,
-        y: currentY,
-        size: 9,
-        font: helveticaFont,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-    });
-
-    // Area tanda tangan dengan layout yang lebih rapi
-    currentY -= 60;
-    const today = new Date().toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-
-    // Fungsi untuk membuat box tanda tangan
-    const drawSignatureBox = (x: number, y: number, width: number, label: string, name?: string) => {
-      // Label (Panitia/Pendaftar)
-      page.drawText(label, {
-        x: x,
-        y: y + 40,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0, 0, 0),
-      });
-
-      // Kurung dan garis putus-putus untuk nama
-      page.drawText('(', {
-        x: x,
-        y: y - 20,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0, 0, 0),
-      });
-
-      page.drawText(')', {
-        x: x + width - 5,
-        y: y - 20,
-        size: 10,
-        font: helveticaFont,
-        color: rgb(0, 0, 0),
-      });
-
-      // Nama (jika ada) - dengan word wrap
-      if (name) {
-        const lines = wrapText(name, 25); // Batasi 25 karakter per baris
-        lines.forEach((line, index) => {
-          page.drawText(line, {
-            x: x + 4,
-            y: y - 21 - (index * 12), // Spasi antar baris 12pt
-            size: 10,
-            font: helveticaFont,
-            color: rgb(0, 0, 0),
-          });
-        });
-      }
-    };
-
-    // Konstanta untuk tanda tangan
-    const signatureWidth = 140; // Lebar area tanda tangan
-    const boxStartY = currentY - 40;
-    const rightColumnX = width - marginX - signatureWidth;
-
-    // Tanggal dan tanda tangan sejajar - sesuaikan lokasi berdasarkan sekolah
-    const location = formData.school === 'mosa' ? 'Aceh Besar' : 'Banda Aceh';
-    const dateText = `${location}, ${today}`;
-
-    // Tanggal dan "Pendaftar" sejajar di kanan
-    page.drawText(dateText, {
-      x: rightColumnX,
-      y: currentY + 15,
-      size: 10,
-      font: helveticaFont,
-      color: rgb(0, 0, 0),
-    });
-
-    // Tampilkan box tanda tangan pendaftar
-    drawSignatureBox(
-      rightColumnX,
-      boxStartY,
-      signatureWidth,
-      'Pendaftar',
-      formData.namaSiswa
-    );
-
-    // Save PDF
-    const pdfBytes = await pdfDoc.save();
-    const schoolAbbr = formData.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan';
-    const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-    saveAs(blob, `Kartu_Pendaftaran_${schoolAbbr}_${formData.namaSiswa}.pdf`);
-
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    showAlert('error', 'Gagal membuat bukti pendaftaran');
-  }
-};
-
-// Update fungsi checkDuplicateNIK
 const checkDuplicateNIK = async (nik: string, currentUid?: string, school?: string): Promise<boolean> => {
   try {
     if (nik === '-') return false;
 
-    // Cek di database sesuai sekolah yang dipilih
     const ppdbRef = ref(db, `ppdb_${school}`);
-    const nikQuery = query(ppdbRef, orderByChild('nik'), equalTo(nik));
-    const snapshot = await getDb(nikQuery);
+    const snapshot = await get(ppdbRef);
 
     if (snapshot.exists()) {
       const data = snapshot.val();
       const entries = Object.entries(data);
       for (const [uid, entry] of entries) {
         if (uid === currentUid) continue;
-        if ((entry as any).status === 'submitted') {
-          console.log('Duplicate NIK found:', nik, 'from user:', uid);
+        if ((entry as any).nik === nik && (entry as any).status === 'submitted') {
           return true;
         }
       }
     }
     return false;
   } catch (error) {
-    console.error('Error checking duplicate NIK:', error);
     return false;
   }
 };
 
-// Update interface SavedData dan gunakan di submitForm
-interface SavedData {
-  // Metadata
-  uid: string;
-  email: string | null;
-  status: 'draft' | 'submitted';
-  lastUpdated: string;
-  submittedAt: string | null;
-  createdAt: string;
-  wasReset: boolean;
-
-  // Data siswa
-  jalur: string;
-  namaSiswa: string;
-  nik: string;
-  nisn: string;
-  jenisKelamin: string;
-  tempatLahir: string;
-  tanggalLahir: string;
-  anakKe: string;
-  jumlahSaudara: string;
-  alamat: string;
-  kecamatan: string;
-  kabupaten: string;
-  asalSekolah: string;
-  asalSekolahManual: string;
-
-  // Data akademik
-  nilaiAgama2: string;
-  nilaiAgama3: string;
-  nilaiAgama4: string;
-  nilaiBindo2: string;
-  nilaiBindo3: string;
-  nilaiBindo4: string;
-  nilaiBing2: string;
-  nilaiBing3: string;
-  nilaiBing4: string;
-  nilaiMtk2: string;
-  nilaiMtk3: string;
-  nilaiMtk4: string;
-  nilaiIpa2: string;
-  nilaiIpa3: string;
-  nilaiIpa4: string;
-
-  // Data orang tua
-  namaAyah: string;
-  pekerjaanAyah: string;
-  instansiAyah: string;
-  hpAyah: string;
-  namaIbu: string;
-  pekerjaanIbu: string;
-  instansiIbu: string;
-  hpIbu: string;
-
-  // File URLs
-  photo?: string;
-  rekomendasi?: string;
-  raport2?: string;
-  raport3?: string;
-  raport4?: string;
-  ijazah?: string;
-  kartuKeluarga?: string;
-  lampiranA?: string;
-  lampiranB?: string;
-  registrationNumber: string;
-  kabupatenKode: string;
-}
-
-// Tambahkan komponen SearchableSelect
-const SearchableSelect: React.FC<{
-  label: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  disabled?: boolean;
-  required?: boolean;
-  className?: string;
-  name: string;
-}> = ({ label, value, onChange, disabled, required, className, name }) => {
-  const [search, setSearch] = useStateLocal('');
-  const [isOpen, setIsOpen] = useStateLocal(false);
-  const [isFocused, setIsFocused] = useStateLocal(false);
-
-  // Filter sekolah berdasarkan pencarian
-  const filteredSchools = schoolData.filter(school =>
-    school.nm_sekolah.toLowerCase().includes(search.toLowerCase()) ||
-    school.nm_rayon.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 100);
-
-  // Helper untuk mendapatkan rayon dari nama sekolah
-  const getRayonFromSchoolName = (schoolName: string) => {
-    const school = schoolData.find(s => s.nm_sekolah === schoolName);
-    return school?.nm_rayon || '';
-  };
-
-  return (
-    <div className="relative">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      
-      <div className="relative">
-        <input
-          type="text"
-          className={`w-full px-3 py-2 border rounded-md ${className}`}
-          placeholder={value || "Ketik untuk mencari sekolah..."}
-          value={isFocused ? search : value}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => {
-            setIsFocused(true);
-            setSearch('');
-            setIsOpen(true);
-          }}
-          onBlur={() => {
-            setTimeout(() => {
-              setIsFocused(false);
-              setIsOpen(false);
-            }, 200);
-          }}
-          disabled={disabled}
-        />
-        
-        <input 
-          type="hidden"
-          name={name}
-          value={value}
-          onChange={onChange}
-        />
-        
-        {isOpen && isFocused && (
-          <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-            {filteredSchools.length > 0 ? (
-              filteredSchools.map((school) => (
-                <div
-                  key={school.npsn}
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => {
-                    onChange({
-                      target: {
-                        name,
-                        value: school.nm_sekolah
-                      }
-                    } as React.ChangeEvent<HTMLInputElement>);
-                    setSearch(school.nm_sekolah);
-                    setIsOpen(false);
-                    setIsFocused(false);
-                  }}
-                >
-                  <div className="font-medium">{school.nm_sekolah}</div>
-                  <div className="text-sm text-gray-500">{school.nm_rayon}</div>
-                </div>
-              ))
-            ) : (
-              <div className="px-4 py-2 text-gray-500">
-                Tidak ada sekolah yang ditemukan
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {value && !isFocused && (
-        <div className="mt-2 text-sm">
-          <div className="font-medium text-gray-700">Sekolah dipilih:</div>
-          <div className="text-gray-600">{value}</div>
-          <div className="text-gray-500">({getRayonFromSchoolName(value)})</div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const PPDBFormPage: React.FC = () => {
-  // Pindahkan hooks ke dalam komponen
   const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -896,26 +287,33 @@ const PPDBFormPage: React.FC = () => {
   const [newJalurValue, setNewJalurValue] = useState('');
   const [showGuideModal, setShowGuideModal] = useState(true);
   const [isReset, setIsReset] = useState(false);
-  // Tambahkan state untuk melacak status duplikasi NIK
   const [isDuplicateNIK, setIsDuplicateNIK] = useState(false);
 
-  // Helper function to check if selected jalur period is open
-  const isJalurPeriodOpen = (jalur: string, ppdbSettings: PPDBSettings | null): boolean => {
-    if (!ppdbSettings || !jalur) return false;
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const isJalurPeriodOpen = (jalur: string, settings: PPDBSettings | null): boolean => {
+    if (!settings || !jalur) return false;
 
     let selectedJalur;
     switch (jalur) {
       case 'prestasi':
-        selectedJalur = ppdbSettings.jalurPrestasi;
+        selectedJalur = settings.jalurPrestasi;
         break;
       case 'reguler':
-        selectedJalur = ppdbSettings.jalurReguler;
+        selectedJalur = settings.jalurReguler;
         break;
       case 'undangan':
-        selectedJalur = ppdbSettings.jalurUndangan;
+        selectedJalur = settings.jalurUndangan;
         break;
       case 'pjj':
-        selectedJalur = ppdbSettings.jalurPjj;
+        selectedJalur = settings.jalurPjj;
         break;
       default:
         return false;
@@ -940,11 +338,9 @@ const PPDBFormPage: React.FC = () => {
       return;
     }
 
-    // Load existing data
     const loadData = async () => {
-      setLoading(true);
+      if (isMounted.current) setLoading(true);
       try {
-        // Cek di kedua database untuk menentukan sekolah user
         const mosaRef = ref(db, `ppdb_mosa/${user.uid}`);
         const fajarRef = ref(db, `ppdb_fajar/${user.uid}`);
         
@@ -961,25 +357,23 @@ const PPDBFormPage: React.FC = () => {
           userData = { ...fajarSnapshot.val(), school: 'fajar' as const };
         }
 
-        if (userData) {
-          // Update formData dengan data dari register
+        if (userData && isMounted.current) {
           setFormData({
             ...INITIAL_FORM_DATA,
             ...userData,
             uid: user.uid,
-            // Isi otomatis nama dan NIK dari data register 
-            namaSiswa: userData.fullName || '',
+            namaSiswa: userData.fullName || userData.namaSiswa || '',
             nik: userData.nik || '',
             asalSekolahManual: userData.asalSekolahManual || ''
           });
           setFormStatus(userData.status || 'draft');
           setLastUpdated(userData.lastUpdated || '');
+          setIsReset(!!userData.isReset);
         }
       } catch (err) {
-        setError('Gagal memuat data');
-        console.error(err);
+        if (isMounted.current) setError('Gagal memuat data');
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
 
@@ -998,63 +392,64 @@ const PPDBFormPage: React.FC = () => {
     checkPPDBStatus();
   }, [navigate]);
 
+  useEffect(() => {
+    const loadPPDBSettings = async () => {
+      try {
+        const settingsRef = ref(db, 'settings/ppdb');
+        const snapshot = await get(settingsRef);
+        if (snapshot.exists() && isMounted.current) {
+          setPPDBSettings(snapshot.val());
+        }
+      } catch (error) {
+        // Slit silent error for inspect log cleanup
+      }
+    };
+
+    loadPPDBSettings();
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    // Prevent changes if form is submitted
     if (formStatus === 'submitted') return;
 
     const { name, value } = e.target;
     
     if (name === 'jalur') {
-      // Cek apakah ada nilai akademik atau dokumen yang sudah terisi
       const hasAcademicData = Object.entries(formData)
-        .some(([key, value]) => {
-          // Cek nilai akademik
-          if (key.startsWith('nilai') && value !== '') {
-            return true;
-          }
-          // Cek dokumen raport
-          if (key.startsWith('raport') && value) {
-            return true;
-          }
+        .some(([key, val]) => {
+          if (key.startsWith('nilai') && val !== '') return true;
+          if (key.startsWith('raport') && val) return true;
           return false;
         });
 
       if (hasAcademicData) {
-        // Jika ada data, tampilkan konfirmasi
         setNewJalurValue(value);
         setShowChangeJalurModal(true);
-        return; // Jangan update form dulu
+        return;
       } else {
-        // Jika belum ada data, langsung update
-        setFormData(prev => ({
-          ...prev,
-          jalur: value
-        }));
+        setFormData(prev => ({ ...prev, jalur: value }));
       }
       return;
     }
 
     if (name === 'nik') {
-      // Only allow numbers and '-'
       const sanitizedValue = value.replace(/[^0-9-]/g, '');
-      
-      // Check NIK format
       if (sanitizedValue !== '-') {
         if (sanitizedValue.length === 16) {
-          // Check for duplicate NIK when a valid NIK is entered
           checkDuplicateNIK(sanitizedValue, formData.uid, formData.school).then(isDuplicate => {
-            if (isDuplicate) {
-              setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
-              setIsDuplicateNIK(true);
-            } else {
-              setError('');
-              setIsDuplicateNIK(false);
+            if (isMounted.current) {
+              if (isDuplicate) {
+                setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda.');
+                setIsDuplicateNIK(true);
+              } else {
+                setError('');
+                setIsDuplicateNIK(false);
+              }
             }
           });
         } else if (sanitizedValue.length > 16) {
           setError('NIK tidak boleh lebih dari 16 digit');
           setIsDuplicateNIK(true);
-        } else if (sanitizedValue.length < 16 && sanitizedValue.length > 0) {
+        } else {
           setError('NIK harus 16 digit');
           setIsDuplicateNIK(true);
         }
@@ -1075,7 +470,6 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const handleFileChange = async (name: string, file: File | null) => {
-    // Prevent changes if form is submitted
     if (formStatus === 'submitted') return;
 
     if (!file) {
@@ -1084,31 +478,29 @@ const PPDBFormPage: React.FC = () => {
     }
 
     try {
-      // Cek ukuran maksimal (4MB)
-      const maxSize = 4 * 1024 * 1024; // 4MB dalam bytes
+      const maxSize = 4 * 1024 * 1024;
       if (file.size > maxSize) {
         showAlert('error', 'Ukuran file terlalu besar (maksimal 4MB)');
         return;
       }
 
-      // Format nama file: nisn_namasiswa
       const fileName = `${formData.nisn}_${formData.namaSiswa.replace(/\s+/g, '')}`;
       const fileExtension = file.name.split('.').pop();
 
-      let compressedFile: File;
+      let compressed: File;
 
       if (file.type.startsWith('image/')) {
         const alertId = showAlert('info', 'Sedang mengkompresi gambar...', 3000);
         
-        compressedFile = await compressFile(file, 30, {
+        compressed = await compressFile(file, 30, {
           maxWidthOrHeight: 800,
           initialQuality: 0.5,
           maxIteration: 10,
           maxSizeMB: 0.03
         });
         
-        if (compressedFile.size > 50 * 1024) {
-          compressedFile = await compressFile(compressedFile, 30, {
+        if (compressed.size > 50 * 1024) {
+          compressed = await compressFile(compressed, 30, {
             maxWidthOrHeight: 600,
             initialQuality: 0.3,
             maxIteration: 10,
@@ -1116,82 +508,54 @@ const PPDBFormPage: React.FC = () => {
           });
         }
 
-        // Buat file baru dengan nama yang diformat
-        compressedFile = new File(
-          [compressedFile], 
+        compressed = new File(
+          [compressed], 
           `${fileName}.${fileExtension}`,
-          { type: compressedFile.type }
+          { type: compressed.type }
         );
         
-        const originalSize = (file.size / 1024).toFixed(2);
-        const compressedSize = (compressedFile.size / 1024).toFixed(2);
+        const element = document.getElementById(alertId);
+        if (element) element.remove();
         
-        document.getElementById(alertId)?.remove();
-        
-        // Update formData dengan file yang sudah dikompresi
-        setFormData(prev => ({ ...prev, [name]: compressedFile }));
+        setFormData(prev => ({ ...prev, [name]: compressed }));
         
         setTimeout(() => {
-          showAlert(
-            'success',
-            `File berhasil dikompresi dari ${originalSize}KB menjadi ${compressedSize}KB`,
-            3000
-          );
+          showAlert('success', 'File berhasil dikompresi', 3000);
         }, 100);
 
       } else if (file.type === 'application/pdf') {
-        try {
-          // if (file.size > 500 * 1024) {
-          //   showAlert('error', 'Ukuran PDF tidak boleh lebih dari 500KB. Silakan kompres terlebih dahulu menggunakan tools online seperti ilovepdf.com');
-          //   return;
-          // }
-          if (file.size > 2 * 1024 * 1024) {
-            showAlert('error', 'Ukuran PDF tidak boleh lebih dari 2MB. Silakan kompres terlebih dahulu menggunakan tools online seperti ilovepdf.com');
-            return;
-        }
-
-          // Buat file baru dengan nama yang diformat
-          compressedFile = new File(
-            [file], 
-            `${fileName}_${name}.${fileExtension}`,
-            { type: file.type }
-          );
-
-          setFormData(prev => ({ ...prev, [name]: compressedFile }));
-        } catch (error) {
-          showAlert('error', 'Format PDF tidak valid atau rusak');
+        if (file.size > 2 * 1024 * 1024) {
+          showAlert('error', 'Ukuran PDF tidak boleh lebih dari 2MB.');
           return;
         }
+
+        compressed = new File(
+          [file], 
+          `${fileName}_${name}.${fileExtension}`,
+          { type: file.type }
+        );
+
+        setFormData(prev => ({ ...prev, [name]: compressed }));
       } else {
         throw new Error('Format file tidak didukung');
       }
-
     } catch (error) {
-      showAlert('error', error instanceof Error ? error.message : 'Gagal mengkompresi file');
+      showAlert('error', error instanceof Error ? error.message : 'Gagal memproses file');
     }
   };
 
-  // Tambahkan fungsi untuk mengecek apakah tab bisa diakses
   const canAccessTab = (tabIndex: number): boolean => {
-    // Tab pertama selalu bisa diakses
     if (tabIndex === 0) return true;
-
-    // Cek kelengkapan data informasi siswa
     const requiredFields = Object.keys(VALIDATION_CONFIG.FIELD_LABELS);
     const isInfoComplete = requiredFields.every(field => 
       formData[field as keyof FormData] && 
       formData[field as keyof FormData] !== ''
     );
-
     if (!isInfoComplete) return false;
-
-    // Cek jalur untuk tab akademik dan selanjutnya
     if (tabIndex >= 1 && !formData.jalur) return false;
-
     return true;
   };
 
-  // Update fungsi handleTabChange
   const handleTabChange = (index: number) => {
     if (!canAccessTab(index)) {
       const message = !formData.jalur && index >= 1 
@@ -1203,12 +567,10 @@ const PPDBFormPage: React.FC = () => {
     setCurrentStep(index);
   };
 
-  // Update fungsi validateForm
   const validateForm = async () => {
-    // 1. Validasi informasi siswa
     const missingInfoSiswa = VALIDATION_CONFIG.REQUIRED_FIELDS.SISWA.filter(field => {
-      const value = formData[field as keyof FormData];
-      return !value || (value && value.toString().trim() === '');
+      const val = formData[field as keyof FormData];
+      return !val || (val && val.toString().trim() === '');
     });
 
     if (missingInfoSiswa.length > 0) {
@@ -1219,123 +581,73 @@ const PPDBFormPage: React.FC = () => {
       return false;
     }
 
-    // Validasi asalSekolahManual jika memilih "SEKOLAH LAIN"
     if (formData.asalSekolah === 'SEKOLAH LAIN' && (!formData.asalSekolahManual || formData.asalSekolahManual.trim() === '')) {
       setError('Nama Sekolah harus diisi jika memilih "SEKOLAH LAIN"');
       return false;
     }
 
-    // 2. Validasi NIK
     if (formData.nik !== '-' && formData.nik.length !== 16) {
-      setError('NIK harus 16 digit atau isi dengan "-" jika belum ada');
+      setError('NIK harus 16 digit');
       return false;
     }
 
-    // Check duplicate NIK
-    const isDuplicateNIK = await checkDuplicateNIK(formData.nik, formData.uid, formData.school);
-    if (isDuplicateNIK) {
-      setError('NIK sudah terdaftar di sistem. Silakan periksa kembali NIK Anda atau hubungi panitia jika ada kesalahan.');
+    const isDuplicate = await checkDuplicateNIK(formData.nik, formData.uid, formData.school);
+    if (isDuplicate) {
+      setError('NIK sudah terdaftar di sistem.');
       return false;
     }
 
-    // 3. Validasi nilai akademik
-    const semesters = getRequiredSemesters(formData.jalur);
-    const nilaiFields = getNilaiFields(semesters);
-
-    const mapelLabels = {
-      Agama: 'Pendidikan Agama',
-      Bindo: 'Bahasa Indonesia',
-      Bing: 'Bahasa Inggris',
-      Mtk: 'Matematika',
-      Ipa: 'IPA'
-    };
-
-    for (const field of nilaiFields) {
-      const nilaiStr = formData[field as keyof FormData];
-      
-      // Ekstrak informasi mapel dan semester dari nama field
-      const mapel = field.replace(/nilai|[0-9]/g, '');
-      const semester = field.match(/\d+/)?.[0];
-      const mapelLabel = mapelLabels[mapel as keyof typeof mapelLabels];
-
-      if (!nilaiStr) {
-        setError(`Nilai ${mapelLabel} semester ${semester} belum diisi`);
-        setCurrentStep(1);
-        return false;
-      }
-      
-      const validation = validateNilai(nilaiStr as string, formData.jalur, formData.school);
-      if (!validation.isValid) {
-        setError(`${mapelLabel} semester ${semester}: ${validation.error}`);
-        setCurrentStep(1);
-        return false;
+    if (formData.jalur !== 'pjj') {
+      const semesters = getRequiredSemesters(formData.jalur);
+      const nilaiFields = getNilaiFields(semesters);
+      for (const field of nilaiFields) {
+        const val = formData[field as keyof FormData];
+        if (!val) {
+          setError('Nilai akademik belum diisi lengkap');
+          setCurrentStep(1);
+          return false;
+        }
+        const validation = validateNilai(val as string);
+        if (!validation.isValid) {
+          setError(validation.error || 'Nilai tidak valid');
+          setCurrentStep(1);
+          return false;
+        }
       }
     }
 
-    // 4. Validasi informasi orang tua
-    const orangTuaFields = {
-      namaAyah: 'Nama Ayah',
-      pekerjaanAyah: 'Pekerjaan Ayah',
-      instansiAyah: 'Instansi/Unit Kerja Ayah',
-      hpAyah: 'No. HP/WA Ayah',
-      namaIbu: 'Nama Ibu',
-      pekerjaanIbu: 'Pekerjaan Ibu',
-      instansiIbu: 'Instansi/Unit Kerja Ibu',
-      hpIbu: 'No. HP/WA Ibu'
-    };
+    const missingParent = VALIDATION_CONFIG.REQUIRED_FIELDS.ORANG_TUA.filter(field => {
+      const val = formData[field as keyof FormData];
+      return !val || (val && val.toString().trim() === '');
+    });
 
-    const missingFields = [];
-    for (const [key, label] of Object.entries(orangTuaFields)) {
-      const value = formData[key as keyof typeof formData];
-      if (!value || value.toString().trim() === '') {
-        missingFields.push(label);
-      }
-    }
-
-    if (missingFields.length > 0) {
-      setError(`Data yang masih kosong: ${missingFields.join(', ')}`);
+    if (missingParent.length > 0) {
+      setError('Data orang tua belum lengkap');
       return false;
     }
 
-    // Validasi format nomor HP
     const phoneRegex = /^08[0-9]{8,12}$/;
-    if (!phoneRegex.test(formData.hpAyah)) {
-      setError('Nomor HP Ayah tidak valid (harus diawali 08 dan 10-14 digit)');
-      return false;
-    }
-    if (!phoneRegex.test(formData.hpIbu)) {
-      setError('Nomor HP Ibu tidak valid (harus diawali 08 dan 10-14 digit)');
+    if (!phoneRegex.test(formData.hpAyah) || !phoneRegex.test(formData.hpIbu)) {
+      setError('Nomor HP tidak valid (harus diawali 08 dan 10-14 digit)');
       return false;
     }
 
-    // 5. Validasi dokumen
     let requiredFiles: string[] = [];
     if (formData.jalur === 'pjj') {
       requiredFiles = ['photo', 'ijazah', 'kartuKeluarga'];
     } else {
       requiredFiles = ['photo', 'rekomendasi'];
-      semesters.forEach(semester => {
-        requiredFiles.push(`raport${semester}`);
-      });
+      const semesters = getRequiredSemesters(formData.jalur);
+      semesters.forEach(s => requiredFiles.push(`raport${s}`));
     }
 
     const missingDocs = requiredFiles.filter(key => {
-      const fileValue = formData[key as keyof FormData];
-      return !fileValue || (!(fileValue instanceof File) && typeof fileValue !== 'string');
+      const val = formData[key as keyof FormData];
+      return !val || (!(val instanceof File) && typeof val !== 'string');
     });
 
     if (missingDocs.length > 0) {
-      const docLabels = missingDocs.map(key => {
-        switch(key) {
-          case 'photo': return 'Pas Foto';
-          case 'rekomendasi': return formData.jalur === 'prestasi' ? 
-            'Surat Rekomendasi / Sertifikat' : 'Surat Rekomendasi';
-          case 'ijazah': return 'FC Ijazah SMP / MTsN';
-          case 'kartuKeluarga': return 'Kartu Keluarga';
-          default: return `Raport Semester ${key.replace('raport', '')}`;
-        }
-      });
-      setError(`Dokumen yang belum diupload: ${docLabels.join(', ')}`);
+      setError('Dokumen wajib belum diunggah lengkap');
       return false;
     }
 
@@ -1345,47 +657,31 @@ const PPDBFormPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent, isDraft: boolean = false) => {
     e.preventDefault();
+    if (loading) return;
 
-    // If saving as draft, process without confirmation modal
     if (isDraft) {
       await submitForm(isDraft);
       return;
     }
 
-    // For final submission, validate NIK first
     const isValid = await validateForm();
-    if (!isValid) {
-      return;
-    }
-
+    if (!isValid) return;
     setShowConfirmModal(true);
   };
 
-  // Update fungsi submitForm
   const submitForm = async (isDraft: boolean = false) => {
     setError('');
-    setLoading(true);
+    if (isMounted.current) setLoading(true);
 
     try {
-      if (!user) {
-        throw new Error('User tidak ditemukan');
-      }
-
-      // Tentukan path berdasarkan sekolah yang dipilih saat register
+      if (!user) throw new Error('User tidak ditemukan');
       const userRef = ref(db, `ppdb_${formData.school}/${user.uid}`);
-      const userSnapshot = await get(userRef);
-      
-      if (!userSnapshot.exists()) {
-        throw new Error('Data pendaftar tidak ditemukan');
-      }
 
-      // Upload files to Cloudflare R2 dengan path yang sesuai
       const uploadPromises = [];
       const fileUrls: Record<string, string> = {};
 
       for (const [key, file] of Object.entries(formData)) {
         if (file instanceof File) {
-          // Format path: ppdb_{school}/{user.uid}/{key}
           const path = `ppdb_${formData.school}/${user.uid}/${key}`;
           uploadPromises.push(
             uploadToR2({
@@ -1401,25 +697,29 @@ const PPDBFormPage: React.FC = () => {
 
       await Promise.all(uploadPromises);
 
-      // Dapatkan kode kabupaten dari nama kabupaten yang dipilih
       const kabupatenData = KABUPATEN_LIST.find(kab => kab.nama === formData.kabupaten);
       const kabupatenKode = kabupatenData?.kode || '00';
 
-      // Generate nomor pendaftaran dengan kode kabupaten
-      const registrationNumber = await formatRegistrationNumber(formData.school, kabupatenKode);
+      // Atomic generate registration number only on first submission / reset
+      let registrationNumber = formData.registrationNumber || '';
+      if (!isDraft && (!registrationNumber || isReset)) {
+        registrationNumber = await generateAtomicRegistrationNumber(db, formData.school, kabupatenKode);
+      } else if (isDraft && !registrationNumber) {
+        registrationNumber = await generateAtomicRegistrationNumber(db, formData.school, kabupatenKode);
+      }
 
-      // Prepare data untuk disimpan
-      const dataToSave: SavedData = {
-        // Metadata
+      const isPJJ = formData.jalur === 'pjj';
+
+      const dataToSave: any = {
         uid: user.uid,
         email: user.email,
         status: isDraft ? 'draft' : 'submitted',
         lastUpdated: new Date().toISOString(),
         submittedAt: isDraft ? null : new Date().toISOString(),
-        createdAt: new Date().toISOString(), // Tambahkan ini
+        createdAt: formData.createdAt || new Date().toISOString(),
         wasReset: isDraft,
+        isReset: false, // Reset flag cleared on submit/save
 
-        // Data siswa
         jalur: String(formData.jalur || ''),
         namaSiswa: String(formData.namaSiswa || ''),
         nik: String(formData.nik || ''),
@@ -1435,24 +735,6 @@ const PPDBFormPage: React.FC = () => {
         asalSekolah: String(formData.asalSekolah || ''),
         asalSekolahManual: String(formData.asalSekolahManual || ''),
 
-        // Data akademik
-        nilaiAgama2: String(formData.nilaiAgama2 || ''),
-        nilaiAgama3: String(formData.nilaiAgama3 || ''),
-        nilaiAgama4: String(formData.nilaiAgama4 || ''),
-        nilaiBindo2: String(formData.nilaiBindo2 || ''),
-        nilaiBindo3: String(formData.nilaiBindo3 || ''),
-        nilaiBindo4: String(formData.nilaiBindo4 || ''),
-        nilaiBing2: String(formData.nilaiBing2 || ''),
-        nilaiBing3: String(formData.nilaiBing3 || ''),
-        nilaiBing4: String(formData.nilaiBing4 || ''),
-        nilaiMtk2: String(formData.nilaiMtk2 || ''),
-        nilaiMtk3: String(formData.nilaiMtk3 || ''),
-        nilaiMtk4: String(formData.nilaiMtk4 || ''),
-        nilaiIpa2: String(formData.nilaiIpa2 || ''),
-        nilaiIpa3: String(formData.nilaiIpa3 || ''),
-        nilaiIpa4: String(formData.nilaiIpa4 || ''),
-
-        // Data orang tua
         namaAyah: String(formData.namaAyah || ''),
         pekerjaanAyah: String(formData.pekerjaanAyah || ''),
         instansiAyah: String(formData.instansiAyah || ''),
@@ -1462,34 +744,82 @@ const PPDBFormPage: React.FC = () => {
         instansiIbu: String(formData.instansiIbu || ''),
         hpIbu: String(formData.hpIbu || ''),
 
-        // URL files yang sudah diupload
-        ...fileUrls,
-        registrationNumber, // Tambahkan nomor pendaftaran ke data yang disimpan
-        kabupatenKode, // Simpan juga kode kabupaten
+        registrationNumber,
+        kabupatenKode,
+
+        // Handle file references mapping
+        photo: typeof formData.photo === 'string' ? formData.photo : (fileUrls.photo || null)
       };
 
-      // Simpan ke database yang sesuai
+      if (isPJJ) {
+        dataToSave.ijazah = typeof formData.ijazah === 'string' ? formData.ijazah : (fileUrls.ijazah || null);
+        dataToSave.kartuKeluarga = typeof formData.kartuKeluarga === 'string' ? formData.kartuKeluarga : (fileUrls.kartuKeluarga || null);
+        dataToSave.lampiranA = typeof formData.lampiranA === 'string' ? formData.lampiranA : (fileUrls.lampiranA || null);
+        dataToSave.lampiranB = typeof formData.lampiranB === 'string' ? formData.lampiranB : (fileUrls.lampiranB || null);
+        
+        dataToSave.rekomendasi = null;
+        dataToSave.raport2 = null;
+        dataToSave.raport3 = null;
+        dataToSave.raport4 = null;
+        
+        // Also clear grades for PJJ
+        for (let s = 2; s <= 4; s++) {
+          VALIDATION_CONFIG.MAPEL.forEach(m => {
+            dataToSave[`nilai${m}${s}`] = '';
+          });
+        }
+      } else {
+        dataToSave.rekomendasi = typeof formData.rekomendasi === 'string' ? formData.rekomendasi : (fileUrls.rekomendasi || null);
+        
+        const semesters = getRequiredSemesters(formData.jalur);
+        semesters.forEach(s => {
+          const key = `raport${s}`;
+          dataToSave[key] = typeof formData[key as keyof FormData] === 'string' ? formData[key as keyof FormData] : (fileUrls[key] || null);
+        });
+
+        // Set unused semesters to null
+        const allSemesters = ['2', '3', '4'];
+        allSemesters.filter(s => !semesters.includes(s)).forEach(s => {
+          dataToSave[`raport${s}`] = null;
+          // Clear unused semester grades
+          VALIDATION_CONFIG.MAPEL.forEach(m => {
+            dataToSave[`nilai${m}${s}`] = '';
+          });
+        });
+
+        // Copy grades
+        semesters.forEach(s => {
+          VALIDATION_CONFIG.MAPEL.forEach(m => {
+            const key = `nilai${m}${s}`;
+            dataToSave[key] = String(formData[key as keyof FormData] || '');
+          });
+        });
+
+        dataToSave.ijazah = null;
+        dataToSave.kartuKeluarga = null;
+        dataToSave.lampiranA = null;
+        dataToSave.lampiranB = null;
+      }
+
       await update(userRef, dataToSave);
 
-      setFormStatus(isDraft ? 'draft' : 'submitted');
-      setLastUpdated(new Date().toISOString());
-      
-      if (!isDraft) {
+      if (isMounted.current) {
+        setFormStatus(isDraft ? 'draft' : 'submitted');
+        setLastUpdated(new Date().toISOString());
         setIsReset(false);
+        if (isDraft) {
+          showAlert('success', 'Draft berhasil disimpan!', 3000);
+        } else {
+          setShowSuccessModal(true);
+        }
       }
-
-      if (isDraft) {
-        showAlert('success', 'Draft berhasil disimpan!', 3000);
-      } else {
-        setShowSuccessModal(true);
-      }
-
     } catch (err: any) {
-      console.error('Error submitting form:', err);
-      setError(`Gagal menyimpan data: ${err.message}`);
+      if (isMounted.current) setError(`Gagal menyimpan data: ${err.message}`);
     } finally {
-      setLoading(false);
-      setShowConfirmModal(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setShowConfirmModal(false);
+      }
     }
   };
 
@@ -1498,39 +828,26 @@ const PPDBFormPage: React.FC = () => {
       await signOut(auth);
       navigate('/login');
     } catch (error) {
-      console.error('Error logging out:', error);
+      // Silent error
     }
   };
 
   const handleJalurChange = () => {
-    // Reset all academic values
     const resetData: Partial<FormData> = {
       jalur: newJalurValue,
-      nilaiAgama2: '',
-      nilaiAgama3: '',
-      nilaiAgama4: '',
-      nilaiBindo2: '',
-      nilaiBindo3: '',
-      nilaiBindo4: '',
-      nilaiBing2: '',
-      nilaiBing3: '',
-      nilaiBing4: '',
-      nilaiMtk2: '',
-      nilaiMtk3: '',
-      nilaiMtk4: '',
-      nilaiIpa2: '',
-      nilaiIpa3: '',
-      nilaiIpa4: '',
+      nilaiAgama2: '', nilaiAgama3: '', nilaiAgama4: '',
+      nilaiBindo2: '', nilaiBindo3: '', nilaiBindo4: '',
+      nilaiBing2: '', nilaiBing3: '', nilaiBing4: '',
+      nilaiMtk2: '', nilaiMtk3: '', nilaiMtk4: '',
+      nilaiIpa2: '', nilaiIpa3: '', nilaiIpa4: '',
     };
 
-    // If switching to PJJ
     if (newJalurValue === 'pjj') {
       resetData.rekomendasi = undefined;
       resetData.raport2 = undefined;
       resetData.raport3 = undefined;
       resetData.raport4 = undefined;
     } else {
-      // If switching from PJJ to non-PJJ
       if (formData.jalur === 'pjj') {
         resetData.ijazah = undefined;
         resetData.kartuKeluarga = undefined;
@@ -1551,740 +868,31 @@ const PPDBFormPage: React.FC = () => {
       ...resetData
     }));
 
-    showAlert('info', `Jalur berhasil diubah ke ${newJalurValue === 'pjj' ? 'PJJ' : newJalurValue}. Data sebelumnya telah direset.`);
+    showAlert('info', `Jalur berhasil diubah. Data sebelumnya telah direset.`);
     setShowChangeJalurModal(false);
   };
 
-  // Add this CSS class to all inputs when form is submitted
-  const disabledInputClass = formStatus === 'submitted' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '';
-
-  const renderInformasiSiswa = () => {
-    const getAvailableJalur = () => {
-      const options = [
-        { value: '', label: '-- Pilih Jalur --', disabled: true }
-      ];
-
-      if (!ppdbSettings) return options;
-
-      const currentDate = new Date();
-
-      // Helper function to check if date is within range
-      const isDateInRange = (start: string, end: string) => {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        // Set time to start of day for accurate comparison
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        currentDate.setHours(12, 0, 0, 0);
-        return currentDate >= startDate && currentDate <= endDate;
-      };
-
-      // Helper function to check if date hasn't started yet
-      const isDateBeforeStart = (start: string) => {
-        const startDate = new Date(start);
-        startDate.setHours(0, 0, 0, 0);
-        currentDate.setHours(12, 0, 0, 0);
-        return currentDate < startDate;
-      };
-
-      // Add all jalur but mark them as disabled if not active or out of date range
-      const jalurList = [
-        {
-          value: 'prestasi',
-          label: 'Prestasi',
-          settings: ppdbSettings.jalurPrestasi
-        },
-        {
-          value: 'reguler',
-          label: 'Reguler',
-          settings: ppdbSettings.jalurReguler
-        },
-        {
-          value: 'undangan',
-          label: 'Undangan',
-          settings: ppdbSettings.jalurUndangan
-        },
-        {
-          value: 'pjj',
-          label: 'Pendidikan Jarak Jauh',
-          settings: ppdbSettings.jalurPjj
-        }
-      ];
-
-      jalurList.forEach(jalur => {
-        const isAvailable = jalur.settings?.isActive && 
-                           isDateInRange(jalur.settings.start, jalur.settings.end);
-        
-        let label = jalur.label;
-        if (!jalur.settings?.isActive) {
-          label += ' (Tidak Aktif)';
-        } else if (isDateBeforeStart(jalur.settings.start)) {
-          label += ' (Belum Dimulai)';
-        } else if (!isDateInRange(jalur.settings.start, jalur.settings.end)) {
-          label += ' (Sudah Ditutup)';
-        }
-
-        options.push({
-          value: jalur.value,
-          label: label,
-          disabled: !isAvailable
-        });
-      });
-
-      return options;
-    };
-
-    return (
-      <div className="space-y-10">
-        <div>
-          <SectionTitle>Data Pribadi</SectionTitle>
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Select
-                label="Pilih Jalur"
-                name="jalur"
-                value={formData.jalur}
-                onChange={handleInputChange}
-                options={getAvailableJalur()}
-                required
-                className={`bg-white ${disabledInputClass}`}
-                disabled={formStatus === 'submitted' || !!formData.uid}
-              />
-
-              <Input
-                label="Nama Calon Siswa"
-                name="namaSiswa"
-                value={formData.namaSiswa}
-                onChange={handleInputChange}
-                required
-                disabled={formStatus === 'submitted'}
-                className={disabledInputClass}
-              />
-
-              <Input
-                label={<span>NIK <span className="text-gray-500 text-xs">(-) jika tidak ada</span></span>}
-                name="nik"
-                value={formData.nik}
-                onChange={(e) => {
-                  if (formStatus === 'submitted') return;
-                  // Hanya terima input angka dan -
-                  const value = e.target.value.replace(/[^0-9-]/g, '');
-                  setFormData(prev => ({ ...prev, nik: value }));
-                }}
-                onKeyPress={(e) => {
-                  if (formStatus === 'submitted' || !/[0-9-]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                maxLength={16}
-                required
-                className={disabledInputClass}
-                disabled={formStatus === 'submitted'}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Input
-                label="Tempat Lahir"
-                name="tempatLahir"
-                value={formData.tempatLahir}
-                onChange={handleInputChange}
-                required
-                className={disabledInputClass}
-              />
-
-              <DatePicker
-                label="Tanggal Lahir"
-                value={formData.tanggalLahir}
-                onChange={(date) => {
-                  if (formStatus === 'submitted') return; // Prevent changes if submitted
-                  setFormData(prev => ({ ...prev, tanggalLahir: date }));
-                }}
-                required
-                className={disabledInputClass}
-              />
-
-              <Input
-                label={<span>NISN <span className="text-gray-500 text-xs">(-) jika tidak ada</span></span>}
-                name="nisn"
-                value={formData.nisn}
-                onChange={(e) => {
-                  if (formStatus === 'submitted') return;
-                  // Hanya terima input angka dan -
-                  const value = e.target.value.replace(/[^0-9-]/g, '');
-                  setFormData(prev => ({ ...prev, nisn: value }));
-                }}
-                onKeyPress={(e) => {
-                  if (formStatus === 'submitted' || !/[0-9-]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                maxLength={10}
-                required
-                className={disabledInputClass}
-                disabled={formStatus === 'submitted'}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Select
-                label="Jenis Kelamin"
-                name="jenisKelamin"
-                value={formData.jenisKelamin}
-                onChange={handleInputChange}
-                options={[
-                  { value: '', label: '-- Pilih Jenis Kelamin --' },
-                  { value: 'L', label: 'Laki-laki' },
-                  { value: 'P', label: 'Perempuan' }
-                ]}
-                required
-                className={`bg-white ${disabledInputClass}`}
-                disabled={formStatus === 'submitted'}
-              />
-
-              <Input
-                label="Anak Ke"
-                name="anakKe"
-                value={formData.anakKe}
-                onChange={(e) => {
-                  if (formStatus === 'submitted') return; // Prevent changes if submitted
-                  const value = e.target.value.replace(/\D/g, '');
-                  if (Number(value) > 0 || value === '') {
-                    setFormData(prev => ({ ...prev, anakKe: value }));
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                min="1"
-                maxLength={2}
-                required
-                className={disabledInputClass}
-                disabled={formStatus === 'submitted'}
-                type="number" // Explicitly set type
-              />
-
-              <Input
-                label="Jumlah Saudara"
-                name="jumlahSaudara"
-                value={formData.jumlahSaudara}
-                onChange={(e) => {
-                  if (formStatus === 'submitted') return; // Prevent changes if submitted
-                  const value = e.target.value.replace(/\D/g, '');
-                  if (Number(value) >= 0 || value === '') {
-                    setFormData(prev => ({ ...prev, jumlahSaudara: value }));
-                  }
-                }}
-                onKeyPress={(e) => {
-                  if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                min="0"
-                maxLength={2}
-                required
-                className={disabledInputClass}
-                disabled={formStatus === 'submitted'}
-                type="number" // Explicitly set type
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <SectionTitle>Alamat</SectionTitle>
-          <div className="space-y-6">
-            <Input
-              label="Alamat Lengkap"
-              name="alamat"
-              value={formData.alamat}
-              onChange={handleInputChange}
-              required
-              className={disabledInputClass}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Kecamatan"
-                name="kecamatan"
-                value={formData.kecamatan}
-                onChange={handleInputChange}
-                required
-                className={disabledInputClass}
-              />
-
-              <Select
-                label="Kabupaten/Kota"
-                name="kabupaten"
-                value={formData.kabupaten}
-                onChange={handleInputChange}
-                options={[
-                  { value: '', label: '-- Pilih Kabupaten/Kota --', disabled: true },
-                  ...KABUPATEN_LIST.map(kab => ({
-                    value: kab.nama,
-                    label: kab.nama
-                  }))
-                ]}
-                required
-                className={`bg-white ${disabledInputClass}`}
-                disabled={formStatus === 'submitted'}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <SectionTitle>Asal Sekolah</SectionTitle>
-          <SearchableSelect
-            label="Nama Sekolah"
-            name="asalSekolah"
-            value={formData.asalSekolah}
-            onChange={handleInputChange}
-            required
-            className={`bg-white ${disabledInputClass}`}
-            disabled={formStatus === 'submitted'}
-          />
-          {formData.asalSekolah === 'SEKOLAH LAIN' && (
-            <div className="mt-4">
-              <Input
-                label="Nama Sekolah"
-                name="asalSekolahManual"
-                value={formData.asalSekolahManual || ''}
-                onChange={handleInputChange}
-                required
-                className={disabledInputClass}
-                disabled={formStatus === 'submitted'}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderAkademik = () => {
-    const semesters = ['2', '3', '4'];
-    const mapelList = [
-      { label: 'Pendidikan Agama', mobileLabel: 'Pendidikan Agama', key: 'nilaiAgama' },
-      { label: 'Bahasa Indonesia', mobileLabel: 'Bahasa Indonesia', key: 'nilaiBindo' },
-      { label: 'Bahasa Inggris', mobileLabel: 'Bahasa Inggris', key: 'nilaiBing' },
-      { label: 'Matematika', mobileLabel: 'Matematika', key: 'nilaiMtk' },
-      { label: 'IPA', mobileLabel: 'IPA', key: 'nilaiIpa' }
-    ];
-
-    return (
-      <div className="space-y-10">
-
-        <div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {semesters.map((semester) => (
-              <div key={semester} className="space-y-6">
-                <SectionTitle>Semester {semester}</SectionTitle>
-                <div className="space-y-4">
-                  {mapelList.map(({ label, mobileLabel, key }) => {
-                    const fieldName = `${key}${semester}` as keyof typeof formData;
-                    const value = formData[fieldName] as string;
-                    const isInvalid = value && (
-                      isNaN(parseFloat(value)) || 
-                      parseFloat(value) < 0 || 
-                      parseFloat(value) > 100
-                    );
-
-                    return (
-                      <div key={key} className="relative">
-                        <Input
-                          label={label}
-                          mobilelabel={mobileLabel}
-                          name={fieldName}
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={value}
-                          onChange={(e) => {
-                            if (formStatus === 'submitted') return;
-                            handleInputChange(e);
-                          }}
-                          onKeyPress={(e) => {
-                            if (formStatus === 'submitted' || !/[0-9]/.test(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          disabled={formStatus === 'submitted'}
-                          className={`${disabledInputClass} ${isInvalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} 
-                            [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-                          required
-                        />
-                        {isInvalid && (
-                          <div className="absolute right-2 top-[2.5rem] flex items-center">
-                            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-[10px]">!</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderInformasiOrangTua = () => (
-    <div className="space-y-10">
-      <div>
-        <SectionTitle>Data Ayah</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input
-            label="Nama Lengkap Ayah"
-            name="namaAyah"
-            value={formData.namaAyah}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="Pekerjaan Ayah"
-            name="pekerjaanAyah"
-            value={formData.pekerjaanAyah}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="Instansi / Unit Kerja"
-            name="instansiAyah"
-            value={formData.instansiAyah}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="No. HP/WA Ayah (10-14 digit)"
-            name="hpAyah"
-            value={formData.hpAyah}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '');
-              // Pastikan dimulai dengan 08
-              if (value === '0' || value.startsWith('08')) {
-                setFormData(prev => ({ ...prev, hpAyah: value }));
-              } else if (value !== '') {
-                setFormData(prev => ({ ...prev, hpAyah: `08${value}` }));
-              } else {
-                setFormData(prev => ({ ...prev, hpAyah: '' }));
-              }
-            }}
-            pattern="^08[0-9]{8,12}$"
-            minLength={10}
-            maxLength={14}
-            required
-            className={`${disabledInputClass} ${
-              formData.hpAyah && !formData.hpAyah.match(/^08[0-9]{8,12}$/) 
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
-                : ''
-            }`}
-            placeholder="Contoh: 081234567890"
-          />
-        </div>
-      </div>
-
-      <div>
-        <SectionTitle>Data Ibu</SectionTitle>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input
-            label="Nama Lengkap Ibu"
-            name="namaIbu"
-            value={formData.namaIbu}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="Pekerjaan Ibu"
-            name="pekerjaanIbu"
-            value={formData.pekerjaanIbu}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="Instansi / Unit Kerja"
-            name="instansiIbu"
-            value={formData.instansiIbu}
-            onChange={handleInputChange}
-            required
-            disabled={formStatus === 'submitted'}
-            className={disabledInputClass}
-          />
-          <Input
-            label="No. HP/WA Ibu (10-14 digit)"
-            name="hpIbu"
-            value={formData.hpIbu}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '');
-              // Pastikan dimulai dengan 08
-              if (value === '0' || value.startsWith('08')) {
-                setFormData(prev => ({ ...prev, hpIbu: value }));
-              } else if (value !== '') {
-                setFormData(prev => ({ ...prev, hpIbu: `08${value}` }));
-              } else {
-                setFormData(prev => ({ ...prev, hpIbu: '' }));
-              }
-            }}
-            pattern="^08[0-9]{8,12}$"
-            minLength={10}
-            maxLength={14}
-            required
-            className={`${disabledInputClass} ${
-              formData.hpIbu && !formData.hpIbu.match(/^08[0-9]{8,12}$/) 
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
-                : ''
-            }`}
-            placeholder="Contoh: 081234567890"
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderDokumen = () => {
-    const semesters = ['2', '3', '4'];
-
-    // Sisanya tetap sama
-    // Cek setiap field dan tampilkan nilainya untuk debug
-    const fieldsToCheck = {
-      jalur: formData.jalur,
-      namaSiswa: formData.namaSiswa,
-      nik: formData.nik,
-      nisn: formData.nisn,
-      jenisKelamin: formData.jenisKelamin,
-      tempatLahir: formData.tempatLahir,
-      tanggalLahir: formData.tanggalLahir,
-      anakKe: formData.anakKe,
-      jumlahSaudara: formData.jumlahSaudara,
-      alamat: formData.alamat,
-      kecamatan: formData.kecamatan,
-      kabupaten: formData.kabupaten,
-      asalSekolah: formData.asalSekolah
-    };
-
-    // Cek apakah informasi siswa sudah lengkap
-    const isStudentInfoComplete = Object.values(fieldsToCheck).every(value => 
-      value !== undefined && 
-      value !== null && 
-      value !== '' || 
-      (typeof value === 'string' && value.trim() === '-')
-    );
-
-    if (!isStudentInfoComplete) {
-      // Tampilkan field mana yang masih kosong
-      const emptyFields = Object.entries(fieldsToCheck)
-        .filter(([_, value]) => !value && value !== '-')
-        .map(([key]) => key);
-
-      return (
-        <div className="flex flex-col items-center justify-center p-8 bg-yellow-50 rounded-lg border border-yellow-200">
-          <svg 
-            className="w-16 h-16 text-yellow-400 mb-4" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
-            />
-          </svg>
-          <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-            Lengkapi Informasi Siswa Terlebih Dahulu
-          </h3>
-          <p className="text-yellow-600 text-center max-w-md">
-            Untuk mengunggah dokumen, Anda harus melengkapi semua informasi siswa di tab pertama.
-            Silakan kembali ke tab "Informasi Siswa" dan lengkapi semua field yang diperlukan.
-          </p>
-          {emptyFields.length > 0 && (
-            <p className="text-sm text-red-600 mt-2">
-              Field yang masih kosong: {emptyFields.join(', ')}
-            </p>
-          )}
-          <Button
-            onClick={() => setCurrentStep(0)}
-            className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            Kembali ke Informasi Siswa
-          </Button>
-        </div>
-      );
-    }
-
-    if (formData.jalur === 'pjj') {
-      return (
-        <div className="space-y-10">
-          <div>
-            <SectionTitle>Dokumen Persyaratan PJJ</SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FileUpload
-                label="Scan PDF FC Ijazah SMP / MTsN*"
-                name="ijazah"
-                accept=".pdf"
-                onChange={(file) => handleFileChange('ijazah', file)}
-                maxSize={4}
-                required={true}
-                value={formData.ijazah}
-                id="ijazah"
-                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-              />
-
-              <FileUpload
-                label="Scan PDF Kartu Keluarga*"
-                name="kartuKeluarga"
-                accept=".pdf"
-                onChange={(file) => handleFileChange('kartuKeluarga', file)}
-                maxSize={4}
-                required={true}
-                value={formData.kartuKeluarga}
-                id="kartuKeluarga"
-                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-              />
-
-              <FileUpload
-                label="Scan PDF Lampiran A (Opsional)"
-                name="lampiranA"
-                accept=".pdf"
-                onChange={(file) => handleFileChange('lampiranA', file)}
-                maxSize={4}
-                required={false}
-                value={formData.lampiranA}
-                id="lampiranA"
-                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-              />
-
-              <FileUpload
-                label="Scan PDF Lampiran B (Opsional)"
-                name="lampiranB"
-                accept=".pdf"
-                onChange={(file) => handleFileChange('lampiranB', file)}
-                maxSize={4}
-                required={false}
-                value={formData.lampiranB}
-                id="lampiranB"
-                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-              />
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-10">
-        <div>
-          <SectionTitle>Dokumen Persyaratan</SectionTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FileUpload
-              label="Scan PDF Surat Rekomendasi / Sertifikat"
-              name="rekomendasi"
-              accept=".pdf"
-              onChange={(file) => handleFileChange('rekomendasi', file)}
-              maxSize={4}
-              required={true}
-              value={formData.rekomendasi}
-              id="rekomendasi"
-              className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-            />
-
-            {semesters.map((semester) => (
-              <FileUpload
-                key={semester}
-                label={`Scan PDF Raport Semester ${semester}`}
-                name={`raport${semester}`}
-                accept=".pdf"
-                onChange={(file) => handleFileChange(`raport${semester}`, file)}
-                maxSize={4}
-                required={true}
-                value={formData[`raport${semester}` as keyof typeof formData]}
-                id={`raport${semester}`}
-                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const tabs = [
-    { 
-      label: "Siswa",
-      mobileLabel: "Siswa",
-      content: renderInformasiSiswa() 
-    },
-    ...(formData.jalur !== 'pjj' ? [{ 
-      label: "Akademik",
-      mobileLabel: "Akademik",
-      content: renderAkademik() 
-    }] : []),
-    { 
-      label: "Orang Tua",
-      mobileLabel: "Orang Tua",
-      content: renderInformasiOrangTua() 
-    },
-    { 
-      label: "Dokumen",
-      mobileLabel: "Dokumen",
-      content: renderDokumen() 
-    }
-  ];
-
-  // Tambahkan fungsi getRegistrationPeriod di dalam komponen
   const getRegistrationPeriod = () => {
     if (!ppdbSettings || !formData.jalur) {
-      return {
-        start: '-',
-        end: '-',
-        announcement: '-'
-      };
+      return { start: '-', end: '-', announcement: '-' };
     }
 
     const formatDate = (dateStr: string) => {
-      const options: Intl.DateTimeFormatOptions = {
+      return new Date(dateStr).toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
         timeZone: 'Asia/Jakarta'
-      };
-
-      return new Date(dateStr).toLocaleDateString('id-ID', options);
+      });
     };
 
     try {
-      // Ambil periode sesuai jalur yang dipilih
       let selectedJalur;
       switch (formData.jalur) {
-        case 'prestasi':
-          selectedJalur = ppdbSettings.jalurPrestasi;
-          break;
-        case 'reguler':
-          selectedJalur = ppdbSettings.jalurReguler;
-          break;
-        case 'undangan':
-          selectedJalur = ppdbSettings.jalurUndangan;
-          break;
-        case 'pjj':
-          selectedJalur = ppdbSettings.jalurPjj;
-          break;
+        case 'prestasi': selectedJalur = ppdbSettings.jalurPrestasi; break;
+        case 'reguler': selectedJalur = ppdbSettings.jalurReguler; break;
+        case 'undangan': selectedJalur = ppdbSettings.jalurUndangan; break;
+        case 'pjj': selectedJalur = ppdbSettings.jalurPjj; break;
         default:
           return {
             start: '-',
@@ -2294,11 +902,7 @@ const PPDBFormPage: React.FC = () => {
       }
 
       if (!selectedJalur || !selectedJalur.isActive) {
-        return {
-          start: '-',
-          end: '-',
-          announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-'
-        };
+        return { start: '-', end: '-', announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-' };
       }
 
       return {
@@ -2307,229 +911,203 @@ const PPDBFormPage: React.FC = () => {
         announcement: ppdbSettings.announcementDate ? formatDate(ppdbSettings.announcementDate) : '-'
       };
     } catch (error) {
-      console.error('Error in getRegistrationPeriod:', error);
-      return {
-        start: '-',
-        end: '-',
-        announcement: '-'
-      };
+      return { start: '-', end: '-', announcement: '-' };
     }
-  };
-
-  // Tambahkan useEffect untuk memuat pengaturan SPMB
-  useEffect(() => {
-    const loadPPDBSettings = async () => {
-      try {
-        const settingsRef = ref(db, 'settings/ppdb');
-        const snapshot = await get(settingsRef);
-        
-        if (snapshot.exists()) {
-          setPPDBSettings(snapshot.val());
-        }
-      } catch (error) {
-        console.error('Error loading PPDB settings:', error);
-      }
-    };
-
-    loadPPDBSettings();
-  }, []);
-
-  // Tambahkan komponen GuideModal
-  const GuideModal = () => {
-    return (
-      <Modal
-        isOpen={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
-        size="md"
-      >
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Petunjuk Pengisian Formulir
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Mohon perhatikan petunjuk berikut sebelum mengisi formulir
-            </p>
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="font-medium text-blue-800 mb-2">Langkah Pengisian:</p>
-              <ol className="list-decimal ml-4 text-blue-700 space-y-2">
-                <li>Lengkapi data di tab Siswa terlebih dahulu</li>
-                <li>Pilih jalur pendaftaran sesuai dengan periode yang aktif</li>
-                <li>Isi nilai akademik di tab Akademik</li>
-                <li>Lengkapi data orang tua di tab Orang Tua</li>
-                <li>Upload dokumen yang diperlukan di tab Dokumen</li>
-                <li>Ukuran dokumen PDF maksimal 500KB, Pastikan sudah melakukan kompres PDF terlebih dahulu</li>
-              </ol>
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <p className="font-medium text-yellow-800 mb-2">Hal Penting:</p>
-              <ul className="list-disc ml-4 text-yellow-700 space-y-2">
-                <li>Pastikan mengisi data dengan benar</li>
-                <li>Simpan draft secara berkala</li>
-                <li>Periksa kembali sebelum mengirim formulir</li>
-                <li>Formulir yang sudah dikirim tidak dapat diubah</li>
-              </ul>
-            </div>
-
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="font-medium text-green-800 mb-2">Petunjuk Upload Dokumen:</p>
-              <ul className="list-disc ml-4 text-green-700 space-y-2">
-                <li>Kompres foto dan dokumen sebelum upload</li>
-                <li>Ukuran maksimal file Pas Foto: 4MB</li>
-                <li>Format foto: JPG/PNG, Dokumen: PDF</li>
-                <li>Pastikan dokumen yang diupload jelas dan lengkap</li>
-                <li>Gunakan koneksi internet yang stabil</li>
-              </ul>
-            </div>
-
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="font-medium text-purple-800 mb-2">Tips Tambahan:</p>
-              <ul className="list-disc ml-4 text-purple-700 space-y-2">
-                <li>Siapkan semua dokumen sebelum mulai mengisi</li>
-                <li>Isi formulir dengan teliti dan lengkap</li>
-                <li>Jika mengalami kendala teknis, coba refresh halaman</li>
-                <li>Hubungi panitia jika membutuhkan bantuan</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={() => setShowGuideModal(false)}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Saya Mengerti
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
   };
 
   const getAnnouncementDate = () => {
-    console.log('PPDB Settings:', ppdbSettings);
-    console.log('Selected Jalur:', formData.jalur);
-
-    if (!ppdbSettings || !formData.jalur) {
-      return 'Memuat...';
-    }
+    if (!ppdbSettings || !formData.jalur) return 'Memuat...';
 
     const selectedJalur = ppdbSettings[`jalur${formData.jalur.charAt(0).toUpperCase() + formData.jalur.slice(1)}` as keyof typeof ppdbSettings] as JalurPeriod;
-    console.log('Selected Jalur Data:', selectedJalur);
 
     const formatDate = (dateStr?: string) => {
-      const options: Intl.DateTimeFormatOptions = {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
         timeZone: 'Asia/Jakarta'
-      };
-
-      if (!dateStr) return '-';
-      return new Date(dateStr).toLocaleDateString('id-ID', options);
+      });
     };
 
     return formatDate(selectedJalur?.announcementDate);
   };
 
-  // Tambahkan fungsi formatDateTime untuk timestamp
   const formatDateTime = (dateStr: string) => {
-    const options: Intl.DateTimeFormatOptions = {
+    return new Date(dateStr).toLocaleString('id-ID', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'Asia/Jakarta'
-    };
-
-    return new Date(dateStr).toLocaleString('id-ID', options);
+    });
   };
 
-  if (loading) {
+  const disabledInputClass = formStatus === 'submitted' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '';
+
+  const renderSiswaTab = () => (
+    <StudentInfoForm
+      formData={formData}
+      setFormData={setFormData}
+      handleInputChange={handleInputChange}
+      formStatus={formStatus}
+      disabledInputClass={disabledInputClass}
+      ppdbSettings={ppdbSettings}
+      KABUPATEN_LIST={KABUPATEN_LIST}
+      SectionTitle={SectionTitle}
+    />
+  );
+
+  const renderAkademikTab = () => (
+    <AcademicForm
+      formData={formData}
+      handleInputChange={handleInputChange}
+      formStatus={formStatus}
+      disabledInputClass={disabledInputClass}
+      SectionTitle={SectionTitle}
+    />
+  );
+
+  const renderOrangTuaTab = () => (
+    <ParentInfoForm
+      formData={formData}
+      setFormData={setFormData}
+      handleInputChange={handleInputChange}
+      formStatus={formStatus}
+      disabledInputClass={disabledInputClass}
+      SectionTitle={SectionTitle}
+    />
+  );
+
+  const renderDokumenTab = () => (
+    <DocumentUploadForm
+      formData={formData}
+      formStatus={formStatus}
+      disabledInputClass={disabledInputClass}
+      handleFileChange={handleFileChange}
+      getRequiredSemesters={getRequiredSemesters}
+      setCurrentStep={setCurrentStep}
+      SectionTitle={SectionTitle}
+    />
+  );
+
+  const tabs = [
+    { label: "Siswa", mobileLabel: "Siswa", content: renderSiswaTab() },
+    ...(formData.jalur !== 'pjj' ? [{ label: "Akademik", mobileLabel: "Akademik", content: renderAkademikTab() }] : []),
+    { label: "Orang Tua", mobileLabel: "Orang Tua", content: renderOrangTuaTab() },
+    { label: "Dokumen", mobileLabel: "Dokumen", content: renderDokumenTab() }
+  ];
+
+  if (loading && formData.namaSiswa === '') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   return (
-    <Container className="max-w-full md:max-w-6xl px-2 md:px-6">
-      <div className="py-4 md:py-10">
-        <GuideModal />
+    <Container className="max-w-full md:max-w-6xl px-4 md:px-6">
+      <div className="py-6 md:py-10">
+        {/* Guide Modal */}
+        <Modal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} size="md">
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-zinc-950 mb-2">Petunjuk Pengisian Formulir</h3>
+              <p className="text-sm text-zinc-500">Mohon perhatikan petunjuk berikut sebelum mengisi formulir</p>
+            </div>
+
+            <div className="space-y-4 mb-6 text-sm text-zinc-650 max-h-[350px] overflow-y-auto pr-1">
+              <div className="bg-emerald-50/50 border border-emerald-100/50 p-4 rounded-xl">
+                <p className="font-semibold text-emerald-800 mb-2">Langkah Pengisian:</p>
+                <ol className="list-decimal ml-4 text-emerald-800 space-y-1">
+                  <li>Lengkapi data di tab Siswa terlebih dahulu</li>
+                  <li>Pilih jalur pendaftaran sesuai dengan periode yang aktif</li>
+                  <li>Isi nilai akademik di tab Akademik (jika memilih jalur non-PJJ)</li>
+                  <li>Lengkapi data orang tua di tab Orang Tua</li>
+                  <li>Upload berkas di tab Dokumen</li>
+                </ol>
+              </div>
+
+              <div className="bg-amber-50/50 border border-amber-100/50 p-4 rounded-xl">
+                <p className="font-semibold text-amber-800 mb-2">Hal Penting:</p>
+                <ul className="list-disc ml-4 text-amber-800 space-y-1">
+                  <li>Pastikan mengisi data dengan benar</li>
+                  <li>Simpan draft secara berkala</li>
+                  <li>Formulir yang sudah dikirim tidak dapat diubah</li>
+                </ul>
+              </div>
+
+              <div className="bg-zinc-50 border border-zinc-200/60 p-4 rounded-xl">
+                <p className="font-semibold text-zinc-800 mb-2">Petunjuk Upload Dokumen:</p>
+                <ul className="list-disc ml-4 text-zinc-700 space-y-1">
+                  <li>Ukuran maksimal file Pas Foto & PDF: 4MB</li>
+                  <li>Format foto: JPG/PNG, Dokumen: PDF</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setShowGuideModal(false)} className="bg-emerald-800 text-white hover:bg-emerald-900 border-0 rounded-xl px-6 py-2.5 font-semibold">
+                Saya Mengerti
+              </Button>
+            </div>
+          </div>
+        </Modal>
         
-        <Card className="max-w-full md:max-w-4xl mx-auto relative">
-          <div className="p-4 md:p-6">
-            <div className="mb-4 md:mb-6">
-              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                <div className="flex-1 min-w-0 space-y-2">
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
+        <Card className="max-w-full md:max-w-4xl mx-auto relative overflow-hidden border border-zinc-200/80 shadow-lg shadow-zinc-200/20 rounded-2xl">
+          <div className="p-4 md:p-8">
+            <div className="mb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                <div className="flex-1 min-w-0 space-y-3">
+                  <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
                     Formulir Pendaftaran SPMB
                   </h1>
-                  <h2 className="text-base md:text-lg text-gray-600">
+                  <h2 className="text-base text-zinc-500 font-medium">
                     SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}
                   </h2>
 
                   {/* Status badges */}
-                  <div className="flex flex-wrap gap-2 text-sm">
+                  <div className="flex flex-wrap gap-2 text-xs font-semibold">
                     {formData.jalur && (
-                      <div className="bg-blue-100 px-3 py-1 rounded-full">
-                        <span className="text-gray-500">Jalur: </span>
-                        <span className="font-medium text-blue-700">
-                          {formData.jalur === 'prestasi' ? 'Prestasi' :
-                           formData.jalur === 'reguler' ? 'Reguler' :
-                           formData.jalur === 'undangan' ? 'Undangan' :
-                           formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh' : '-'}
-                        </span>
-                      </div>
+                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-3 py-1 rounded-full">
+                        Jalur: {formData.jalur === 'prestasi' ? 'Prestasi' :
+                               formData.jalur === 'reguler' ? 'Reguler' :
+                               formData.jalur === 'undangan' ? 'Undangan' :
+                               formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : '-'}
+                      </span>
                     )}
-                    <div className="bg-gray-100 px-3 py-1 rounded-full">
-                      <span className="text-gray-500">Status: </span>
-                      <span className={`font-medium ${
-                        formStatus === 'submitted' ? 'text-green-600' : 'text-yellow-600'
-                      }`}>
-                        {formStatus === 'submitted' ? 'Terkirim' : 'Draft'}
-                      </span>
-                    </div>
-                    <div className="bg-gray-100 px-3 py-1 rounded-full">
-                      <span className="text-gray-500">Email: </span>
-                      <span className="font-medium text-gray-700">
-                        {user?.email}
-                      </span>
-                    </div>
+                    <span className={`border px-3 py-1 rounded-full ${
+                      formStatus === 'submitted' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      Status: {formStatus === 'submitted' ? 'Terkirim' : 'Draft'}
+                    </span>
+                    <span className="bg-zinc-50 text-zinc-650 border border-zinc-200/60 px-3 py-1 rounded-full">
+                      Email: {user?.email}
+                    </span>
                     {lastUpdated && (
-                      <div className="bg-gray-100 px-3 py-1 rounded-full">
-                        <span className="text-gray-500">Terakhir diperbarui: </span>
-                        <span className="font-medium text-gray-700">
-                          {formatDateTime(lastUpdated)}
-                        </span>
-                      </div>
+                      <span className="bg-zinc-50 text-zinc-650 border border-zinc-200/60 px-3 py-1 rounded-full">
+                        Update: {formatDateTime(lastUpdated)}
+                      </span>
                     )}
                   </div>
                   
-                  {/* Grid untuk info periode - Stack di mobile */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-sm text-zinc-500">
                     <div>
-                      <p className="text-sm text-gray-500">Periode Pendaftaran:</p>
-                      <p className="font-medium text-gray-700">
+                      <p className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Periode Pendaftaran:</p>
+                      <p className="font-medium text-zinc-700">
                         {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Pengumuman:</p>
-                      <p className="font-medium text-gray-700">
+                      <p className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Pengumuman:</p>
+                      <p className="font-medium text-zinc-700">
                         {getAnnouncementDate()}
                       </p>
                     </div>
@@ -2537,7 +1115,7 @@ const PPDBFormPage: React.FC = () => {
                 </div>
 
                 {/* Photo upload section */}
-                <div className="w-full md:w-auto flex justify-center md:justify-end">
+                <div className="w-full md:w-auto flex justify-center md:justify-end shrink-0">
                   <div className="relative group">
                     <input
                       type="file"
@@ -2550,7 +1128,7 @@ const PPDBFormPage: React.FC = () => {
                       htmlFor="photoUpload" 
                       className={`cursor-pointer block ${formStatus === 'submitted' ? 'pointer-events-none opacity-75' : ''}`}
                     >
-                      <div className="w-20 h-28 md:w-32 md:h-40 rounded-lg overflow-hidden relative">
+                      <div className="w-28 h-36 md:w-32 md:h-40 rounded-2xl overflow-hidden relative border border-zinc-200 shadow-sm bg-zinc-50">
                         {formData.photo ? (
                           <img 
                             src={formData.photo instanceof File ? URL.createObjectURL(formData.photo) : formData.photo}
@@ -2563,32 +1141,19 @@ const PPDBFormPage: React.FC = () => {
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-red-300 animate-pulse">
-                            <img 
-                              src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png"
-                              alt="Dummy Profile"
-                              className="w-12 h-12 md:w-20 md:h-20 opacity-50 mb-1 md:mb-2"
-                            />
-                            <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
-                              <span className="text-white text-[10px] md:text-xs">!</span>
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center">
+                            <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-2">
+                              <span className="text-rose-500 font-bold text-sm">!</span>
                             </div>
-                            <div className="text-center px-1 md:px-2">
-                              <p className="text-[10px] md:text-xs text-red-500 font-medium">Pas Foto Wajib</p>
-                              <p className="text-[8px] md:text-[10px] text-gray-500">
-                                Upload foto 3x4 latar biru
-                              </p>
-                            </div>
+                            <p className="text-xs text-rose-600 font-bold">Pas Foto Wajib</p>
+                            <p className="text-[10px] text-zinc-400 mt-1">Latar belakang biru</p>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                          <div className="text-center transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                            <span className="text-white text-xs md:text-sm font-medium block">
-                              {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
-                            </span>
-                            <span className="text-gray-300 text-[10px] md:text-xs">
-                              Klik untuk memilih
-                            </span>
-                          </div>
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center text-center p-2">
+                          <span className="text-white text-xs font-semibold">
+                            {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
+                          </span>
+                          <span className="text-[10px] text-zinc-300 mt-0.5">Klik untuk memilih</span>
                         </div>
                       </div>
                     </label>
@@ -2597,20 +1162,13 @@ const PPDBFormPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Info reset - tampilkan jika isReset true dan status bukan submitted */}
             {isReset && formStatus !== 'submitted' && (
-              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 w-full">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-full flex-shrink-0">
-                    <ArrowPathIcon className="w-5 h-5 text-yellow-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-yellow-800">
-                      Data Anda telah direset oleh admin
-                    </p>
-                    <p className="text-sm text-yellow-700">
-                      Silakan perbarui dan kirim ulang formulir PPDB Anda
-                    </p>
+              <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <ArrowPathIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-amber-800">Formulir Anda telah di-reset oleh admin</p>
+                    <p className="text-sm text-amber-700 mt-0.5">Silakan periksa kembali data Anda, lakukan koreksi, lalu kirim ulang formulir.</p>
                   </div>
                 </div>
               </div>
@@ -2620,119 +1178,69 @@ const PPDBFormPage: React.FC = () => {
               <Alert 
                 type="error" 
                 message={error} 
-                className="my-2"
+                className="mb-6"
                 onClose={() => setError('')}
               />
             )}
 
-            <form onSubmit={(e) => {
-              e.preventDefault();
-            }}>
+            <form onSubmit={(e) => e.preventDefault()}>
               {formStatus === 'submitted' && (
-                <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-full">
-                      <CheckCircleIcon className="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-yellow-800">
-                        Formulir sudah terkirim
-                      </p>
-                      <p className="text-sm text-yellow-600">
-                        Data tidak dapat diubah. Pengumuman hasil seleksi akan diinformasikan pada tanggal {getAnnouncementDate()}
-                      </p>
-                    </div>
-                    <Button
-                      onClick={() => generateRegistrationCard(formData)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                    >
-                      Cetak Kartu
-                    </Button>
+                <div className="mb-6 bg-emerald-50 border border-emerald-100/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold text-emerald-800">Formulir Telah Terkirim</p>
+                    <p className="text-sm text-emerald-700 mt-0.5">Data sudah dikunci. Hasil seleksi diumumkan pada tanggal {getAnnouncementDate()}</p>
                   </div>
+                  <Button
+                    onClick={() => generateRegistrationCard(formData as any, showAlert)}
+                    className="bg-emerald-800 hover:bg-emerald-950 text-white font-semibold border-0 py-2.5 px-5 rounded-xl shadow-md shadow-emerald-800/10 self-start sm:self-center"
+                  >
+                    Unduh Bukti Kartu
+                  </Button>
                 </div>
               )}
 
-              <div className="mt-4 min-h-[400px]">
+              <div className="min-h-[400px]">
                 <Tabs 
                   tabs={tabs} 
                   activeTab={currentStep}
                   onChange={handleTabChange}
-                  className="space-y-4 md:space-y-6"
+                  className="space-y-6"
                 />
               </div>
 
-              <div className="mt-6 pt-4 border-t bg-white">
-                {/* Info box untuk panduan pengiriman formulir */}
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <div className="p-1">
-                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-blue-800 font-medium mb-1">
-                        Petunjuk Pengiriman Formulir:
-                      </p>
-                      <p className="text-sm text-blue-600">
-                        Tombol "Kirim Formulir" akan aktif dan tampil (pada tab Dokumen) setelah anda melengkapi semua data pada:
-                      </p>
-                      <ul className="mt-1 text-sm text-blue-600 list-disc list-inside">
-                        <li>Tab Siswa (informasi pribadi)</li>
-                        <li>Tab Akademik (nilai rapor)</li>
-                        <li>Tab Orang Tua (data ayah & ibu)</li>
-                        <li>Tab Dokumen (upload berkas)</li>
-                      </ul>
-                    </div>
-                  </div>
+              <div className="mt-8 pt-6 border-t border-zinc-150">
+                {/* Petunjuk Kirim */}
+                <div className="mb-6 p-4 bg-zinc-50 border border-zinc-200/50 rounded-xl">
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Petunjuk Pengiriman Formulir:</p>
+                  <p className="text-xs text-zinc-500 leading-relaxed">
+                    Tombol "Kirim Formulir" akan aktif pada tab **Dokumen** setelah Anda melengkapi seluruh data di tab Siswa, Akademik (jika berlaku), Orang Tua, serta mengunggah berkas wajib.
+                  </p>
                 </div>
 
-                {/* Tombol-tombol aksi */}
-                <div className="flex flex-row gap-2">
+                <div className="flex flex-row gap-3">
                   <Button
                     onClick={() => setShowLogoutModal(true)}
                     type="button"
-                    className="bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
+                    className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
-                      />
-                    </svg>
-                    <span className="hidden md:inline">Keluar</span>
-                    <span className="inline md:hidden">Exit</span>
+                    Keluar
                   </Button>
 
                   {formStatus !== 'submitted' && (
                     <Button
                       type="button"
                       onClick={(e) => handleSubmit(e, true)}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
+                      className="bg-amber-600 hover:bg-amber-700 text-white border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2"
                       disabled={loading}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                      </svg>
-                      {loading ? (
-                        <>
-                          <span className="hidden md:inline">Menyimpan...</span>
-                          <span className="inline md:hidden">Menyimpan...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="hidden md:inline">Simpan Draft</span>
-                          <span className="inline md:hidden">Draft</span>
-                        </>
-                      )}
+                      {loading ? 'Menyimpan...' : 'Simpan Draft'}
                     </Button>
                   )}
 
                   {currentStep === tabs.length - 1 && formStatus !== 'submitted' && (
                     <Button
                       type="button"
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 text-sm md:text-base px-3 md:px-4 flex-1"
+                      className="bg-emerald-800 hover:bg-emerald-900 text-white border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2 shadow-md shadow-emerald-800/10"
                       disabled={loading || !canAccessTab(currentStep) || isDuplicateNIK}
                       onClick={async () => {
                         if (!isJalurPeriodOpen(formData.jalur, ppdbSettings)) {
@@ -2741,27 +1249,11 @@ const PPDBFormPage: React.FC = () => {
                         }
 
                         const isValid = await validateForm();
-                        if (!isValid) {
-                          return;
-                        }
+                        if (!isValid) return;
                         setShowConfirmModal(true);
                       }}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                          d="M5 13l4 4L19 7" />
-                      </svg>
-                      {loading ? (
-                        <>
-                          <span className="hidden md:inline">Mengirim...</span>
-                          <span className="inline md:hidden">Mengirim...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="hidden md:inline">Kirim Formulir</span>
-                          <span className="inline md:hidden">Kirim</span>
-                        </>
-                      )}
+                      {loading ? 'Mengirim...' : 'Kirim Formulir'}
                     </Button>
                   )}
                 </div>
@@ -2771,28 +1263,22 @@ const PPDBFormPage: React.FC = () => {
         </Card>
 
         {/* Modal Konfirmasi */}
-        <Modal 
-          isOpen={showConfirmModal} 
-          onClose={() => setShowConfirmModal(false)}
-        >
+        <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)}>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Konfirmasi Pengiriman
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin mengirim formulir pendaftaran ini? 
-              Pastikan semua data yang diisi sudah benar!
+            <h3 className="text-lg font-bold text-zinc-900 mb-2">Konfirmasi Pengiriman</h3>
+            <p className="text-sm text-zinc-500 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin mengirim formulir pendaftaran ini? Setelah dikirim, data Anda akan dikunci dan tidak dapat diubah kembali.
             </p>
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end gap-3 pt-2">
               <Button
                 onClick={() => setShowConfirmModal(false)}
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 rounded-xl px-5 py-2.5 font-semibold"
               >
                 Batal
               </Button>
               <Button
                 onClick={() => submitForm(false)}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className="bg-emerald-800 text-white hover:bg-emerald-900 border-0 rounded-xl px-5 py-2.5 font-semibold shadow-md shadow-emerald-800/10"
                 disabled={loading}
               >
                 {loading ? 'Mengirim...' : 'Ya, Kirim'}
@@ -2802,35 +1288,25 @@ const PPDBFormPage: React.FC = () => {
         </Modal>
 
         {/* Modal Sukses */}
-        <Modal 
-          isOpen={showSuccessModal} 
-          onClose={() => setShowSuccessModal(false)}
-        >
+        <Modal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)}>
           <div className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircleIcon className="w-10 h-10 text-green-500" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+              <CheckCircleIcon className="w-10 h-10 text-emerald-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Formulir Berhasil Dikirim!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Terima kasih telah mendaftar di SMAN Modal Bangsa.
-              Pengumuman hasil seleksi akan diinformasikan pada tanggal {getAnnouncementDate()}.
+            <h3 className="text-lg font-bold text-zinc-900 mb-2">Formulir Berhasil Dikirim!</h3>
+            <p className="text-sm text-zinc-500 mb-6 leading-relaxed">
+              Terima kasih telah mendaftar di SMAN Modal Bangsa. Bukti pendaftaran telah tersimpan di sistem.
             </p>
-            <div className="flex flex-col md:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button
-                onClick={() => generateRegistrationCard(formData)}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center justify-center gap-2"
+                onClick={() => generateRegistrationCard(formData as any, showAlert)}
+                className="bg-emerald-800 hover:bg-emerald-900 text-white border-0 py-2.5 px-5 rounded-xl font-semibold shadow-md shadow-emerald-800/10 flex items-center justify-center gap-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Cetak Bukti Pendaftaran
+                Unduh Kartu Pendaftaran
               </Button>
               <Button
                 onClick={() => setShowSuccessModal(false)}
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 rounded-xl py-2.5 px-5 font-semibold"
               >
                 Tutup
               </Button>
@@ -2838,40 +1314,31 @@ const PPDBFormPage: React.FC = () => {
           </div>
         </Modal>
 
-        {/* Tambahkan Modal Konfirmasi Logout */}
-        <Modal 
-          isOpen={showLogoutModal} 
-          onClose={() => setShowLogoutModal(false)}
-        >
+        {/* Modal Konfirmasi Logout */}
+        <Modal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)}>
           <div className="p-6">
             <div className="text-center mb-6">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
-                  />
+              <div className="mx-auto w-12 h-12 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Konfirmasi Keluar
-              </h3>
-              <p className="text-sm text-gray-600">
-                Apakah Anda yakin ingin keluar dari sistem?
-              </p>
+              <h3 className="text-lg font-bold text-zinc-900 mb-2">Konfirmasi Keluar</h3>
+              <p className="text-sm text-zinc-500">Apakah Anda yakin ingin keluar dari sistem?</p>
             </div>
 
             <div className="flex gap-3">
               <Button
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="flex-1 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 rounded-xl py-2.5 font-semibold"
               >
                 Batal
               </Button>
               <Button
                 onClick={handleLogout}
-                className="flex-1 bg-red-600 text-white hover:bg-red-700"
+                className="flex-1 bg-rose-600 text-white hover:bg-rose-700 border-0 rounded-xl py-2.5 font-semibold"
               >
-                Ya, Keluar
+                Keluar
               </Button>
             </div>
           </div>
@@ -2882,40 +1349,33 @@ const PPDBFormPage: React.FC = () => {
           isOpen={showChangeJalurModal}
           onClose={() => {
             setShowChangeJalurModal(false);
-            // Reset pilihan jalur ke nilai sebelumnya
             setFormData(prev => ({ ...prev, jalur: prev.jalur }));
           }}
         >
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Konfirmasi Perubahan Jalur
-            </h3>
-            <p className="text-gray-600 mb-2">
+            <h3 className="text-lg font-bold text-zinc-900 mb-2">Konfirmasi Ganti Jalur</h3>
+            <p className="text-sm text-zinc-500 mb-3 leading-relaxed">
               Mengubah jalur pendaftaran akan mereset:
             </p>
-            <ul className="list-disc ml-6 mb-6 text-gray-600">
-              <li>Semua nilai akademik</li>
-              <li>Dokumen raport sesuai semester yang diperlukan</li>
+            <ul className="list-disc ml-5 mb-6 text-sm text-zinc-650 space-y-1">
+              <li>Semua nilai akademik yang sudah diisi</li>
+              <li>Dokumen raport yang sudah diunggah</li>
             </ul>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin melanjutkan?
-            </p>
-            <div className="flex justify-end gap-3">
+            <div className="flex gap-3 justify-end">
               <Button
                 onClick={() => {
                   setShowChangeJalurModal(false);
-                  // Reset pilihan jalur ke nilai sebelumnya
                   setFormData(prev => ({ ...prev, jalur: prev.jalur }));
                 }}
-                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 rounded-xl px-5 py-2.5 font-semibold"
               >
                 Batal
               </Button>
               <Button
                 onClick={handleJalurChange}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className="bg-rose-650 text-white hover:bg-rose-700 border-0 rounded-xl px-5 py-2.5 font-semibold"
               >
-                Ya, Ubah Jalur
+                Ya, Ganti Jalur
               </Button>
             </div>
           </div>
@@ -2925,4 +1385,4 @@ const PPDBFormPage: React.FC = () => {
   );
 };
 
-export default PPDBFormPage; 
+export default PPDBFormPage;

@@ -12,17 +12,16 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   XMarkIcon,
-  AcademicCapIcon,
   TrashIcon,
   ChevronDownIcon,
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
-import Tabs from '../ui/Tabs';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import classNames from 'classnames';
 import Pagination from '../ui/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
+import StudentDetailModal from './StudentDetailModal';
 
 // Di bagian atas file, tambahkan type untuk school
 type School = 'mosa' | 'fajar';
@@ -243,7 +242,6 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [jalurFilter, setJalurFilter] = useState<'all' | 'prestasi' | 'reguler' | 'undangan' | 'pjj'>('all');
-  const [activeTab, setActiveTab] = useState(0);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [modalLoading, setModalLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -333,10 +331,7 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
           setPendaftar([]);
         }
       }
-
-      console.log('Loaded Draft Data:', pendaftar);
     } catch (error) {
-      console.error('Error loading data:', error);
       showAlert('error', 'Gagal memuat data draft');
     }
   };
@@ -546,243 +541,7 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
     }
   };
 
-  const renderDetailAkademik = (data: PPDBData) => {
-    const semesters = ['2', '3', '4'];
-    const mapelList = [
-      { label: 'Agama', key: 'nilaiAgama' },
-      { label: 'B.Indo', key: 'nilaiBindo' },
-      { label: 'B.Ing', key: 'nilaiBing' },
-      { label: 'MTK', key: 'nilaiMtk' },
-      { label: 'IPA', key: 'nilaiIpa' }
-    ];
 
-    // Helper function to safely get numeric value
-    const getSafeNumericValue = (value: any) => {
-      if (!value || value === '' || value === null || value === undefined) {
-        return 0;
-      }
-      const numValue = Number(value);
-      return isNaN(numValue) ? 0 : numValue;
-    };
-
-    return (
-      <div className="bg-white shadow-sm border rounded-xl p-5 h-[300px]">
-        <table className="w-full mb-4">
-          <thead>
-            <tr>
-              <th className="text-left text-sm font-medium text-gray-500 pb-4">Mapel</th>
-              {semesters.map(semester => (
-                <th key={semester} className="text-center text-sm font-medium text-gray-500 pb-4">Sem {semester}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {mapelList.map(({ label, key }) => (
-              <tr key={key} className="border-t">
-                <td className="py-3 text-sm font-medium text-gray-600">{label}</td>
-                {semesters.map(semester => {
-                  const fieldKey = `${key}${semester}` as keyof PPDBData;
-                  const rawValue = data[fieldKey];
-                  const nilai = getSafeNumericValue(rawValue);
-                  return (
-                    <td key={semester} className="text-center">
-                      <span className={classNames(
-                        'inline-block px-3 py-1 rounded-full text-sm font-medium',
-                        nilai >= 85 ? 'bg-green-100 text-green-700' :
-                        nilai > 0 ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-500'
-                      )}>
-                        {nilai > 0 ? nilai : '-'}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  const renderDetailDokumen = (data: PPDBData) => {
-    const semesters = ['2', '3', '4'];
-
-    if (data.jalur === 'pjj') {
-      return (
-        <div className={classNames(
-          "bg-white shadow-sm border rounded-xl p-5",
-          isMobile() ? 'h-auto' : 'h-[300px]'
-        )}>
-          <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-6 h-full'}`}>
-            {/* Kolom 1: Dokumen Wajib PJJ */}
-            <div className="flex flex-col h-full">
-              <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Wajib</h4>
-              <div className="space-y-3 flex-1">
-                {data.photo && (
-                  <a
-                    href={data.photo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                  >
-                    <div className="p-1.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                      <DocumentArrowDownIcon className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <span className="text-xs sm:text-sm">Pas Foto</span>
-                  </a>
-                )}
-                {data.ijazah && (
-                  <a
-                    href={data.ijazah}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                  >
-                    <div className="p-1.5 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                      <DocumentArrowDownIcon className="w-4 h-4 text-green-600" />
-                    </div>
-                    <span className="text-xs sm:text-sm">FC Ijazah SMP / MTsN</span>
-                  </a>
-                )}
-                {data.kartuKeluarga && (
-                  <a
-                    href={data.kartuKeluarga}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                  >
-                    <div className="p-1.5 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
-                      <DocumentArrowDownIcon className="w-4 h-4 text-yellow-600" />
-                    </div>
-                    <span className="text-xs sm:text-sm">Kartu Keluarga</span>
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* Kolom 2: Dokumen Pendukung PJJ */}
-            <div className={`${isMobile() ? 'mt-4' : ''} flex flex-col h-full`}>
-              <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Pendukung</h4>
-              <div className={`${isMobile() ? 'grid grid-cols-2 gap-3' : 'space-y-3'} flex-1`}>
-                {data.lampiranA && (
-                  <a
-                    href={data.lampiranA}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                  >
-                    <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
-                      <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <span className="text-xs sm:text-sm">Lampiran A</span>
-                  </a>
-                )}
-                {data.lampiranB && (
-                  <a
-                    href={data.lampiranB}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                  >
-                    <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
-                      <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
-                    </div>
-                    <span className="text-xs sm:text-sm">Lampiran B</span>
-                  </a>
-                )}
-                {!data.lampiranA && !data.lampiranB && (
-                  <span className="text-xs text-gray-500 italic">Tidak ada lampiran pendukung</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className={classNames(
-        "bg-white shadow-sm border rounded-xl p-5",
-        isMobile() ? 'h-auto' : 'h-[300px]'
-      )}>
-        <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-6 h-full'}`}>
-          {/* Kolom 1: Dokumen Wajib */}
-          <div className="flex flex-col h-full">
-            <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Wajib</h4>
-            <div className="space-y-3 flex-1">
-              {data.photo && (
-                <a
-                  href={data.photo}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                >
-                  <div className="p-1.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                    <DocumentArrowDownIcon className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm">Pas Foto</span>
-                </a>
-              )}
-              {data.rekomendasi && (
-                <a
-                  href={data.rekomendasi}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                >
-                  <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
-                    <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm">Rekom / Prestasi</span>
-                </a>
-              )}
-              {data.jalur === 'prestasi' && data.sertifikat && (
-                <a
-                  href={data.sertifikat}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                >
-                  <div className="p-1.5 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
-                    <DocumentArrowDownIcon className="w-4 h-4 text-yellow-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm">Sertifikat Prestasi</span>
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Kolom 2: Dokumen Raport */}
-          <div className={`${isMobile() ? 'mt-4' : ''} flex flex-col h-full`}>
-            <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Raport</h4>
-            <div className={`${isMobile() ? 'grid grid-cols-2 gap-3' : 'space-y-3'} flex-1`}>
-              {semesters.map((semester) => {
-                const raportKey = `raport${semester}` as keyof PPDBData;
-                if (data[raportKey]) {
-                  return (
-                    <a
-                      key={semester}
-                      href={data[raportKey] as string}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
-                    >
-                      <div className="p-1.5 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                        <DocumentArrowDownIcon className="w-4 h-4 text-green-600" />
-                      </div>
-                      <span className="text-xs sm:text-sm">Raport Sem {semester}</span>
-                    </a>
-                  );
-                }
-                return null;
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   // Fungsi untuk mendapatkan data yang sudah dipaginasi
   const getPaginatedData = () => {
@@ -808,10 +567,6 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
     return Math.ceil(getFilteredData().length / itemsPerPage);
   };
 
-  // Tambahkan helper function untuk deteksi mobile
-  const isMobile = () => {
-    return window.innerWidth <= 640; // Menggunakan breakpoint sm
-  };
 
   // Helper function to extract file key from R2 URL
   const extractFileKeyFromUrl = (url: string): string | null => {
@@ -847,21 +602,16 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
 
       // Delete files from Cloudflare R2 first
       if (filesToDelete.length > 0) {
-        console.log('Starting file deletion process...');
-        console.log('Files to delete from R2:', filesToDelete);
         
         // Test R2 connection first
-        console.log('Testing R2 connection...');
         const connectionTest = await testR2Connection();
-        console.log('R2 connection test result:', connectionTest);
         
         if (!connectionTest.success) {
           console.warn('R2 connection test failed, but continuing with deletion attempt:', connectionTest.message);
         }
         
-        const deletePromises = filesToDelete.map(async (fileUrl, index) => {
+        const deletePromises = filesToDelete.map(async (fileUrl) => {
           try {
-            console.log(`Processing file ${index + 1}/${filesToDelete.length}:`, fileUrl);
             
             const fileKey = extractFileKeyFromUrl(fileUrl);
             if (!fileKey) {
@@ -869,9 +619,7 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
               return { success: false, fileUrl, error: 'Could not extract file key' };
             }
             
-            console.log('Attempting to delete from R2 with key:', fileKey);
             await deleteFromR2(fileKey);
-            console.log('✅ Successfully deleted file from R2:', fileKey);
             
             return { success: true, fileUrl, fileKey };
           } catch (error) {
@@ -888,7 +636,7 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
         const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
         const failed = results.length - successful;
         
-        console.log(`File deletion summary: ${successful} successful, ${failed} failed`);
+
         
         if (failed > 0) {
           console.warn('Some files could not be deleted from R2 storage, but database cleanup will continue.');
@@ -1305,269 +1053,11 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
         )}
       </div>
 
-      {/* Modal Detail - Sama seperti DataPendaftar */}
-      <Modal
+      <StudentDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
-        size={isMobile() ? "full" : "xl"}
-        className="z-[60]"
-      >
-        <div className={`${isMobile() ? 'p-3' : 'p-6'} w-full min-h-[600px]`}>
-          {/* Header Modal */}
-          <div className={`flex flex-col ${isMobile() ? 'gap-2' : 'justify-between items-start'} mb-4 pb-3 border-b`}>
-            <div className="w-full">
-              <div className={`flex ${isMobile() ? 'items-center' : 'items-center justify-between'}`}>
-                <div className="flex items-center gap-2">
-                  <h3 className={`${isMobile() ? 'text-base' : 'text-xl'} font-bold text-gray-900`}>
-                    {selectedData?.namaSiswa || 'Draft Kosong'}
-                  </h3>
-                  {/* Status badge */}
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                    Draft
-                  </span>
-                </div>
-                
-                {/* Tombol tutup hanya tampil di desktop */}
-                {!isMobile() && (
-                  <Button
-                    onClick={() => setShowDetailModal(false)}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 text-sm"
-                  >
-                    Tutup
-                  </Button>
-                )}
-              </div>
-              
-              <div className={`mt-1.5 flex ${isMobile() ? 'flex-col gap-1' : 'items-center gap-4'} text-xs text-gray-600`}>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium">NISN:</span>
-                  <span>{selectedData?.nisn || '-'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Email:</span>
-                  <span>{selectedData?.email || '-'}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Jalur:</span>
-                  <span className={classNames(
-                    'px-2 py-1 rounded-full text-xs font-medium',
-                    selectedData?.jalur === 'prestasi' 
-                      ? 'bg-blue-100 text-blue-800'
-                      : selectedData?.jalur === 'reguler'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-purple-100 text-purple-800'
-                  )}>
-                    {getJalurLabel(selectedData?.jalur || 'reguler')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium">Tanggal Buat:</span>
-                  <span>
-                    {formatDateTime(selectedData?.createdAt)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Tombol tutup untuk mobile di bagian bawah */}
-            {isMobile() && (
-              <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t z-10">
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setShowDetailModal(false)}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 text-sm"
-                  >
-                    Tutup
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Content */}
-          {selectedData && (
-            <div className={`
-              ${isMobile() ? 'h-[calc(100vh-160px)] pb-16' : 'h-[calc(100vh-280px)]'} 
-              overflow-y-auto hide-scrollbar
-            `}>
-              <Tabs
-                tabs={[
-                  {
-                    label: "Biodata",
-                    content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} space-y-4 min-h-[400px]`}>
-                        {/* Foto dan Info Utama */}
-                        <div className={`flex ${isMobile() ? 'flex-col' : 'gap-6'}`}>
-                          {/* Pas Foto */}
-                          <div className={`${isMobile() ? 'mb-3 flex justify-center' : 'w-32 flex-shrink-0'}`}>
-                            {selectedData?.photo ? (
-                              <div className="relative group">
-                                <div 
-                                  className={`${isMobile() ? 'w-24 h-32' : 'w-32 h-40'} rounded-lg overflow-hidden border border-gray-200 cursor-pointer`}
-                                  onClick={() => setShowPhotoModal(true)}
-                                >
-                                  <img 
-                                    src={selectedData.photo}
-                                    alt="Pas Foto"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-32 h-40 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                                <p className="text-sm text-gray-500 text-center px-2">
-                                  Foto belum diupload
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Info Utama */}
-                          <div className="flex-1">
-                            <div className="bg-gray-50 p-4 rounded-lg h-40">
-                              <div className={`grid ${isMobile() ? 'grid-cols-1 gap-3' : 'grid-cols-2 gap-x-8 gap-y-4'}`}>
-                                <InfoItem label="NIK" value={selectedData?.nik} />
-                                <InfoItem label="Jenis Kelamin" value={selectedData?.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan'} />
-                                <InfoItem 
-                                  label="Tempat, Tanggal Lahir" 
-                                  value={`${selectedData?.tempatLahir || '-'}, ${selectedData?.tanggalLahir ? new Date(selectedData.tanggalLahir).toLocaleDateString('id-ID') : '-'}`}
-                                />
-                                <InfoItem label="Anak ke / Jumlah Saudara" value={`${selectedData?.anakKe || '-'} dari ${selectedData?.jumlahSaudara || '-'}`} />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Alamat & Sekolah sections */}
-                        <div className={`bg-gray-50 ${isMobile() ? 'p-2.5 rounded-md' : 'p-4 rounded-lg'}`}>
-                          <h4 className={`font-medium text-gray-900 ${isMobile() ? 'mb-2 text-sm' : 'mb-3'}`}>Alamat</h4>
-                          <div className="space-y-2">
-                            <InfoItem label="Alamat Lengkap" value={selectedData?.alamat} />
-                            <div className={`grid ${isMobile() ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-4'}`}>
-                              <InfoItem label="Kecamatan" value={selectedData?.kecamatan} />
-                              <InfoItem label="Kabupaten" value={selectedData?.kabupaten} />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`bg-gray-50 ${isMobile() ? 'p-2.5 rounded-md' : 'p-4 rounded-lg'}`}>
-                          <h4 className={`font-medium text-gray-900 ${isMobile() ? 'mb-2 text-sm' : 'mb-3'}`}>Asal Sekolah</h4>
-                          <div>
-                            <InfoItem label="Nama Sekolah" value={selectedData?.asalSekolah === 'SEKOLAH LAIN' ? (selectedData.asalSekolahManual ? `${selectedData.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : selectedData?.asalSekolah} />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  },
-                  {
-                    label: selectedData?.jalur === 'pjj' ? "Dokumen PJJ" : "Akademik",
-                    content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
-                        {selectedData?.jalur === 'pjj' ? (
-                          <div>
-                            <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200 mb-4">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-green-500 rounded-lg">
-                                  <DocumentArrowDownIcon className="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900">Dokumen PJJ</h4>
-                                  <p className="text-sm text-green-700">
-                                    Klik untuk mengunduh dokumen pendaftaran Pendidikan Jarak Jauh
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            {renderDetailDokumen(selectedData)}
-                          </div>
-                        ) : (
-                          <div className={`grid grid-cols-1 ${!isMobile() && 'lg:grid-cols-2'} gap-4`}>
-                            {/* Nilai Akademik */}
-                            <div>
-                              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 mb-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="p-2 bg-blue-500 rounded-lg">
-                                    <AcademicCapIcon className="w-5 h-5 text-white" />
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold text-gray-900">Nilai Akademik</h4>
-                                    <p className="text-sm text-blue-700">
-                                      Semester 2-4 ({getJalurLabel(selectedData?.jalur || 'reguler')})
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {renderDetailAkademik(selectedData)}
-                            </div>
-
-                            {/* Dokumen */}
-                            <div className={isMobile() ? 'mt-4' : ''}>
-                              <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200 mb-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="p-2 bg-green-500 rounded-lg">
-                                    <DocumentArrowDownIcon className="w-5 h-5 text-white" />
-                                  </div>
-                                  <div>
-                                    <h4 className="font-semibold text-gray-900">Dokumen</h4>
-                                    <p className="text-sm text-green-700">
-                                      Klik untuk mengunduh dokumen
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {renderDetailDokumen(selectedData)}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  },
-                  {
-                    label: "Orang Tua",
-                    content: (
-                      <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
-                        <div className={`grid ${isMobile() ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
-                          {[
-                            { title: 'Data Ayah', prefix: 'Ayah' },
-                            { title: 'Data Ibu', prefix: 'Ibu' }
-                          ].map(({ title, prefix }) => (
-                            <div key={title} className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="font-medium text-gray-900 mb-3">{title}</h4>
-                              <div className="space-y-3">
-                                <InfoItem 
-                                  label="Nama Lengkap" 
-                                  value={selectedData?.[`nama${prefix}` as keyof PPDBData] as string} 
-                                />
-                                <InfoItem 
-                                  label="Pekerjaan" 
-                                  value={selectedData?.[`pekerjaan${prefix}` as keyof PPDBData] as string} 
-                                />
-                                <InfoItem 
-                                  label="Instansi" 
-                                  value={selectedData?.[`instansi${prefix}` as keyof PPDBData] as string} 
-                                />
-                                <InfoItem 
-                                  label="No. HP/WA" 
-                                  value={selectedData?.[`hp${prefix}` as keyof PPDBData] as string} 
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  }
-                ]}
-                activeTab={activeTab}
-                onChange={setActiveTab}
-                className={isMobile() ? "flex-nowrap overflow-x-auto whitespace-nowrap hide-scrollbar" : ""}
-              />
-            </div>
-          )}
-        </div>
-      </Modal>
+        selectedData={selectedData as any}
+      />
 
       {/* Modal untuk menampilkan foto besar */}
       <Modal
@@ -1675,12 +1165,7 @@ const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
   );
 };
 
-const InfoItem: React.FC<{ label: string; value?: string }> = ({ label, value }) => (
-  <div>
-    <p className="text-xs sm:text-sm text-gray-500 mb-0.5">{label}</p>
-    <p className="text-sm sm:text-base font-medium text-gray-900">{value || '-'}</p>
-  </div>
-);
+
 
 
 export default DataDraft;

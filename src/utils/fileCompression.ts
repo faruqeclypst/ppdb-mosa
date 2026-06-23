@@ -48,11 +48,6 @@ export const compressFile = async (
         compressedFile = await imageCompression(compressedFile, compressionOptions);
       }
 
-      console.log('Image Kompresi berhasil:', {
-        originalSize: `${(file.size / 1024).toFixed(2)}KB`,
-        targetSize: `${targetSizeKB}KB`,
-        compressedSize: `${(compressedFile.size / 1024).toFixed(2)}KB`,
-      });
 
       return compressedFile;
     } catch (error) {

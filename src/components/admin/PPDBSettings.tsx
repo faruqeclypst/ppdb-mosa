@@ -453,8 +453,6 @@ const PPDBSettings: React.FC = () => {
         }
       }
 
-      console.log('Total files to delete from R2:', filesToDelete.length);
-
       // 4. Hapus file dari R2
       if (filesToDelete.length > 0) {
         const batchSize = 10;
