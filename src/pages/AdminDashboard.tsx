@@ -30,8 +30,10 @@ const AdminDashboard: React.FC = () => {
 
   const menuItems = [
     { path: '/admin', icon: HomeIcon, label: 'Home' },
-    { path: '/admin/pendaftar', icon: UserGroupIcon, label: 'Pendaftar' },
-    { path: '/admin/draft', icon: DocumentTextIcon, label: 'Draft' },
+    { path: '/admin/pendaftar', icon: UserGroupIcon, label: 'Pendaftar Reguler' },
+    { path: '/admin/pendaftar-pjj', icon: UserGroupIcon, label: 'Pendaftar PJJ' },
+    { path: '/admin/draft', icon: DocumentTextIcon, label: 'Draft Reguler' },
+    { path: '/admin/draft-pjj', icon: DocumentTextIcon, label: 'Draft PJJ' },
     { path: '/admin/users', icon: Cog6ToothIcon, label: 'Admin' },
     { path: '/admin/settings', icon: AdjustmentsHorizontalIcon, label: 'Settings' }
   ];
@@ -52,8 +54,10 @@ const AdminDashboard: React.FC = () => {
             <Suspense fallback={<AdminLoader />}>
               <Routes>
                 <Route index element={<DashboardPage />} />
-                <Route path="pendaftar" element={<DataPendaftar />} />
-                <Route path="draft" element={<DataDraft />} />
+                <Route path="pendaftar" element={<DataPendaftar mode="regular" />} />
+                <Route path="pendaftar-pjj" element={<DataPendaftar mode="pjj" />} />
+                <Route path="draft" element={<DataDraft mode="regular" />} />
+                <Route path="draft-pjj" element={<DataDraft mode="pjj" />} />
                 <Route path="users" element={<UserManagement />} />
                 <Route path="settings" element={<PPDBSettings />} />
               </Routes>

@@ -3,10 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
 import { auth, db } from '../firebase/config';
 import Container from '../components/ui/Container';
-import Card from '../components/ui/Card';
-import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import Alert from '../components/ui/Alert';
 import { motion } from 'framer-motion';
 import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { ref, get } from 'firebase/database';
@@ -134,166 +131,158 @@ const LoginPage: React.FC = () => {
   };
  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <a
-        href="https://sman-modalbangsa.sch.id/"
-        className="fixed top-4 left-4 md:top-8 md:left-8 inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border transition-colors"
-      >
-        <svg 
-          className="w-5 h-5" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M10 19l-7-7m0 0l7-7m-7 7h18" 
-          />
-        </svg>
-        <span className="font-medium">Kembali ke Beranda</span>
-      </a>
- 
-      <Container className="max-w-md w-full">
+    <div className="min-h-[100dvh] bg-[#f8faf9] relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden font-sans">
+      {/* Ambient decorative glows */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-100/40 blur-[100px] opacity-75" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-amber-100/30 blur-[100px] opacity-75" />
+      </div>
+
+      
+
+      <Container className="max-w-md w-full relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm">
+          <div className="relative bg-white/90 backdrop-blur-md rounded-2xl border border-zinc-200/80 p-8 shadow-xl shadow-emerald-950/[0.02] hover:shadow-2xl transition-all duration-500 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-emerald-700 before:via-amber-500 before:to-emerald-850 before:rounded-t-2xl">
             {/* Header */}
             <div className="text-center mb-8">
               <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="flex justify-center items-center"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="flex justify-center items-center mb-4"
               >
-                <img
-                  src="/images/mosa.png"
-                  alt="Logo MOSA"
-                  className="h-20 mr-2 p-1"
-                />
-                {/* <img
-                  src="/images/fajar.png"
-                  alt="Logo Fajar Harapan"
-                  className="h-20 ml-2 p-1"
-                /> */}
+                <div className="p-2 bg-gradient-to-tr from-emerald-50 to-white rounded-2xl border border-emerald-100 shadow-inner">
+                  <img
+                    src="/images/mosa.png"
+                    alt="Logo MOSA"
+                    className="h-16 w-16 object-contain"
+                  />
+                </div>
               </motion.div>
-              <h2 className="text-3xl font-extrabold text-gray-900 mt-4 mb-2">
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-900 mb-1">
                 Masuk ke Akun
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-zinc-500">
                 Atau{' '}
                 <Link 
                   to="/register" 
-                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
+                  className="font-semibold text-emerald-700 hover:text-emerald-900 transition-colors underline decoration-emerald-600/30 underline-offset-4 hover:decoration-emerald-900"
                 >
                   daftar akun baru
                 </Link>
               </p>
             </div>
- 
+
             {/* Error Alert */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
+                className="mb-6"
               >
-                <Alert 
-                  type="error" 
-                  message={error} 
-                  className="mb-6"
-                  onClose={() => setError('')} 
-                />
+                <div className="rounded-xl p-4 bg-rose-50 border border-rose-100 text-rose-800 text-sm flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center text-rose-800 font-bold shrink-0">!</div>
+                  <div className="flex-1 font-medium">{error}</div>
+                  <button onClick={() => setError('')} className="text-rose-500 hover:text-rose-700 font-bold ml-auto">&times;</button>
+                </div>
               </motion.div>
             )}
- 
+
             {/* Success Alert */}
             {successMessage && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
+                className="mb-6"
               >
-                <Alert 
-                  type="success" 
-                  message={successMessage} 
-                  className="mb-6"
-                  onClose={() => setSuccessMessage('')}
-                />
+                <div className="rounded-xl p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-bold shrink-0">✓</div>
+                  <div className="flex-1 font-medium">{successMessage}</div>
+                  <button onClick={() => setSuccessMessage('')} className="text-emerald-500 hover:text-emerald-700 font-bold ml-auto">&times;</button>
+                </div>
               </motion.div>
             )}
- 
+
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="relative">
-                <EnvelopeIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
-                <Input
-                  label="Email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="Masukkan email"
-                  className="pl-10"
-                />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+                  Email
+                </label>
+                <div className="relative flex items-center">
+                  <EnvelopeIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="Masukkan email"
+                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
+                  />
+                </div>
               </div>
- 
-              <div className="relative">
-                <LockClosedIcon className="h-5 w-5 text-gray-400 absolute top-[2.1rem] left-3" />
-                <Input
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  placeholder="Masukkan password"
-                  className="pl-10 pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[2.1rem] text-gray-400 hover:text-gray-600"
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                  >
+                    Lupa password?
+                  </button>
+                </div>
+                <div className="relative flex items-center">
+                  <LockClosedIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    placeholder="Masukkan password"
+                    className="w-full pl-11 pr-11 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 text-zinc-400 hover:text-zinc-600 focus:outline-none transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button 
+                  type="submit" 
+                  className="w-full bg-emerald-800 text-white hover:bg-emerald-900 active:scale-[0.98] py-3 rounded-xl transition-all duration-300 font-semibold shadow-md shadow-emerald-800/10 border-0 flex items-center justify-center"
+                  disabled={loading}
                 >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2" />
+                      Memverifikasi...
+                    </div>
                   ) : (
-                    <EyeIcon className="h-5 w-5" />
+                    'Masuk'
                   )}
-                </button>
+                </Button>
               </div>
- 
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(true)}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors"
-                >
-                  Lupa password?
-                </button>
-              </div>
- 
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white 
-                          hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 
-                          py-3 rounded-lg transition-all duration-300"
-                disabled={loading}
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2" />
-                    Masuk...
-                  </div>
-                ) : (
-                  'Masuk'
-                )}
-              </Button>
             </form>
-          </Card>
+          </div>
         </motion.div>
- 
+
         {/* Modal Lupa Password */}
         <Modal
           isOpen={showForgotModal}
@@ -303,32 +292,37 @@ const LoginPage: React.FC = () => {
           }}
         >
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-bold text-zinc-900 mb-2">
               Reset Password
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Masukkan email Anda untuk menerima link reset password
+            <p className="text-sm text-zinc-500 mb-5">
+              Masukkan email Anda untuk menerima tautan pemulihan kata sandi.
             </p>
-            <div className="space-y-4">
-              <Input
-                label="Email"
-                type="email"
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                placeholder="Masukkan email Anda"
-                required
-              />
- 
-              <div className="flex gap-3">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="Masukkan email Anda"
+                  required
+                  className="w-full py-3 px-4 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
                 <Button
                   onClick={() => setShowForgotModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  className="flex-1 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-0 rounded-xl py-3 font-semibold transition-all duration-300"
                 >
                   Batal
                 </Button>
                 <Button
                   onClick={handleResetPassword}
-                  className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+                  className="flex-1 bg-emerald-800 text-white hover:bg-emerald-900 border-0 rounded-xl py-3 font-semibold transition-all duration-300 shadow-md shadow-emerald-800/10"
                   disabled={resetLoading}
                 >
                   {resetLoading ? (

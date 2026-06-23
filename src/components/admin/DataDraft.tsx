@@ -82,6 +82,10 @@ type PPDBData = {
   raport4?: string;
   photo?: string;
   sertifikat?: string;
+  ijazah?: string;
+  kartuKeluarga?: string;
+  lampiranA?: string;
+  lampiranB?: string;
 
   // Status dan Metadata
   status: 'pending' | 'submitted' | 'draft';
@@ -226,7 +230,11 @@ const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) => {
 //   );
 // };
 
-const DataDraft: React.FC = () => {
+interface DataDraftProps {
+  mode?: 'regular' | 'pjj';
+}
+
+const DataDraft: React.FC<DataDraftProps> = ({ mode = 'regular' }) => {
   const { userRole } = useAuth();
   
   const [pendaftar, setPendaftar] = useState<PPDBData[]>([]);
@@ -338,6 +346,13 @@ const DataDraft: React.FC = () => {
     return pendaftar
       .filter(item => item.status === 'draft' || item.status === 'pending') // Hanya draft dan pending
       .filter(item => {
+        // filter by mode
+        if (mode === 'pjj') {
+          if (item.jalur !== 'pjj') return false;
+        } else {
+          if (item.jalur === 'pjj') return false;
+        }
+
         const matchSearch = 
           (item.namaSiswa?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
           (item.nisn || '').includes(searchQuery) ||
@@ -382,7 +397,7 @@ const DataDraft: React.FC = () => {
 
   // Helper function untuk status kelengkapan
   const getStatusKelengkapan = (data: PPDBData) => {
-    const fieldsToCheck = [
+    let fieldsToCheck: (string | undefined)[] = [
       // Data pribadi wajib
       data.namaSiswa,
       data.nisn,
@@ -403,33 +418,46 @@ const DataDraft: React.FC = () => {
       data.pekerjaanIbu,
       data.instansiIbu,
       data.hpIbu,
-      // Nilai akademik
-      data.nilaiAgama2,
-      data.nilaiBindo2,
-      data.nilaiBing2,
-      data.nilaiMtk2,
-      data.nilaiIpa2,
-      data.nilaiAgama3,
-      data.nilaiBindo3,
-      data.nilaiBing3,
-      data.nilaiMtk3,
-      data.nilaiIpa3,
-      data.nilaiAgama4,
-      data.nilaiBindo4,
-      data.nilaiBing4,
-      data.nilaiMtk4,
-      data.nilaiIpa4,
-      // Dokumen wajib
-      data.photo,
-      data.rekomendasi,
-      data.raport2,
-      data.raport3,
-      data.raport4
     ];
 
-    // Dokumen khusus jalur prestasi
-    if (data.jalur === 'prestasi' && data.sertifikat) {
-      fieldsToCheck.push(data.sertifikat);
+    if (data.jalur === 'pjj') {
+      fieldsToCheck = [
+        ...fieldsToCheck,
+        data.photo,
+        data.ijazah,
+        data.kartuKeluarga
+      ];
+    } else {
+      fieldsToCheck = [
+        ...fieldsToCheck,
+        // Nilai akademik
+        data.nilaiAgama2,
+        data.nilaiBindo2,
+        data.nilaiBing2,
+        data.nilaiMtk2,
+        data.nilaiIpa2,
+        data.nilaiAgama3,
+        data.nilaiBindo3,
+        data.nilaiBing3,
+        data.nilaiMtk3,
+        data.nilaiIpa3,
+        data.nilaiAgama4,
+        data.nilaiBindo4,
+        data.nilaiBing4,
+        data.nilaiMtk4,
+        data.nilaiIpa4,
+        // Dokumen wajib
+        data.photo,
+        data.rekomendasi,
+        data.raport2,
+        data.raport3,
+        data.raport4
+      ];
+
+      // Dokumen khusus jalur prestasi
+      if (data.jalur === 'prestasi' && data.sertifikat) {
+        fieldsToCheck.push(data.sertifikat);
+      }
     }
 
     const filledFields = fieldsToCheck.filter(field => field && field !== '').length;
@@ -505,9 +533,10 @@ const DataDraft: React.FC = () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });
 
+      const suffix = mode === 'pjj' ? '_PJJ' : '_Reguler';
       const fileName = userRole?.isMaster 
-        ? `Data_Draft_PPDB_Semua_Sekolah_${new Date().toLocaleDateString('id-ID')}.xlsx`
-        : `Data_Draft_PPDB_${userRole?.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan'}_${new Date().toLocaleDateString('id-ID')}.xlsx`;
+        ? `Data_Draft_PPDB_Semua_Sekolah${suffix}_${new Date().toLocaleDateString('id-ID')}.xlsx`
+        : `Data_Draft_PPDB_${userRole?.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan'}${suffix}_${new Date().toLocaleDateString('id-ID')}.xlsx`;
 
       saveAs(blob, fileName);
       showAlert('success', 'Data draft berhasil diexport ke Excel');
@@ -578,6 +607,99 @@ const DataDraft: React.FC = () => {
 
   const renderDetailDokumen = (data: PPDBData) => {
     const semesters = ['2', '3', '4'];
+
+    if (data.jalur === 'pjj') {
+      return (
+        <div className={classNames(
+          "bg-white shadow-sm border rounded-xl p-5",
+          isMobile() ? 'h-auto' : 'h-[300px]'
+        )}>
+          <div className={`${isMobile() ? 'space-y-4' : 'grid grid-cols-2 gap-6 h-full'}`}>
+            {/* Kolom 1: Dokumen Wajib PJJ */}
+            <div className="flex flex-col h-full">
+              <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Wajib</h4>
+              <div className="space-y-3 flex-1">
+                {data.photo && (
+                  <a
+                    href={data.photo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">Pas Foto</span>
+                  </a>
+                )}
+                {data.ijazah && (
+                  <a
+                    href={data.ijazah}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-green-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">FC Ijazah SMP / MTsN</span>
+                  </a>
+                )}
+                {data.kartuKeluarga && (
+                  <a
+                    href={data.kartuKeluarga}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-yellow-100 rounded-lg group-hover:bg-yellow-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-yellow-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">Kartu Keluarga</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Kolom 2: Dokumen Pendukung PJJ */}
+            <div className={`${isMobile() ? 'mt-4' : ''} flex flex-col h-full`}>
+              <h4 className="font-medium text-gray-900 mb-4 text-sm sm:text-base">Dokumen Pendukung</h4>
+              <div className={`${isMobile() ? 'grid grid-cols-2 gap-3' : 'space-y-3'} flex-1`}>
+                {data.lampiranA && (
+                  <a
+                    href={data.lampiranA}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">Lampiran A</span>
+                  </a>
+                )}
+                {data.lampiranB && (
+                  <a
+                    href={data.lampiranB}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">Lampiran B</span>
+                  </a>
+                )}
+                {!data.lampiranA && !data.lampiranB && (
+                  <span className="text-xs text-gray-500 italic">Tidak ada lampiran pendukung</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={classNames(
@@ -718,6 +840,10 @@ const DataDraft: React.FC = () => {
       if (selectedData.raport3) filesToDelete.push(selectedData.raport3);
       if (selectedData.raport4) filesToDelete.push(selectedData.raport4);
       if (selectedData.sertifikat) filesToDelete.push(selectedData.sertifikat);
+      if (selectedData.ijazah) filesToDelete.push(selectedData.ijazah);
+      if (selectedData.kartuKeluarga) filesToDelete.push(selectedData.kartuKeluarga);
+      if (selectedData.lampiranA) filesToDelete.push(selectedData.lampiranA);
+      if (selectedData.lampiranB) filesToDelete.push(selectedData.lampiranB);
 
       // Delete files from Cloudflare R2 first
       if (filesToDelete.length > 0) {
@@ -908,6 +1034,19 @@ const DataDraft: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+            {mode === 'pjj' ? 'Data Draft Pendaftar PJJ' : 'Data Draft Pendaftar Reguler'}
+          </h2>
+          <p className="text-xs md:text-sm text-gray-500 mt-1">
+            {mode === 'pjj' 
+              ? 'Kelola draft pendaftaran jalur Pendidikan Jarak Jauh' 
+              : 'Kelola draft pendaftaran jalur reguler, prestasi, dan undangan'}
+          </p>
+        </div>
+      </div>
+
       {/* Modern Search & Filter Bar */}
       <div className="bg-white rounded-lg border shadow-sm">
         {/* Top Row */}
@@ -944,20 +1083,21 @@ const DataDraft: React.FC = () => {
           <div className="border-b border-gray-200">
             <div className="p-4 bg-gray-50">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-2">Type</label>
-                  <select
-                    value={jalurFilter}
-                    onChange={(e) => setJalurFilter(e.target.value as any)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="prestasi">Prestasi</option>
-                    <option value="reguler">Reguler</option>
-                    <option value="undangan">Undangan</option>
-                    <option value="pjj">PJJ</option>
-                  </select>
-                </div>
+                {mode !== 'pjj' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Type</label>
+                    <select
+                      value={jalurFilter}
+                      onChange={(e) => setJalurFilter(e.target.value as any)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="all">All Types</option>
+                      <option value="prestasi">Prestasi</option>
+                      <option value="reguler">Reguler</option>
+                      <option value="undangan">Undangan</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
                   <select
@@ -1320,48 +1460,67 @@ const DataDraft: React.FC = () => {
                     )
                   },
                   {
-                    label: "Akademik",
+                    label: selectedData?.jalur === 'pjj' ? "Dokumen PJJ" : "Akademik",
                     content: (
                       <div className={`${isMobile() ? 'p-2' : 'p-4'} min-h-[400px]`}>
-                        <div className={`grid grid-cols-1 ${!isMobile() && 'lg:grid-cols-2'} gap-4`}>
-                          {/* Nilai Akademik */}
+                        {selectedData?.jalur === 'pjj' ? (
                           <div>
-                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 mb-4">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-blue-500 rounded-lg">
-                                  <AcademicCapIcon className="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900">Nilai Akademik</h4>
-                                  <p className="text-sm text-blue-700">
-                                    Semester 2-4 ({getJalurLabel(selectedData?.jalur || 'reguler')})
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {renderDetailAkademik(selectedData)}
-                          </div>
-
-                          {/* Dokumen */}
-                          <div className={isMobile() ? 'mt-4' : ''}>
                             <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200 mb-4">
                               <div className="flex items-center gap-3 mb-2">
                                 <div className="p-2 bg-green-500 rounded-lg">
                                   <DocumentArrowDownIcon className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                  <h4 className="font-semibold text-gray-900">Dokumen</h4>
+                                  <h4 className="font-semibold text-gray-900">Dokumen PJJ</h4>
                                   <p className="text-sm text-green-700">
-                                    Klik untuk mengunduh dokumen
+                                    Klik untuk mengunduh dokumen pendaftaran Pendidikan Jarak Jauh
                                   </p>
                                 </div>
                               </div>
                             </div>
-
                             {renderDetailDokumen(selectedData)}
                           </div>
-                        </div>
+                        ) : (
+                          <div className={`grid grid-cols-1 ${!isMobile() && 'lg:grid-cols-2'} gap-4`}>
+                            {/* Nilai Akademik */}
+                            <div>
+                              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 rounded-xl border border-blue-200 mb-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="p-2 bg-blue-500 rounded-lg">
+                                    <AcademicCapIcon className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900">Nilai Akademik</h4>
+                                    <p className="text-sm text-blue-700">
+                                      Semester 2-4 ({getJalurLabel(selectedData?.jalur || 'reguler')})
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {renderDetailAkademik(selectedData)}
+                            </div>
+
+                            {/* Dokumen */}
+                            <div className={isMobile() ? 'mt-4' : ''}>
+                              <div className="bg-gradient-to-r from-green-50 to-green-100 p-3 rounded-xl border border-green-200 mb-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="p-2 bg-green-500 rounded-lg">
+                                    <DocumentArrowDownIcon className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900">Dokumen</h4>
+                                    <p className="text-sm text-green-700">
+                                      Klik untuk mengunduh dokumen
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {renderDetailDokumen(selectedData)}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   },

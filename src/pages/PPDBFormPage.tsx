@@ -99,6 +99,10 @@ type FormData = {
   raport3?: File | string;
   raport4?: File | string;
   photo?: File | string;
+  ijazah?: File | string;
+  kartuKeluarga?: File | string;
+  lampiranA?: File | string;
+  lampiranB?: File | string;
 };
 
 // Tambahkan INITIAL_FORM_DATA
@@ -145,7 +149,13 @@ const INITIAL_FORM_DATA: FormData = {
   namaIbu: '',
   pekerjaanIbu: '',
   instansiIbu: '',
-  hpIbu: ''
+  hpIbu: '',
+
+  // PJJ Files
+  ijazah: undefined,
+  kartuKeluarga: undefined,
+  lampiranA: undefined,
+  lampiranB: undefined
 };
 
 // Tambahkan komponen SectionTitle
@@ -184,28 +194,14 @@ const VALIDATION_CONFIG = {
     asalSekolah: 'Asal Sekolah'
   },
 
-  // Nilai minimum per sekolah dan jalur
-  MIN_NILAI: {
-    mosa: {
-      prestasi: 85,
-      reguler: 85,
-      undangan: 83,
-      pjj: 80
-    },
-    fajar: {
-      prestasi: 85,
-      reguler: 85,
-      undangan: 85,
-      pjj: 80
-    }
-  },
+  
 
   // Semester yang diperlukan per jalur
   SEMESTER_CONFIG: {
     reguler: ['3', '4'],
     prestasi: ['2', '3', '4'],
     undangan: ['2', '3', '4'],
-    pjj: ['2', '3', '4']
+    pjj: []
   },
 
   // Mata pelajaran yang divalidasi
@@ -226,8 +222,8 @@ const VALIDATION_CONFIG = {
 };
 
 // Helper functions
-const getRequiredSemesters = (jalur: string) => {
-  return VALIDATION_CONFIG.SEMESTER_CONFIG[jalur as keyof typeof VALIDATION_CONFIG.SEMESTER_CONFIG] || [];
+const getRequiredSemesters = (jalur: string): string[] => {
+  return (VALIDATION_CONFIG.SEMESTER_CONFIG[jalur as keyof typeof VALIDATION_CONFIG.SEMESTER_CONFIG] as string[]) || [];
 };
 
 const getNilaiFields = (semesters: string[]) => {
@@ -237,11 +233,11 @@ const getNilaiFields = (semesters: string[]) => {
 };
 
 // Update fungsi validateNilai
-const validateNilai = (nilai: string, jalur: string, school: 'mosa' | 'fajar'): { isValid: boolean; error?: string } => {
+const validateNilai = (nilai: string, _jalur: string, _school: 'mosa' | 'fajar'): { isValid: boolean; error?: string } => {
   if (!nilai) return { isValid: false, error: 'Nilai harus diisi' };
 
   const nilaiNum = parseFloat(nilai);
-  
+
   // Validasi format nilai
   if (isNaN(nilaiNum)) {
     return { isValid: false, error: 'Nilai harus berupa angka' };
@@ -252,14 +248,7 @@ const validateNilai = (nilai: string, jalur: string, school: 'mosa' | 'fajar'): 
     return { isValid: false, error: 'Nilai harus antara 0-100' };
   }
 
-  // Validasi nilai minimum sesuai sekolah dan jalur
-  const minNilai = VALIDATION_CONFIG.MIN_NILAI[school][jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa];
-  if (nilaiNum < minNilai) {
-    return { 
-      isValid: false, 
-      error: `Nilai minimal untuk ${school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'} adalah ${minNilai}` 
-    };
-  }
+  // Minimum nilai validation removed
 
   return { isValid: true };
 };
@@ -773,6 +762,10 @@ interface SavedData {
   raport2?: string;
   raport3?: string;
   raport4?: string;
+  ijazah?: string;
+  kartuKeluarga?: string;
+  lampiranA?: string;
+  lampiranB?: string;
   registrationNumber: string;
   kabupatenKode: string;
 }
@@ -1316,10 +1309,15 @@ const PPDBFormPage: React.FC = () => {
     }
 
     // 5. Validasi dokumen
-    const requiredFiles = ['photo', 'rekomendasi'];
-    semesters.forEach(semester => {
-      requiredFiles.push(`raport${semester}`);
-    });
+    let requiredFiles: string[] = [];
+    if (formData.jalur === 'pjj') {
+      requiredFiles = ['photo', 'ijazah', 'kartuKeluarga'];
+    } else {
+      requiredFiles = ['photo', 'rekomendasi'];
+      semesters.forEach(semester => {
+        requiredFiles.push(`raport${semester}`);
+      });
+    }
 
     const missingDocs = requiredFiles.filter(key => {
       const fileValue = formData[key as keyof FormData];
@@ -1332,6 +1330,8 @@ const PPDBFormPage: React.FC = () => {
           case 'photo': return 'Pas Foto';
           case 'rekomendasi': return formData.jalur === 'prestasi' ? 
             'Surat Rekomendasi / Sertifikat' : 'Surat Rekomendasi';
+          case 'ijazah': return 'FC Ijazah SMP / MTsN';
+          case 'kartuKeluarga': return 'Kartu Keluarga';
           default: return `Raport Semester ${key.replace('raport', '')}`;
         }
       });
@@ -1503,14 +1503,9 @@ const PPDBFormPage: React.FC = () => {
   };
 
   const handleJalurChange = () => {
-    // Tentukan semester yang perlu direset berdasarkan jalur baru
-    const oldSemesters = getRequiredSemesters(formData.jalur);
-    const newSemesters = getRequiredSemesters(newJalurValue);
-    
-    // Buat object untuk reset nilai dan dokumen
+    // Reset all academic values
     const resetData: Partial<FormData> = {
       jalur: newJalurValue,
-      // Reset semua nilai akademik
       nilaiAgama2: '',
       nilaiAgama3: '',
       nilaiAgama4: '',
@@ -1528,19 +1523,35 @@ const PPDBFormPage: React.FC = () => {
       nilaiIpa4: '',
     };
 
-    // Reset hanya dokumen raport yang berbeda antara jalur lama dan baru
-    const differentSemesters = newSemesters.filter(sem => !oldSemesters.includes(sem));
-    differentSemesters.forEach(semester => {
-      resetData[`raport${semester}` as keyof FormData] = undefined;
-    });
+    // If switching to PJJ
+    if (newJalurValue === 'pjj') {
+      resetData.rekomendasi = undefined;
+      resetData.raport2 = undefined;
+      resetData.raport3 = undefined;
+      resetData.raport4 = undefined;
+    } else {
+      // If switching from PJJ to non-PJJ
+      if (formData.jalur === 'pjj') {
+        resetData.ijazah = undefined;
+        resetData.kartuKeluarga = undefined;
+        resetData.lampiranA = undefined;
+        resetData.lampiranB = undefined;
+      } else {
+        const oldSemesters = getRequiredSemesters(formData.jalur);
+        const newSemesters = getRequiredSemesters(newJalurValue);
+        const differentSemesters = oldSemesters.filter(sem => !newSemesters.includes(sem));
+        differentSemesters.forEach(semester => {
+          resetData[`raport${semester}` as keyof FormData] = undefined;
+        });
+      }
+    }
 
-    // Jangan reset surat rekomendasi
     setFormData(prev => ({
       ...prev,
       ...resetData
     }));
 
-    showAlert('info', `Jalur berhasil diubah ke ${newJalurValue}. Nilai akademik dan dokumen raport telah direset sesuai jalur yang dipilih.`);
+    showAlert('info', `Jalur berhasil diubah ke ${newJalurValue === 'pjj' ? 'PJJ' : newJalurValue}. Data sebelumnya telah direset.`);
     setShowChangeJalurModal(false);
   };
 
@@ -1637,7 +1648,7 @@ const PPDBFormPage: React.FC = () => {
                 options={getAvailableJalur()}
                 required
                 className={`bg-white ${disabledInputClass}`}
-                disabled={formStatus === 'submitted'}
+                disabled={formStatus === 'submitted' || !!formData.uid}
               />
 
               <Input
@@ -1865,18 +1876,6 @@ const PPDBFormPage: React.FC = () => {
 
     return (
       <div className="space-y-10">
-        {/* Info nilai minimum */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-          <div className="flex items-center gap-2 text-sm text-blue-800">
-            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="font-medium">
-              Nilai minimum untuk {formData.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'} adalah {VALIDATION_CONFIG.MIN_NILAI[formData.school][formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa]}
-            </span>
-          </div>
-        </div>
 
         <div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1887,12 +1886,10 @@ const PPDBFormPage: React.FC = () => {
                   {mapelList.map(({ label, mobileLabel, key }) => {
                     const fieldName = `${key}${semester}` as keyof typeof formData;
                     const value = formData[fieldName] as string;
-                    const minNilai = VALIDATION_CONFIG.MIN_NILAI[formData.school][formData.jalur as keyof typeof VALIDATION_CONFIG.MIN_NILAI.mosa];
                     const isInvalid = value && (
                       isNaN(parseFloat(value)) || 
                       parseFloat(value) < 0 || 
-                      parseFloat(value) > 100 ||
-                      parseFloat(value) < minNilai
+                      parseFloat(value) > 100
                     );
 
                     return (
@@ -1920,16 +1917,9 @@ const PPDBFormPage: React.FC = () => {
                           required
                         />
                         {isInvalid && (
-                          <div className="absolute right-2 top-[2.5rem] flex items-center"> {/* Ubah top dari top-0 menjadi top-[2.5rem] */}
-                            <div className="relative group">
-                              <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-[10px]">!</span>
-                              </div>
-                              <div className="absolute bottom-full right-0 mb-1 hidden group-hover:block">
-                                <div className="bg-red-50 text-red-600 text-xs py-1 px-2 rounded border border-red-200 whitespace-nowrap shadow-sm">
-                                  Nilai minimal {minNilai}
-                                </div>
-                              </div>
+                          <div className="absolute right-2 top-[2.5rem] flex items-center">
+                            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-[10px]">!</span>
                             </div>
                           </div>
                         )}
@@ -2139,6 +2129,65 @@ const PPDBFormPage: React.FC = () => {
       );
     }
 
+    if (formData.jalur === 'pjj') {
+      return (
+        <div className="space-y-10">
+          <div>
+            <SectionTitle>Dokumen Persyaratan PJJ</SectionTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FileUpload
+                label="Scan PDF FC Ijazah SMP / MTsN*"
+                name="ijazah"
+                accept=".pdf"
+                onChange={(file) => handleFileChange('ijazah', file)}
+                maxSize={4}
+                required={true}
+                value={formData.ijazah}
+                id="ijazah"
+                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
+              />
+
+              <FileUpload
+                label="Scan PDF Kartu Keluarga*"
+                name="kartuKeluarga"
+                accept=".pdf"
+                onChange={(file) => handleFileChange('kartuKeluarga', file)}
+                maxSize={4}
+                required={true}
+                value={formData.kartuKeluarga}
+                id="kartuKeluarga"
+                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
+              />
+
+              <FileUpload
+                label="Scan PDF Lampiran A (Opsional)"
+                name="lampiranA"
+                accept=".pdf"
+                onChange={(file) => handleFileChange('lampiranA', file)}
+                maxSize={4}
+                required={false}
+                value={formData.lampiranA}
+                id="lampiranA"
+                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
+              />
+
+              <FileUpload
+                label="Scan PDF Lampiran B (Opsional)"
+                name="lampiranB"
+                accept=".pdf"
+                onChange={(file) => handleFileChange('lampiranB', file)}
+                maxSize={4}
+                required={false}
+                value={formData.lampiranB}
+                id="lampiranB"
+                className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-10">
         <div>
@@ -2182,11 +2231,11 @@ const PPDBFormPage: React.FC = () => {
       mobileLabel: "Siswa",
       content: renderInformasiSiswa() 
     },
-    { 
+    ...(formData.jalur !== 'pjj' ? [{ 
       label: "Akademik",
       mobileLabel: "Akademik",
       content: renderAkademik() 
-    },
+    }] : []),
     { 
       label: "Orang Tua",
       mobileLabel: "Orang Tua",

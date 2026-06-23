@@ -27,14 +27,24 @@ const menuItems: MenuItem[] = [
     path: '/admin'
   },
   {
-    name: 'Data Pendaftar',
+    name: 'Pendaftar Reguler',
     icon: UserGroupIcon,
     path: '/admin/pendaftar'
   },
   {
-    name: 'Data Draft',
+    name: 'Pendaftar PJJ',
+    icon: UserGroupIcon,
+    path: '/admin/pendaftar-pjj'
+  },
+  {
+    name: 'Draft Reguler',
     icon: DocumentTextIcon,
     path: '/admin/draft'
+  },
+  {
+    name: 'Draft PJJ',
+    icon: DocumentTextIcon,
+    path: '/admin/draft-pjj'
   },
   {
     name: 'Manajemen Admin',
