@@ -4,6 +4,8 @@ export type JalurPeriod = {
   isActive: boolean;
   testDate?: string; // Tanggal ujian/tes khusus
   announcementDate?: string; // Tambah tanggal pengumuman per jalur
+  reRegistrationStart?: string; // Format: YYYY-MM-DD
+  reRegistrationEnd?: string; // Format: YYYY-MM-DD
   requirements: string[]; // Tambah array persyaratan
 };
 

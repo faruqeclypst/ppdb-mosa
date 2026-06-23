@@ -136,6 +136,18 @@ export const DocumentUploadForm: React.FC<DocumentUploadFormProps> = ({
             />
 
             <FileUpload
+              label="Scan PDF Akta Kelahiran*"
+              name="aktaKelahiran"
+              accept=".pdf"
+              onChange={(file) => handleFileChange('aktaKelahiran', file)}
+              maxSize={4}
+              required={true}
+              value={formData.aktaKelahiran}
+              id="aktaKelahiran"
+              className={`${disabledInputClass} ${formStatus === 'submitted' ? 'pointer-events-none' : ''}`}
+            />
+
+            <FileUpload
               label="Scan PDF Lampiran A (Opsional)"
               name="lampiranA"
               accept=".pdf"

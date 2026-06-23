@@ -10,6 +10,7 @@ export type PPDBData = {
   school: 'mosa' | 'fajar';
   email: string;
   jalur: 'prestasi' | 'reguler' | 'undangan' | 'pjj';
+  pjjSchool?: string;
   namaSiswa: string;
   nik: string;
   nisn: string;
@@ -57,6 +58,7 @@ export type PPDBData = {
   sertifikat?: string;
   ijazah?: string;
   kartuKeluarga?: string;
+  aktaKelahiran?: string;
   lampiranA?: string;
   lampiranB?: string;
 
@@ -67,6 +69,8 @@ export type PPDBData = {
   submittedAt?: string;
   alasanPenolakan?: string;
   registrationNumber?: string;
+  reRegistered?: boolean;
+  reRegisteredAt?: string;
 };
 
 interface StudentDetailModalProps {
@@ -238,6 +242,19 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                       <DocumentArrowDownIcon className="w-4 h-4 text-yellow-600" />
                     </div>
                     <span className="text-xs sm:text-sm">Kartu Keluarga</span>
+                  </a>
+                )}
+                {selectedData.aktaKelahiran && (
+                  <a
+                    href={selectedData.aktaKelahiran}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white border hover:bg-gray-50 text-gray-700 flex items-center gap-2 p-2 rounded-lg group"
+                  >
+                    <div className="p-1.5 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
+                      <DocumentArrowDownIcon className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <span className="text-xs sm:text-sm">Akta Kelahiran</span>
                   </a>
                 )}
               </div>
@@ -421,6 +438,24 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                 }
               </p>
             </div>
+            {selectedData.jalur === 'pjj' && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sekolah PJJ</h4>
+                <p className="text-sm text-gray-900 mt-0.5">{selectedData.pjjSchool || '-'}</p>
+              </div>
+            )}
+            {selectedData.adminStatus === 'diterima' && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Daftar Ulang</h4>
+                <p className="text-sm font-semibold mt-0.5">
+                  {selectedData.reRegistered ? (
+                    <span className="text-green-600">Sudah ({formatDateTime(selectedData.reRegisteredAt)})</span>
+                  ) : (
+                    <span className="text-gray-500">Belum</span>
+                  )}
+                </p>
+              </div>
+            )}
             <div>
               <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Anak Ke / Saudara</h4>
               <p className="text-sm text-gray-900 mt-0.5">Anak ke-{selectedData.anakKe || '-'} dari {selectedData.jumlahSaudara || '-'} bersaudara</p>

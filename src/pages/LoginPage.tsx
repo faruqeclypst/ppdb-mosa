@@ -36,20 +36,24 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       const checkUserRole = async () => {
-        const adminRef = ref(db, `admins/${user.uid}`);
-        const ppdbMosaRef = ref(db, `ppdb_mosa/${user.uid}`);
-        const ppdbFajarRef = ref(db, `ppdb_fajar/${user.uid}`);
-        
-        const [adminSnapshot, ppdbMosaSnapshot, ppdbFajarSnapshot] = await Promise.all([
-          get(adminRef),
-          get(ppdbMosaRef),
-          get(ppdbFajarRef)
-        ]);
+        try {
+          const adminRef = ref(db, `admins/${user.uid}`);
+          const ppdbMosaRef = ref(db, `ppdb_mosa/${user.uid}`);
+          const ppdbFajarRef = ref(db, `ppdb_fajar/${user.uid}`);
+          
+          const [adminSnapshot, ppdbMosaSnapshot, ppdbFajarSnapshot] = await Promise.all([
+            get(adminRef).catch(() => null),
+            get(ppdbMosaRef).catch(() => null),
+            get(ppdbFajarRef).catch(() => null)
+          ]);
 
-        if (adminSnapshot.exists()) {
-          navigate('/admin');
-        } else if (ppdbMosaSnapshot.exists() || ppdbFajarSnapshot.exists()) {
-          navigate('/ppdb/form');
+          if (adminSnapshot && adminSnapshot.exists()) {
+            navigate('/admin');
+          } else if ((ppdbMosaSnapshot && ppdbMosaSnapshot.exists()) || (ppdbFajarSnapshot && ppdbFajarSnapshot.exists())) {
+            navigate('/ppdb/form');
+          }
+        } catch (err) {
+          // Silent catch to prevent page crash
         }
       };
 

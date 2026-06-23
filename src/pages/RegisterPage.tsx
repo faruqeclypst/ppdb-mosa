@@ -30,6 +30,7 @@ interface FormData {
   school: 'mosa' | 'fajar' | '';
   jalur: 'prestasi' | 'reguler' | 'undangan' | 'pjj' | '';
   nik: string;
+  pjjSchool: string;
 }
 
 // Tambahkan interface untuk data pendaftar
@@ -40,6 +41,7 @@ interface PPDBUserData {
   school?: string;
   status?: string;
   jalur?: string;
+  pjjSchool?: string;
 }
 
 const RegisterPage: React.FC = () => {
@@ -52,7 +54,8 @@ const RegisterPage: React.FC = () => {
     confirmPassword: '',
     school: '',
     jalur: '',
-    nik: ''
+    nik: '',
+    pjjSchool: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -120,16 +123,24 @@ const RegisterPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       const checkUserRole = async () => {
-        const adminRef = ref(db, `admins/${user.uid}`);
-        const ppdbRef = ref(db, `ppdb/${user.uid}`);
-        
-        const adminSnapshot = await get(adminRef);
-        const ppdbSnapshot = await get(ppdbRef);
+        try {
+          const adminRef = ref(db, `admins/${user.uid}`);
+          const ppdbMosaRef = ref(db, `ppdb_mosa/${user.uid}`);
+          const ppdbFajarRef = ref(db, `ppdb_fajar/${user.uid}`);
+          
+          const [adminSnapshot, ppdbMosaSnapshot, ppdbFajarSnapshot] = await Promise.all([
+            get(adminRef).catch(() => null),
+            get(ppdbMosaRef).catch(() => null),
+            get(ppdbFajarRef).catch(() => null)
+          ]);
 
-        if (adminSnapshot.exists()) {
-          navigate('/admin');
-        } else if (ppdbSnapshot.exists()) {
-          navigate('/ppdb/form');
+          if (adminSnapshot && adminSnapshot.exists()) {
+            navigate('/admin');
+          } else if ((ppdbMosaSnapshot && ppdbMosaSnapshot.exists()) || (ppdbFajarSnapshot && ppdbFajarSnapshot.exists())) {
+            navigate('/ppdb/form');
+          }
+        } catch (err) {
+          // Silent catch to prevent page crash
         }
       };
 
@@ -184,6 +195,16 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const getActiveJalur = () => {
+    if (!ppdbSettings) return [];
+    const list = [];
+    if (ppdbSettings.jalurPrestasi?.isActive) list.push({ value: 'prestasi', label: 'Prestasi' });
+    if (ppdbSettings.jalurReguler?.isActive) list.push({ value: 'reguler', label: 'Reguler' });
+    if (ppdbSettings.jalurUndangan?.isActive) list.push({ value: 'undangan', label: 'Undangan' });
+    if (ppdbSettings.jalurPjj?.isActive) list.push({ value: 'pjj', label: 'Pendidikan Jarak Jauh (PJJ)' });
+    return list;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -199,6 +220,21 @@ const RegisterPage: React.FC = () => {
       setError('Silakan pilih jalur pendaftaran');
       setLoading(false);
       return;
+    }
+
+    if (formData.jalur === 'pjj' && !formData.pjjSchool && !isFirstAdmin) {
+      setError('Silakan pilih sekolah PJJ');
+      setLoading(false);
+      return;
+    }
+
+    if (!isFirstAdmin) {
+      const activeJalurs = getActiveJalur().map(j => j.value);
+      if (formData.jalur && !activeJalurs.includes(formData.jalur)) {
+        setError('Jalur pendaftaran yang dipilih sedang tidak aktif');
+        setLoading(false);
+        return;
+      }
     }
 
     if (!isFirstAdmin) {
@@ -265,6 +301,7 @@ const RegisterPage: React.FC = () => {
         email: formData.email,
         nik: formData.nik,
         jalur: formData.jalur,
+        pjjSchool: formData.jalur === 'pjj' ? formData.pjjSchool : null,
         createdAt: new Date().toISOString()
       };
 
@@ -305,33 +342,34 @@ const RegisterPage: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-amber-100/30 blur-[100px] opacity-75" />
       </div>
 
-      <Container className="max-w-2xl w-full relative z-10">
+      <Container className="max-w-xl w-full relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="p-1.5 bg-gradient-to-tr from-zinc-200/30 to-zinc-200/5 rounded-3xl border border-zinc-200/40 shadow-xl shadow-emerald-950/[0.01] hover:shadow-2xl transition-all duration-500"
         >
-          <div className="relative bg-white/90 backdrop-blur-md rounded-2xl border border-zinc-200/80 p-6 md:p-8 shadow-xl shadow-emerald-950/[0.02] hover:shadow-2xl transition-all duration-500 before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-emerald-700 before:via-amber-500 before:to-emerald-850 before:rounded-t-2xl">
+          <div className="relative bg-white rounded-[calc(1.5rem-0.375rem)] border border-zinc-100 p-5 md:p-6 shadow-sm before:absolute before:top-0 before:left-0 before:right-0 before:h-1.5 before:bg-gradient-to-r before:from-emerald-700 before:via-amber-500 before:to-emerald-850 before:rounded-t-[calc(1.5rem-0.375rem)]">
             {/* Header */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-5">
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="flex justify-center items-center mb-4"
+                className="flex justify-center items-center mb-3"
               >
-                <div className="p-2 bg-gradient-to-tr from-emerald-50 to-white rounded-2xl border border-emerald-100 shadow-inner">
+                <div className="p-1.5 bg-gradient-to-tr from-emerald-50 to-white rounded-2xl border border-emerald-100 shadow-inner">
                   <img
                     src="/images/mosa.png"
                     alt="Logo MOSA"
-                    className="h-16 w-16 object-contain"
+                    className="h-14 w-14 object-contain"
                   />
                 </div>
               </motion.div>
-              <h2 className="text-2xl font-bold tracking-tight text-zinc-900 mb-1">
+              <h2 className="text-xl font-bold tracking-tight text-zinc-900 mb-0.5">
                 {isFirstAdmin ? 'Setup Admin' : 'Daftar Akun SPMB'}
               </h2>
-              <p className="text-sm text-zinc-500">
+              <p className="text-xs text-zinc-500">
                 {isFirstAdmin 
                   ? 'Buat akun admin pertama untuk mengelola sistem'
                   : `Lengkapi data berikut untuk membuat akun SPMB TA ${ppdbSettings?.academicYear || '2026/2027'}`}
@@ -343,10 +381,10 @@ const RegisterPage: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-6"
+                className="mb-4"
               >
-                <div className="rounded-xl p-4 bg-rose-50 border border-rose-100 text-rose-800 text-sm flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center text-rose-800 font-bold shrink-0">!</div>
+                <div className="rounded-xl p-3 bg-rose-50 border border-rose-100 text-rose-800 text-xs flex items-start gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center text-rose-800 font-bold shrink-0 text-[10px]">!</div>
                   <div className="flex-1 font-medium">{error}</div>
                   <button onClick={() => setError('')} className="text-rose-500 hover:text-rose-700 font-bold ml-auto">&times;</button>
                 </div>
@@ -354,53 +392,35 @@ const RegisterPage: React.FC = () => {
             )}
 
             {/* Register Form */}
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3.5">
               {!isFirstAdmin && (
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
-                    Pilih Sekolah
-                  </label>
-                  <div className="relative flex items-center">
-                    <BuildingOfficeIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
-                    <select
-                      required
-                      value={formData.school}
-                      onChange={(e) => setFormData({...formData, school: e.target.value as 'mosa' | 'fajar'})}
-                      className="w-full pl-11 pr-10 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 appearance-none font-sans"
-                    >
-                      <option value="" disabled>-- Pilih Sekolah --</option>
-                      <option value="mosa">SMAN Modal Bangsa</option>
-                    </select>
-                    <div className="absolute right-3.5 pointer-events-none text-zinc-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!isFirstAdmin && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                     Pilih Jalur Pendaftaran
                   </label>
                   <div className="relative flex items-center">
-                    <BuildingOfficeIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                    <BuildingOfficeIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                     <select
                       required
                       value={formData.jalur}
-                      onChange={(e) => setFormData({...formData, jalur: e.target.value as any})}
-                      className="w-full pl-11 pr-10 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 appearance-none font-sans"
+                      onChange={(e) => {
+                        const newJalur = e.target.value as any;
+                        setFormData({
+                          ...formData,
+                          jalur: newJalur,
+                          school: '',
+                          pjjSchool: ''
+                        });
+                      }}
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 appearance-none font-sans"
                     >
-                      <option value="" disabled>-- Pilih Jalur --</option>
-                      <option value="prestasi">Prestasi</option>
-                      <option value="reguler">Reguler</option>
-                      <option value="undangan">Undangan</option>
-                      <option value="pjj">Pendidikan Jarak Jauh (PJJ)</option>
+                      <option value="" disabled>{!ppdbSettings ? 'Memuat Jalur...' : '-- Pilih Jalur --'}</option>
+                      {getActiveJalur().map((j) => (
+                        <option key={j.value} value={j.value}>{j.label}</option>
+                      ))}
                     </select>
-                    <div className="absolute right-3.5 pointer-events-none text-zinc-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="absolute right-3 pointer-events-none text-zinc-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
@@ -408,30 +428,91 @@ const RegisterPage: React.FC = () => {
                 </div>
               )}
 
-              <div className={isFirstAdmin ? "col-span-1 md:col-span-2" : ""}>
-                <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+              {!isFirstAdmin && (
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                    Pilih Sekolah
+                  </label>
+                  <div className="relative flex items-center">
+                    <BuildingOfficeIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
+                    <select
+                      required
+                      disabled={!formData.jalur}
+                      value={formData.jalur === 'pjj' ? (formData.pjjSchool || '') : (formData.school || '')}
+                      onChange={(e) => {
+                        const selectedVal = e.target.value;
+                        if (formData.jalur === 'pjj') {
+                          setFormData({
+                            ...formData,
+                            school: 'mosa',
+                            pjjSchool: selectedVal
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            school: selectedVal as 'mosa' | 'fajar',
+                            pjjSchool: ''
+                          });
+                        }
+                      }}
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 appearance-none font-sans disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed"
+                    >
+                      {!formData.jalur ? (
+                        <option value="">-- Pilih Jalur Terlebih Dahulu --</option>
+                      ) : (
+                        <option value="" disabled>-- Pilih Sekolah --</option>
+                      )}
+                      
+                      {formData.jalur === 'pjj' && (
+                        <>
+                          <option value="Kab. Lhokseumawe - SMAN 6 Lhokseumawe (Mitra)">Kab. Lhokseumawe - SMAN 6 Lhokseumawe (Mitra)</option>
+                          <option value="Kab. Bireuen - SMAN 1 Simpang Mamplam (Mitra)">Kab. Bireuen - SMAN 1 Simpang Mamplam (Mitra)</option>
+                          <option value="Kab. Aceh Singkil - SMAN 1 Gunung Meriah (Mitra)">Kab. Aceh Singkil - SMAN 1 Gunung Meriah (Mitra)</option>
+                          <option value="Kab. Aceh Besar - SMAN 1 Seulimeum (Mitra)">Kab. Aceh Besar - SMAN 1 Seulimeum (Mitra)</option>
+                          <option value="Kab. Aceh Besar - SMAN Modal Bangsa (Induk)">Kab. Aceh Besar - SMAN Modal Bangsa (Induk)</option>
+                        </>
+                      )}
+
+                      {formData.jalur && formData.jalur !== 'pjj' && (
+                        <>
+                          <option value="mosa">SMAN Modal Bangsa</option>
+                          <option value="fajar">SMAN 10 Fajar Harapan</option>
+                        </>
+                      )}
+                    </select>
+                    <div className="absolute right-3 pointer-events-none text-zinc-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                   Nama Lengkap
                 </label>
                 <div className="relative flex items-center">
-                  <UserIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <UserIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                   <input
                     type="text"
                     required
                     value={formData.fullName}
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                     placeholder={isFirstAdmin ? "Nama Admin" : "Nama Lengkap Siswa"}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
                   />
                 </div>
               </div>
 
               {!isFirstAdmin && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                     NIK <span className="text-zinc-400 font-normal">({`(-) jika tidak ada`})</span>
                   </label>
                   <div className="relative flex items-center">
-                    <IdentificationIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                    <IdentificationIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                     <input
                       type="text"
                       required
@@ -474,7 +555,7 @@ const RegisterPage: React.FC = () => {
                       }}
                       maxLength={16}
                       placeholder="Masukkan NIK (16 digit)"
-                      className={`w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans ${
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans ${
                         formData.nik && formData.nik !== '-' && formData.nik.length !== 16 
                           ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/10' 
                           : ''
@@ -484,42 +565,42 @@ const RegisterPage: React.FC = () => {
                 </div>
               )}
 
-              <div className={isFirstAdmin ? "col-span-1 md:col-span-2" : ""}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                     Email
                   </label>
-                  <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                  <span className="text-[9px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
                     *Pastikan email aktif
                   </span>
                 </div>
                 <div className="relative flex items-center">
-                  <EnvelopeIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <EnvelopeIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                   <input
                     type="email"
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="Masukkan email aktif"
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans"
                   />
                 </div>
-                <p className="mt-1 text-[11px] text-zinc-400">
+                <p className="mt-0.5 text-[10px] text-zinc-400">
                   Informasi dan pengumuman akan dikirim ke email ini
                 </p>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                     Password
                   </label>
-                  <span className={`text-[10px] font-semibold ${formData.password.length > 0 && formData.password.length < 6 ? 'text-rose-600' : 'text-zinc-400'}`}>
+                  <span className={`text-[9px] font-semibold ${formData.password.length > 0 && formData.password.length < 6 ? 'text-rose-600' : 'text-zinc-400'}`}>
                     {formData.password.length > 0 && formData.password.length < 6 ? 'Minimal 6 karakter' : ''}
                   </span>
                 </div>
                 <div className="relative flex items-center">
-                  <LockClosedIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <LockClosedIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                   <input
                     type={showPassword ? "text" : "password"}
                     required
@@ -533,14 +614,14 @@ const RegisterPage: React.FC = () => {
                       }
                     }}
                     placeholder="Masukkan password"
-                    className={`w-full pl-11 pr-11 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden ${
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden ${
                       formData.password.length > 0 && formData.password.length < 6 ? 'border-rose-450 focus:border-rose-500 focus:ring-rose-500/10' : ''
                     }`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-zinc-400 hover:text-zinc-600 focus:outline-none transition-colors"
+                    className="absolute right-2.5 text-zinc-400 hover:text-zinc-600 focus:outline-none transition-colors"
                   >
                     {showPassword ? (
                       <EyeSlashIcon className="h-5 w-5" />
@@ -552,23 +633,23 @@ const RegisterPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                   Konfirmasi Password
                 </label>
                 <div className="relative flex items-center">
-                  <KeyIcon className="h-5 w-5 text-zinc-400 absolute left-3.5 pointer-events-none z-10" />
+                  <KeyIcon className="h-5 w-5 text-zinc-400 absolute left-3 pointer-events-none z-10" />
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     required
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                     placeholder="Konfirmasi password"
-                    className="w-full pl-11 pr-11 py-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-emerald-600/10 focus:ring-4 bg-white/50 backdrop-blur-sm transition-all duration-300 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 text-zinc-400 hover:text-zinc-600 focus:outline-none transition-colors"
+                    className="absolute right-2.5 text-zinc-400 hover:text-zinc-600 focus:outline-none transition-colors"
                   >
                     {showConfirmPassword ? (
                       <EyeSlashIcon className="h-5 w-5" />
@@ -579,10 +660,10 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="col-span-1 md:col-span-2 pt-4 space-y-4">
+              <div className="col-span-1 md:col-span-2 pt-3 space-y-3.5">
                 <Button 
                   type="submit"
-                  className="w-full bg-emerald-800 text-white hover:bg-emerald-900 active:scale-[0.98] py-3 rounded-xl transition-all duration-300 font-semibold shadow-md shadow-emerald-800/10 border-0 flex items-center justify-center"
+                  className="w-full bg-emerald-800 text-white hover:bg-emerald-900 active:scale-[0.98] py-2.5 rounded-xl transition-all duration-300 font-semibold shadow-md shadow-emerald-800/10 border-0 flex items-center justify-center text-sm"
                   disabled={loading || (!isFirstAdmin && !isNIKValid) || !isPasswordValid}
                 >
                   {loading ? (
@@ -615,16 +696,7 @@ const RegisterPage: React.FC = () => {
           </div>
         </motion.div>
       </Container>
-        
-        {/* Back to Home link */}
-        <div className="text-center mt-4">
-          <a href="https://sman-modalbangsa.sch.id/" className="inline-flex items-center gap-2 text-emerald-700 hover:text-emerald-900 font-semibold">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Kembali ke Beranda
-          </a>
-        </div>
+
         
         {/* Modal PPDB Closed */}
       <Modal
