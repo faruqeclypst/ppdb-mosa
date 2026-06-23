@@ -15,13 +15,15 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  TrashIcon
+  TrashIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import Pagination from '../ui/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
 import { auth } from '../../firebase/config';
 import StudentDetailModal from './StudentDetailModal';
+import { generateRegistrationCard, generateGraduationLetter } from '../../utils/pdfGenerator';
 
 // Shared imports
 import { PPDBData, SchoolFilter, SortConfig } from '../../types/ppdb';
@@ -85,10 +87,24 @@ const DataPendaftar: React.FC<DataPendaftarProps> = ({ mode = 'regular' }) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [showActionDropdown, setShowActionDropdown] = useState<string | null>(null);
+  const [ppdbSettings, setPpdbSettings] = useState<any>(null);
 
   useEffect(() => {
     loadData();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const settingsRef = ref(db, 'settings/ppdb');
+      const snapshot = await get(settingsRef);
+      if (snapshot.exists()) {
+        setPpdbSettings(snapshot.val());
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
 
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -462,6 +478,16 @@ const DataPendaftar: React.FC<DataPendaftarProps> = ({ mode = 'regular' }) => {
     setSelectedStatus(null);
     setAlasanPenolakan('');
     setSelectedData(null);
+  };
+
+  const handleDownloadBuktiDaftar = async (item: PPDBData) => {
+    setShowActionDropdown(null);
+    await generateRegistrationCard(item as any, showAlert);
+  };
+
+  const handleDownloadBuktiLulus = async (item: PPDBData) => {
+    setShowActionDropdown(null);
+    await generateGraduationLetter(item as any, showAlert, ppdbSettings);
   };
 
   const handleResetData = async () => {
@@ -917,6 +943,24 @@ const DataPendaftar: React.FC<DataPendaftarProps> = ({ mode = 'regular' }) => {
                             <CheckCircleIcon className="w-4 h-4" />
                             Ubah Status
                           </button>
+                          <div className="border-t border-gray-100 my-1" />
+                          <button
+                            onClick={() => handleDownloadBuktiDaftar(item)}
+                            className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                          >
+                            <DocumentTextIcon className="w-4 h-4" />
+                            Bukti Daftar
+                          </button>
+                          {item.adminStatus === 'diterima' && (
+                            <button
+                              onClick={() => handleDownloadBuktiLulus(item)}
+                              className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                            >
+                              <DocumentArrowDownIcon className="w-4 h-4" />
+                              Bukti Lulus
+                            </button>
+                          )}
+                          <div className="border-t border-gray-100 my-1" />
                           {userRole?.isMaster && (
                             <button
                               onClick={() => {

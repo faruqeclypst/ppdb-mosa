@@ -14,6 +14,7 @@ import CustomHeroModalSettings from './settings/CustomHeroModalSettings';
 import JalurPeriodSettings from './settings/JalurPeriodSettings';
 import AdminContactSettings from './settings/AdminContactSettings';
 import DangerZoneSettings from './settings/DangerZoneSettings';
+import PrincipalSignatureSettings from './settings/PrincipalSignatureSettings';
 
 const initialSettings: PPDBSettingsType = {
   academicYear: '',
@@ -71,7 +72,9 @@ const initialSettings: PPDBSettingsType = {
     image: '',
     linkText: '',
     linkUrl: ''
-  }
+  },
+  principalSignatureMosa: '',
+  principalSignatureFajar: ''
 };
 
 const PPDBSettings: React.FC = () => {
@@ -83,6 +86,10 @@ const PPDBSettings: React.FC = () => {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
+  const [uploadingSigMosa, setUploadingSigMosa] = useState(false);
+  const [deletingSigMosa, setDeletingSigMosa] = useState(false);
+  const [uploadingSigFajar, setUploadingSigFajar] = useState(false);
+  const [deletingSigFajar, setDeletingSigFajar] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -211,6 +218,79 @@ const PPDBSettings: React.FC = () => {
       showAlert('error', 'Gagal menghapus gambar. Silakan coba lagi.');
     } finally {
       setDeletingImage(false);
+    }
+  };
+
+  const handleSigUpload = async (school: 'mosa' | 'fajar', file: File | null) => {
+    if (!file) {
+      setSettings(prev => ({
+        ...prev,
+        [school === 'mosa' ? 'principalSignatureMosa' : 'principalSignatureFajar']: ''
+      }));
+      return;
+    }
+
+    if (school === 'mosa') setUploadingSigMosa(true);
+    else setUploadingSigFajar(true);
+
+    try {
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `signature-${school}-${Date.now()}.${fileExtension}`;
+      const filePath = `signatures/${fileName}`;
+
+      const result = await uploadToR2({
+        file,
+        path: filePath,
+        contentType: file.type,
+      });
+
+      const fieldKey = school === 'mosa' ? 'principalSignatureMosa' : 'principalSignatureFajar';
+      const updatedSettings = {
+        ...settings,
+        [fieldKey]: result.publicUrl
+      };
+
+      setSettings(updatedSettings);
+      await set(ref(db, 'settings/ppdb'), updatedSettings);
+      showAlert('success', 'Tanda tangan berhasil diupload dan pengaturan disimpan');
+    } catch (error) {
+      console.error('Error uploading signature:', error);
+      showAlert('error', 'Gagal mengupload tanda tangan. Silakan coba lagi.');
+    } finally {
+      if (school === 'mosa') setUploadingSigMosa(false);
+      else setUploadingSigFajar(false);
+    }
+  };
+
+  const handleSigDelete = async (school: 'mosa' | 'fajar') => {
+    const fieldKey = school === 'mosa' ? 'principalSignatureMosa' : 'principalSignatureFajar';
+    const imageUrl = settings[fieldKey];
+    if (!imageUrl) return;
+
+    if (school === 'mosa') setDeletingSigMosa(true);
+    else setDeletingSigFajar(true);
+
+    try {
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `signatures/${fileName}`;
+
+      await deleteFromR2(filePath);
+
+      const updatedSettings = {
+        ...settings,
+        [fieldKey]: ''
+      };
+
+      setSettings(updatedSettings);
+      await set(ref(db, 'settings/ppdb'), updatedSettings);
+      showAlert('success', 'Tanda tangan berhasil dihapus dan pengaturan disimpan');
+    } catch (error) {
+      console.error('Error deleting signature:', error);
+      showAlert('error', 'Gagal menghapus tanda tangan. Silakan coba lagi.');
+    } finally {
+      if (school === 'mosa') setDeletingSigMosa(false);
+      else setDeletingSigFajar(false);
     }
   };
 
@@ -343,6 +423,17 @@ const PPDBSettings: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* 3.5. Principal Signature settings */}
+      <PrincipalSignatureSettings
+        settings={settings}
+        uploadingSigMosa={uploadingSigMosa}
+        deletingSigMosa={deletingSigMosa}
+        uploadingSigFajar={uploadingSigFajar}
+        deletingSigFajar={deletingSigFajar}
+        handleSigUpload={handleSigUpload}
+        handleSigDelete={handleSigDelete}
+      />
 
       {/* 4. Pathways settings grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">

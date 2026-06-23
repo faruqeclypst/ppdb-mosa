@@ -1338,7 +1338,7 @@ const PPDBFormPage: React.FC = () => {
                             </p>
                           </div>
                           <Button
-                            onClick={() => generateGraduationLetter(formData as any, showAlert)}
+                            onClick={() => generateGraduationLetter(formData as any, showAlert, ppdbSettings)}
                             className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold border-0 py-3 px-6 rounded-xl shadow-lg shrink-0 self-start md:self-center"
                           >
                             Unduh Bukti Kelulusan
@@ -1423,7 +1423,12 @@ const PPDBFormPage: React.FC = () => {
                         <div className="my-4 p-4 bg-white border border-zinc-200 rounded-xl text-sm space-y-2">
                           <p className="text-zinc-500">Nama Siswa: <span className="font-bold text-zinc-800 uppercase ml-2">{formData.namaSiswa}</span></p>
                           <p className="text-zinc-500">No. Registrasi: <span className="font-mono font-bold text-zinc-800 ml-2">{formData.registrationNumber}</span></p>
-                          <p className="text-zinc-500">Jalur: <span className="font-semibold text-zinc-800 ml-2 uppercase">{formData.jalur}</span></p>
+                          <p className="text-zinc-500">Jalur: <span className="font-semibold text-zinc-800 ml-2">
+                            {formData.jalur === 'prestasi' ? 'Prestasi' :
+                             formData.jalur === 'reguler' ? 'Reguler' :
+                             formData.jalur === 'undangan' ? 'Undangan' :
+                             formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : '-'}
+                          </span></p>
                         </div>
                         <p className="text-sm md:text-base text-zinc-700 font-bold mt-2">
                           Dinyatakan: TIDAK LULUS SELEKSI.

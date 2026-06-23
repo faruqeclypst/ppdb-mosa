@@ -38,4 +38,6 @@ export type PPDBSettings = {
   };
   announcementDate?: string;
   customModal: CustomModalContent;
+  principalSignatureMosa?: string;
+  principalSignatureFajar?: string;
 }; 

@@ -686,9 +686,9 @@ const RegisterPage: React.FC = () => {
 
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
                     Dengan mendaftar, Anda menyetujui{' '}
-                    <Link to="/info-spmb" className="font-medium text-emerald-700 hover:text-emerald-900 underline underline-offset-2">
+                    <a href="https://sman-modalbangsa.sch.id/id/spmb" target="_blank" rel="noopener noreferrer" className="font-medium text-emerald-700 hover:text-emerald-900 underline underline-offset-2">
                       Syarat & Ketentuan SPMB Online SMAN Modal Bangsa
-                    </Link>
+                    </a>
                   </p>
                 </div>
               </div>

@@ -4,6 +4,11 @@ import Button from '../ui/Button';
 import Tabs from '../ui/Tabs';
 import { DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 import classNames from 'classnames';
+import { ref, get } from 'firebase/database';
+import { db } from '../../firebase/config';
+import type { PPDBSettings } from '../../types/settings';
+import { generateRegistrationCard, generateGraduationLetter } from '../../utils/pdfGenerator';
+import { showAlert } from '../ui/Alert';
 
 export type PPDBData = {
   uid: string;
@@ -84,7 +89,7 @@ const getJalurLabel = (jalur: PPDBData['jalur']) => {
     prestasi: 'Prestasi',
     reguler: 'Reguler', 
     undangan: 'Undangan',
-    pjj: 'PJJ'
+    pjj: 'Pendidikan Jarak Jauh (PJJ)'
   };
   return labels[jalur] || jalur;
 };
@@ -114,12 +119,26 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [ppdbSettings, setPPDBSettings] = useState<PPDBSettings | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setActiveTab(0);
+      loadSettings();
     }
   }, [isOpen]);
+
+  const loadSettings = async () => {
+    try {
+      const settingsRef = ref(db, 'settings/ppdb');
+      const snapshot = await get(settingsRef);
+      if (snapshot.exists()) {
+        setPPDBSettings(snapshot.val());
+      }
+    } catch (error) {
+      console.error('Error loading settings in StudentDetailModal:', error);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -542,12 +561,30 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
           </div>
           
           {!isMobile && (
-            <Button
-              onClick={onClose}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 text-sm rounded-xl border-0"
-            >
-              Tutup
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => generateRegistrationCard(selectedData as any, showAlert)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm rounded-xl border-0 flex items-center gap-1.5"
+              >
+                <DocumentArrowDownIcon className="w-4 h-4" />
+                <span>Bukti Daftar</span>
+              </Button>
+              {selectedData.adminStatus === 'diterima' && (
+                <Button
+                  onClick={() => generateGraduationLetter(selectedData as any, showAlert, ppdbSettings)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-sm rounded-xl border-0 flex items-center gap-1.5"
+                >
+                  <DocumentArrowDownIcon className="w-4 h-4" />
+                  <span>Bukti Lulus</span>
+                </Button>
+              )}
+              <Button
+                onClick={onClose}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 text-sm rounded-xl border-0"
+              >
+                Tutup
+              </Button>
+            </div>
           )}
         </div>
 
@@ -561,10 +598,28 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
         </div>
 
         {isMobile && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t flex justify-end">
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => generateRegistrationCard(selectedData as any, showAlert)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-xs rounded-lg border-0 flex items-center justify-center gap-1 font-semibold"
+              >
+                <DocumentArrowDownIcon className="w-3.5 h-3.5" />
+                <span>Bukti Daftar</span>
+              </Button>
+              {selectedData.adminStatus === 'diterima' && (
+                <Button
+                  onClick={() => generateGraduationLetter(selectedData as any, showAlert, ppdbSettings)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 text-xs rounded-lg border-0 flex items-center justify-center gap-1 font-semibold"
+                >
+                  <DocumentArrowDownIcon className="w-3.5 h-3.5" />
+                  <span>Bukti Lulus</span>
+                </Button>
+              )}
+            </div>
             <Button
               onClick={onClose}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl border-0 font-semibold text-sm"
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg border-0 font-semibold text-xs"
             >
               Tutup
             </Button>

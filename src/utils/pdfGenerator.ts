@@ -275,7 +275,10 @@ export const generateRegistrationCard = async (
       });
     }
 
-    const regNumber = formData.registrationNumber || '-';
+    const genderPrefix = formData.jenisKelamin === 'L' ? 'L' : formData.jenisKelamin === 'P' ? 'P' : '';
+    const regNumber = genderPrefix && formData.registrationNumber
+      ? `${genderPrefix}-${formData.registrationNumber}`
+      : (formData.registrationNumber || '-');
 
     // Detail layout
     const startY = lineY - 80;
@@ -302,7 +305,7 @@ export const generateRegistrationCard = async (
 
     const fields = [
       { label: 'No. Pendaftaran', value: regNumber },
-      { label: 'Jalur Pendaftaran', value: formData.jalur.toUpperCase() },
+      { label: 'Jalur Pendaftaran', value: formData.jalur.toLowerCase() === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : formData.jalur.toUpperCase() },
       ...(isPJJ ? [{ label: 'Sekolah PJJ', value: formData.pjjSchool || '-' }] : []),
       { label: 'Nama Lengkap', value: formData.namaSiswa },
       { label: 'NISN', value: formData.nisn },
@@ -588,11 +591,17 @@ export const generateReRegistrationCard = async (
       }) + ' WIB'
       : '-';
 
+    const genderPrefix = formData.jenisKelamin === 'L' ? 'L' : formData.jenisKelamin === 'P' ? 'P' : '';
+    const regNumber = genderPrefix && formData.registrationNumber
+      ? `${genderPrefix}-${formData.registrationNumber}`
+      : (formData.registrationNumber || '-');
+
     const infoFields = [
-      { label: 'Nomor Pendaftaran', value: formData.registrationNumber || '-' },
+      { label: 'Nomor Pendaftaran', value: regNumber },
       { label: 'Nama Lengkap', value: formData.namaSiswa },
       { label: 'NISN / NIK', value: `${formData.nisn} / ${formData.nik}` },
-      { label: 'Jalur Pendaftaran', value: formData.jalur?.toUpperCase() + (isPJJ ? ` (${formData.pjjSchool || '-'})` : '') },
+      { label: 'Jalur Pendaftaran', value: formData.jalur?.toLowerCase() === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : formData.jalur?.toUpperCase() },
+      ...(isPJJ ? [{ label: 'Sekolah PJJ', value: formData.pjjSchool || '-' }] : []),
       { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah },
       { label: 'Waktu Daftar Ulang', value: formattedDate }
     ];
@@ -733,10 +742,35 @@ export const generateReRegistrationCard = async (
 
 export const generateGraduationLetter = async (
   formData: any,
-  onShowAlert: (type: 'success' | 'error' | 'info', message: string, duration?: number) => void
+  onShowAlert: (type: 'success' | 'error' | 'info', message: string, duration?: number) => void,
+  settings?: any
 ) => {
   try {
     const pdfDoc = await PDFDocument.create();
+    const genderPrefix = formData.jenisKelamin === 'L' ? 'L' : formData.jenisKelamin === 'P' ? 'P' : '';
+    const regNumber = genderPrefix && formData.registrationNumber
+      ? `${genderPrefix}-${formData.registrationNumber}`
+      : (formData.registrationNumber || '-');
+
+    const isPJJ = formData.jalur?.toLowerCase() === 'pjj';
+    const isMosa = isPJJ || formData.school === 'mosa';
+    const signatureUrl = isMosa ? settings?.principalSignatureMosa : settings?.principalSignatureFajar;
+
+    let signatureImage = null;
+    if (signatureUrl) {
+      try {
+        const signatureResponse = await fetch(signatureUrl);
+        const signatureArrayBuffer = await signatureResponse.arrayBuffer();
+        try {
+          signatureImage = await pdfDoc.embedPng(signatureArrayBuffer);
+        } catch (pngError) {
+          signatureImage = await pdfDoc.embedJpg(signatureArrayBuffer);
+        }
+      } catch (err) {
+        console.error('Error loading principal signature:', err);
+      }
+    }
+
     const page = pdfDoc.addPage([595, 842]);
     const { width, height } = page.getSize();
 
@@ -752,7 +786,6 @@ export const generateGraduationLetter = async (
     });
 
     const marginX = 60;
-    const isPJJ = formData.jalur?.toLowerCase() === 'pjj';
 
     // Load fonts
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -856,7 +889,7 @@ export const generateGraduationLetter = async (
     drawCenteredText(titleString, titleY, 13, helveticaBold, rgb(0, 0, 0));
 
     const { start, end } = getPPDBYear();
-    const noSurat = `Nomor: PPDB/${start}/SKL/${formData.registrationNumber || '000'}`;
+    const noSurat = `Nomor: PPDB/${start}/SKL/${regNumber !== '-' ? regNumber : '000'}`;
     drawCenteredText(noSurat, titleY - 14, 10, helveticaFont, rgb(0.2, 0.2, 0.2));
 
     // Opening Paragraph
@@ -946,7 +979,7 @@ export const generateGraduationLetter = async (
     }
 
     const details = [
-      { label: 'Nomor Registrasi', val: formData.registrationNumber || '-' },
+      { label: 'Nomor Registrasi', val: regNumber },
       { label: 'Nama Lengkap', val: formData.namaSiswa },
       { label: 'NISN / NIK', val: `${formData.nisn || '-'} / ${formData.nik || '-'}` },
       { label: 'Jalur Seleksi', val: jalurVal },
@@ -1087,11 +1120,27 @@ export const generateGraduationLetter = async (
 
     page.drawText(`${location}, ${today}`, { x: sigX, y: textY, size: 10, font: helveticaFont });
     textY -= 15;
-    page.drawText(principalTitle, { x: sigX, y: textY, size: 10, font: helveticaBold });
+    const sigTitleY = textY;
+    page.drawText(principalTitle, { x: sigX, y: sigTitleY, size: 10, font: helveticaBold });
+    
     textY -= 55;
-    page.drawText(principalName, { x: sigX, y: textY, size: 10, font: helveticaBold });
+    const sigNameY = textY;
+    page.drawText(principalName, { x: sigX, y: sigNameY, size: 10, font: helveticaBold });
+    
     textY -= 12;
     page.drawText(principalNip, { x: sigX, y: textY, size: 9, font: helveticaFont, color: rgb(0.2, 0.2, 0.2) });
+
+    if (signatureImage) {
+      const sigHeight = 160;
+      const sigScale = sigHeight / signatureImage.height;
+      const sigWidth = signatureImage.width * sigScale;
+      page.drawImage(signatureImage, {
+        x: sigX - 65,
+        y: sigNameY - 35,
+        width: sigWidth,
+        height: sigHeight,
+      });
+    }
 
     const pdfBytes = await pdfDoc.save();
     const schoolAbbr = formData.school === 'mosa' ? 'Modal_Bangsa' : 'Fajar_Harapan';
