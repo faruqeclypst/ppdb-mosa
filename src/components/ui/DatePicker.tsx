@@ -18,16 +18,16 @@ const DatePicker: React.FC<DatePickerProps> = ({
 }) => {
   return (
     <div className="flex flex-col">
-      <label className="mb-1 text-sm font-medium text-gray-700">
+      <label className="mb-1 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-rose-500 ml-1">*</span>}
       </label>
       <input
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={classNames(
-          'input border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+          'w-full px-3 py-2 text-xs sm:text-sm font-medium text-zinc-800 bg-white border border-zinc-200 rounded-xl focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400 shadow-xs cursor-pointer',
           className
         )}
         required={required}

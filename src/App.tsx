@@ -8,6 +8,7 @@ import ScrollToTop from './components/utils/ScrollToTop';
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const RegisterPJJPage = lazy(() => import('./pages/RegisterPJJPage'));
 const PPDBFormPage = lazy(() => import('./pages/PPDBFormPage'));
 const InfoPPDBPage = lazy(() => import('./pages/InfoPPDBPage'));
 
@@ -21,7 +22,7 @@ const PageLoader: React.FC = () => (
 // Layout wrapper component
 const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const isAuthPage = ['/', '/login', '/register'].includes(location.pathname);
+  const isAuthPage = ['/', '/login', '/register', '/register-pjj', '/register/pjj'].includes(location.pathname);
  
   if (isAuthPage) {
     return <>{children}</>;
@@ -65,6 +66,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/login" element={<Suspense fallback={<PageLoader />}><LoginPage /></Suspense>} />
         <Route path="/register" element={<Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>} />
+        <Route path="/register-pjj" element={<Suspense fallback={<PageLoader />}><RegisterPJJPage /></Suspense>} />
+        <Route path="/register/pjj" element={<Suspense fallback={<PageLoader />}><RegisterPJJPage /></Suspense>} />
         <Route path="/info-spmb" element={<Suspense fallback={<PageLoader />}><InfoPPDBPage /></Suspense>} />
         <Route path="/ppdb" element={<Suspense fallback={<PageLoader />}><PPDBFormPage /></Suspense>} />
         <Route path="/admin/*" element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />

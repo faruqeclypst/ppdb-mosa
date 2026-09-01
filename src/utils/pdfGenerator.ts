@@ -15,14 +15,80 @@ export interface PDFFormData {
   asalSekolah: string;
   asalSekolahManual?: string;
   alamat: string;
+  desa?: string;
   kecamatan: string;
   kabupaten: string;
+  provinsi?: string;
+  alasanPilihan?: string;
   namaAyah: string;
   namaIbu: string;
   hpAyah: string;
+  hpIbu?: string;
   registrationNumber?: string;
   photo?: File | string;
 }
+
+export const toTitleCase = (str?: string): string => {
+  if (!str || str.trim() === '-' || str.trim() === '') return str || '-';
+
+  const acronyms = new Set([
+    'SMP', 'MTS', 'MTSN', 'SMPN', 'SMAS', 'SMK', 'SMKN', 'SMA', 'SMAN', 
+    'SD', 'SDN', 'MIN', 'MI', 'PJJ', 'SPMB', 'PPDB', 'NIK', 'NISN', 'KK', 
+    'RT', 'RW', 'SKL', 'PDF', 'SIM', 'DAPODIK', 'KEMENDIKBUD', 'KEMENAG',
+    'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'
+  ]);
+
+  const minorWords = new Set(['dan', 'atau', 'di', 'ke', 'dari', 'pada', 'untuk', 'dengan', 'yang', 'bin', 'binti']);
+
+  return str
+    .split(/\s+/)
+    .map((word, idx) => {
+      const cleanUpper = word.toUpperCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '');
+      if (acronyms.has(cleanUpper)) {
+        // Keep punctuation intact if any
+        return word.toUpperCase();
+      }
+
+      if (word.includes('/')) {
+        return word.split('/').map(w => toTitleCase(w)).join('/');
+      }
+
+      if (idx > 0 && minorWords.has(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
+
+export const formatFullAddress = (data: Partial<PDFFormData>): string => {
+  const parts: string[] = [];
+  
+  if (data.alamat && data.alamat.trim() !== '-' && data.alamat.trim() !== '') {
+    parts.push(toTitleCase(data.alamat.trim()));
+  }
+  if (data.desa && data.desa.trim() !== '-' && data.desa.trim() !== '') {
+    const rawDesa = data.desa.trim();
+    const cleanDesa = rawDesa.replace(/^(desa|kelurahan|kel\.|gampong)\s*/i, '');
+    parts.push(`Desa/Kel. ${toTitleCase(cleanDesa)}`);
+  }
+  if (data.kecamatan && data.kecamatan.trim() !== '-' && data.kecamatan.trim() !== '') {
+    const rawKec = data.kecamatan.trim();
+    const cleanKec = rawKec.replace(/^kec(\.|\s+)/i, '');
+    parts.push(`Kec. ${toTitleCase(cleanKec)}`);
+  }
+  if (data.kabupaten && data.kabupaten.trim() !== '-' && data.kabupaten.trim() !== '') {
+    parts.push(toTitleCase(data.kabupaten.trim()));
+  }
+  if (data.provinsi && data.provinsi.trim() !== '-' && data.provinsi.trim() !== '') {
+    const rawProv = data.provinsi.trim();
+    const cleanProv = rawProv.replace(/^prov(\.|\s+)/i, '');
+    parts.push(`Prov. ${toTitleCase(cleanProv)}`);
+  }
+
+  return parts.length > 0 ? parts.join(', ') : '-';
+};
 
 
 const wrapText = (text: string, maxLength: number): string[] => {
@@ -282,47 +348,86 @@ export const generateRegistrationCard = async (
 
     // Detail layout
     const startY = lineY - 80;
-    const lineHeight = 25;
     let currentY = startY;
 
-    const drawField = (label: string, value: string, y: number) => {
+    const drawField = (label: string, value: string, maxChars = 52) => {
+      const displayVal = value && value.trim() !== '' ? value.trim() : '-';
+      const lines = wrapText(displayVal, maxChars);
+      
       page.drawText(label, {
         x: marginX,
-        y,
-        size: 10,
+        y: currentY,
+        size: 9.5,
         font: helveticaBold,
         color: rgb(0, 0, 0),
       });
 
-      page.drawText(': ' + value, {
-        x: marginX + 150,
-        y,
-        size: 10,
-        font: helveticaFont,
+      page.drawText(':', {
+        x: marginX + 130,
+        y: currentY,
+        size: 9.5,
+        font: helveticaBold,
         color: rgb(0, 0, 0),
       });
+
+      lines.forEach((line, idx) => {
+        page.drawText(line, {
+          x: marginX + 140,
+          y: currentY - (idx * 13),
+          size: 9.5,
+          font: helveticaFont,
+          color: rgb(0, 0, 0),
+        });
+      });
+
+      const fieldHeight = Math.max(1, lines.length) * 13 + 6;
+      currentY -= fieldHeight;
     };
+
+    let formattedBirthDate = '-';
+    if (formData.tanggalLahir) {
+      const d = new Date(formData.tanggalLahir);
+      if (!isNaN(d.getTime())) {
+        formattedBirthDate = d.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      } else {
+        formattedBirthDate = formData.tanggalLahir;
+      }
+    }
+    const birthPlace = formData.tempatLahir && formData.tempatLahir !== '-'
+      ? toTitleCase(formData.tempatLahir)
+      : '';
+    const birthPlaceDate = birthPlace ? `${birthPlace}, ${formattedBirthDate}` : formattedBirthDate;
+
+    const originSchool = formData.asalSekolah === 'SEKOLAH LAIN'
+      ? (formData.asalSekolahManual ? `${toTitleCase(formData.asalSekolahManual)} (SEKOLAH LAIN)` : 'SEKOLAH LAIN')
+      : toTitleCase(formData.asalSekolah || '-');
+
+    const jalurDisplay = formData.jalur.toLowerCase() === 'pjj'
+      ? 'Pendidikan Jarak Jauh (PJJ)'
+      : `Jalur ${toTitleCase(formData.jalur)}`;
 
     const fields = [
       { label: 'No. Pendaftaran', value: regNumber },
-      { label: 'Jalur Pendaftaran', value: formData.jalur.toLowerCase() === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : formData.jalur.toUpperCase() },
-      ...(isPJJ ? [{ label: 'Sekolah PJJ', value: formData.pjjSchool || '-' }] : []),
-      { label: 'Nama Lengkap', value: formData.namaSiswa },
-      { label: 'NISN', value: formData.nisn },
-      { label: 'NIK', value: formData.nik },
-      { label: 'Tempat, Tgl Lahir', value: `${formData.tempatLahir}, ${new Date(formData.tanggalLahir).toLocaleDateString('id-ID')}` },
-      { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan' },
-      { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah },
-      { label: 'Alamat', value: `${formData.alamat}, ${formData.kecamatan}` },
-      { label: 'Kabupaten/Kota', value: formData.kabupaten },
-      { label: 'Nama Ayah', value: formData.namaAyah },
-      { label: 'Nama Ibu', value: formData.namaIbu },
-      { label: 'No. HP', value: formData.hpAyah }
+      { label: 'Jalur Pendaftaran', value: jalurDisplay },
+      ...(isPJJ ? [{ label: 'Sekolah PJJ', value: toTitleCase(formData.pjjSchool) || '-' }] : []),
+      { label: 'Nama Lengkap', value: toTitleCase(formData.namaSiswa) || '-' },
+      { label: 'NISN', value: formData.nisn && formData.nisn !== '-' ? formData.nisn : '-' },
+      { label: 'NIK', value: formData.nik && formData.nik !== '-' ? formData.nik : '-' },
+      { label: 'Tempat, Tgl Lahir', value: birthPlaceDate },
+      { label: 'Jenis Kelamin', value: formData.jenisKelamin === 'L' ? 'Laki-laki' : (formData.jenisKelamin === 'P' ? 'Perempuan' : '-') },
+      { label: 'Asal Sekolah', value: originSchool },
+      { label: 'Alamat Domisili', value: formatFullAddress(formData) },
+      { label: 'Nama Ayah', value: toTitleCase(formData.namaAyah) || '-' },
+      { label: 'Nama Ibu', value: toTitleCase(formData.namaIbu) || '-' },
+      { label: 'No. HP / Kontak', value: formData.hpAyah || formData.hpIbu || '-' }
     ];
 
     fields.forEach((field) => {
-      drawField(field.label, field.value, currentY);
-      currentY -= lineHeight;
+      drawField(field.label, field.value);
     });
 
     // Notes
@@ -415,7 +520,7 @@ export const generateRegistrationCard = async (
       boxStartY,
       signatureWidth,
       'Pendaftar',
-      formData.namaSiswa
+      toTitleCase(formData.namaSiswa)
     );
 
     const pdfBytes = await pdfDoc.save();
@@ -598,11 +703,11 @@ export const generateReRegistrationCard = async (
 
     const infoFields = [
       { label: 'Nomor Pendaftaran', value: regNumber },
-      { label: 'Nama Lengkap', value: formData.namaSiswa },
-      { label: 'NISN / NIK', value: `${formData.nisn} / ${formData.nik}` },
-      { label: 'Jalur Pendaftaran', value: formData.jalur?.toLowerCase() === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : formData.jalur?.toUpperCase() },
-      ...(isPJJ ? [{ label: 'Sekolah PJJ', value: formData.pjjSchool || '-' }] : []),
-      { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah },
+      { label: 'Nama Lengkap', value: toTitleCase(formData.namaSiswa) || '-' },
+      { label: 'NISN / NIK', value: `${formData.nisn || '-'} / ${formData.nik || '-'}` },
+      { label: 'Jalur Pendaftaran', value: formData.jalur?.toLowerCase() === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : `Jalur ${toTitleCase(formData.jalur)}` },
+      ...(isPJJ ? [{ label: 'Sekolah PJJ', value: toTitleCase(formData.pjjSchool) || '-' }] : []),
+      { label: 'Asal Sekolah', value: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual ? `${toTitleCase(formData.asalSekolahManual)} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : toTitleCase(formData.asalSekolah || '-') },
       { label: 'Waktu Daftar Ulang', value: formattedDate }
     ];
 
@@ -980,11 +1085,11 @@ export const generateGraduationLetter = async (
 
     const details = [
       { label: 'Nomor Registrasi', val: regNumber },
-      { label: 'Nama Lengkap', val: formData.namaSiswa },
+      { label: 'Nama Lengkap', val: toTitleCase(formData.namaSiswa) || '-' },
       { label: 'NISN / NIK', val: `${formData.nisn || '-'} / ${formData.nik || '-'}` },
       { label: 'Jalur Seleksi', val: jalurVal },
       ...(isPJJ && pjjSchoolValue ? [{ label: pjjSchoolLabel, val: pjjSchoolValue }] : []),
-      { label: 'Asal Sekolah', val: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual || 'SEKOLAH LAIN') : formData.asalSekolah }
+      { label: 'Asal Sekolah', val: formData.asalSekolah === 'SEKOLAH LAIN' ? (formData.asalSekolahManual ? `${toTitleCase(formData.asalSekolahManual)} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : toTitleCase(formData.asalSekolah || '-') }
     ];
 
     details.forEach(row => {

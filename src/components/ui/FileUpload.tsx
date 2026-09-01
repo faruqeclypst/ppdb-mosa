@@ -1,6 +1,13 @@
 import React, { ChangeEvent, useState, useRef } from 'react';
 import classNames from 'classnames';
 import { showAlert } from './Alert';
+import { 
+  ArrowUpTrayIcon, 
+  EyeIcon, 
+  TrashIcon, 
+  DocumentTextIcon, 
+  ArrowPathIcon
+} from '@heroicons/react/24/outline';
 
 type FileUploadProps = {
   label: string;
@@ -21,20 +28,23 @@ type FileUploadProps = {
 const FileUpload: React.FC<FileUploadProps> = ({ 
   label, 
   name, 
-  accept, 
+  accept = '.pdf', 
   onChange, 
   onDelete,
   className,
-  maxSize = 4,
+  maxSize = 2,
   required,
   showPreview = false,
   value,
   id,
-  showDeleteButton = true,
+  showDeleteButton = false,
   isDeleting = false
 }) => {
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Strip trailing asterisks from label string to prevent double asterisk display
+  const cleanLabel = label.replace(/\s*\*+\s*$/, '').trim();
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -43,7 +53,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const file = files[0];
       
       if (file.size > maxSize * 1024 * 1024) {
-        showAlert('error', `Ukuran file tidak boleh lebih dari ${maxSize}MB`);
+        showAlert('error', `Ukuran file terlalu besar (maksimal ${maxSize}MB)`);
         event.target.value = '';
         return;
       }
@@ -69,112 +79,130 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   }, []);
 
-  const getButtonLabel = () => {
-    if (!value) return 'Pilih';
-    return 'Ganti';
-  };
-
   const handleFileClick = (file: File | string) => {
     if (typeof file === 'string') {
-      // Jika file adalah URL (sudah terupload)
       window.open(file, '_blank');
     } else {
-      // Jika file adalah File object (baru diupload)
       const url = URL.createObjectURL(file);
       window.open(url, '_blank');
-      // Cleanup URL object
       URL.revokeObjectURL(url);
     }
   };
 
+  const getFileName = (val: File | string) => {
+    if (typeof val === 'string') {
+      const parts = val.split('/');
+      const lastPart = parts[parts.length - 1] || 'Dokumen Terunggah.pdf';
+      // Remove long url params if any
+      return decodeURIComponent(lastPart.split('?')[0]);
+    }
+    return val.name;
+  };
+
+  const hasFile = Boolean(value);
+
   return (
-    <div className="flex flex-col">
-      <label className="mb-1 text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+    <div className="flex flex-col space-y-1.5">
+      {/* Field Label (tanpa truncate agar teks judul tampil utuh) */}
+      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 leading-normal block">
+        {cleanLabel}
+        {required && <span className="text-rose-500 ml-1 font-extrabold">*</span>}
       </label>
 
       {showPreview && preview && (
-        <div className="mb-4 relative w-32 h-32 mx-auto">
+        <div className="mb-2 relative w-24 h-24 mx-auto">
           <img
             src={preview}
             alt="Preview"
-            className="w-full h-full object-cover rounded-lg shadow-md"
+            className="w-full h-full object-cover rounded-xl border border-zinc-200 shadow-sm"
           />
         </div>
       )}
 
-      <div className="flex items-center gap-2 min-w-0">
-        <button
-          type="button"
+      {/* Hidden File Input */}
+      <input
+        ref={inputRef}
+        type="file"
+        name={name}
+        id={id || name}
+        onChange={handleFileChange}
+        accept={accept}
+        className="hidden"
+        required={required && !value}
+        aria-label={cleanLabel}
+      />
+
+      {/* Empty State: Card to Upload */}
+      {!hasFile ? (
+        <div
           onClick={() => inputRef.current?.click()}
           className={classNames(
-            'py-2 px-4 rounded-lg text-sm font-semibold whitespace-nowrap',
-            'bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex-shrink-0',
+            'group relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-zinc-200 hover:border-emerald-500 bg-zinc-50/50 hover:bg-emerald-50/30 rounded-2xl cursor-pointer transition-all duration-200 shadow-2xs',
             className
           )}
         >
-          {getButtonLabel()}
-        </button>
+          <div className="w-8 h-8 rounded-xl bg-white border border-zinc-200 group-hover:border-emerald-200 group-hover:bg-emerald-50 flex items-center justify-center text-zinc-500 group-hover:text-emerald-700 shadow-2xs transition-colors mb-1.5">
+            <ArrowUpTrayIcon className="w-4 h-4" />
+          </div>
+          <p className="text-xs font-bold text-zinc-800 group-hover:text-emerald-800 transition-colors text-center">
+            Pilih File PDF
+          </p>
+          <p className="text-[10px] text-zinc-400 mt-0.5 text-center">
+            Maksimal {maxSize}MB (Format PDF)
+          </p>
+        </div>
+      ) : (
+        /* Uploaded State: Card showing file info and explicit action buttons */
+        <div className="p-3 bg-white border border-emerald-200/80 rounded-2xl shadow-2xs space-y-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+              <DocumentTextIcon className="w-4.5 h-4.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-zinc-900 truncate" title={getFileName(value!)}>
+                {getFileName(value!)}
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">
+                Format PDF (Maks. {maxSize}MB)
+              </p>
+            </div>
+          </div>
 
-        <input
-          ref={inputRef}
-          type="file"
-          name={name}
-          id={id || name}
-          onChange={handleFileChange}
-          accept={accept}
-          className="hidden"
-          required={required && !value}
-          aria-label={label}
-        />
+          <div className="flex items-center gap-2 pt-1 border-t border-zinc-100">
+            <button
+              type="button"
+              onClick={() => handleFileClick(value!)}
+              className="flex-1 py-1.5 px-2.5 rounded-xl bg-zinc-100 hover:bg-emerald-50 text-zinc-700 hover:text-emerald-800 border border-zinc-200/70 hover:border-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <EyeIcon className="w-3.5 h-3.5" />
+              <span>Lihat Berkas</span>
+            </button>
 
-        {value && (
-          <div className="flex items-center justify-between flex-1 bg-gray-50 rounded-lg px-4 py-2 min-w-0">
-            <div className="flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="py-1.5 px-3 rounded-xl bg-white hover:bg-zinc-100 text-zinc-600 hover:text-zinc-900 border border-zinc-200/80 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <ArrowPathIcon className="w-3.5 h-3.5" />
+              <span>Ganti</span>
+            </button>
+
+            {showDeleteButton && (
               <button
                 type="button"
-                onClick={() => handleFileClick(value)}
-                className="text-sm text-blue-600 hover:text-blue-800 truncate cursor-pointer text-left w-full"
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="p-1.5 rounded-xl bg-white hover:bg-rose-50 text-zinc-400 hover:text-rose-600 border border-zinc-200/70 hover:border-rose-200 transition-colors"
+                title="Hapus berkas"
               >
-                {typeof value === 'string' 
-                  ? value.split('/').pop() 
-                  : value.name}
+                <TrashIcon className="w-3.5 h-3.5" />
               </button>
-            </div>
-            {typeof value === 'string' && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.open(value, '_blank')}
-                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm flex-shrink-0"
-                >
-                  Lihat File
-                </button>
-                {showDeleteButton && onDelete && (
-                  <button
-                    type="button"
-                    onClick={onDelete}
-                    disabled={isDeleting}
-                    className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isDeleting ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span>Hapus</span>
-                      </div>
-                    ) : (
-                      'Hapus'
-                    )}
-                  </button>
-                )}
-              </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default FileUpload; 
+export default FileUpload;

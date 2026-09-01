@@ -237,7 +237,10 @@ const InfoPPDBSection: React.FC<InfoPPDBSectionProps> = ({ settings }) => {
 
                     {/* Action Button - Fixed height */}
                     <div className="p-6 bg-white border-t">
-                      <Link to="/register" className="block">
+                      <Link 
+                        to={jalur.name.toLowerCase() === 'pjj' ? '/register-pjj' : `/register?jalur=${jalur.name.toLowerCase()}`} 
+                        className="block"
+                      >
                         <button 
                           className={classNames(
                             'w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl',

@@ -14,10 +14,13 @@ export type PPDBData = {
    anakKe: string;
    jumlahSaudara: string;
    alamat: string;
-   kecamatan: string;
+   provinsi?: string;
    kabupaten: string;
+   kecamatan: string;
+   desa?: string;
    asalSekolah: string;
    asalSekolahManual?: string;
+   alasanPilihan?: string;
 
    // Akademik
    nilaiAgama2: string;
@@ -77,6 +80,8 @@ export type PPDBData = {
    registrationNumber?: string;
    reRegistered?: boolean;
    reRegisteredAt?: string;
+   wasReset?: boolean;
+   isReset?: boolean;
 };
 
 export type BadgeProps = {

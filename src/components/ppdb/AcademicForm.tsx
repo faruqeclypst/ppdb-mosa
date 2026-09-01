@@ -26,13 +26,13 @@ export const AcademicForm: React.FC<AcademicFormProps> = ({
   ];
 
   return (
-    <div className="space-y-10">
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {semesters.map((semester) => (
-            <div key={semester} className="space-y-6">
-              <SectionTitle>Semester {semester}</SectionTitle>
-              <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {semesters.map((semester) => (
+          <div key={semester} className="rounded-2xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-2xs">
+            <div className="p-5 bg-white rounded-[calc(1rem-0.125rem)] space-y-4">
+              <SectionTitle>Nilai Rapor Semester {semester}</SectionTitle>
+              <div className="space-y-3.5">
                 {mapelList.map(({ label, mobileLabel, key }) => {
                   const fieldName = `${key}${semester}`;
                   const value = formData[fieldName] as string;
@@ -62,14 +62,15 @@ export const AcademicForm: React.FC<AcademicFormProps> = ({
                           }
                         }}
                         disabled={formStatus === 'submitted'}
-                        className={`${disabledInputClass} ${isInvalid ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''} 
+                        className={`${disabledInputClass} ${isInvalid ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : ''} 
                           [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                         required
+                        placeholder="0 - 100"
                       />
                       {isInvalid && (
-                        <div className="absolute right-2 top-[2.5rem] flex items-center">
-                          <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-[10px]">!</span>
+                        <div className="absolute right-2 top-[2.3rem] flex items-center">
+                          <div className="w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-[10px] font-bold">!</span>
                           </div>
                         </div>
                       )}
@@ -78,8 +79,8 @@ export const AcademicForm: React.FC<AcademicFormProps> = ({
                 })}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -4,13 +4,28 @@ import { useAuth } from '../contexts/AuthContext';
 import { ref, get, update } from 'firebase/database';
 import { db, auth } from '../firebase/config';
 import { uploadToR2 } from '../services/cloudflareR2';
-import Container from '../components/ui/Container';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Alert, { showAlert } from '../components/ui/Alert';
-import Tabs from '../components/ui/Tabs';
 import Modal from '../components/ui/Modal';
-import { CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { 
+  CheckCircleIcon, 
+  ArrowPathIcon,
+  UserIcon,
+  AcademicCapIcon,
+  UserGroupIcon,
+  DocumentTextIcon,
+  CalendarDaysIcon,
+  BellAlertIcon,
+  CameraIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  ArrowRightOnRectangleIcon,
+  BookmarkSquareIcon,
+  EnvelopeIcon,
+  InformationCircleIcon
+} from '@heroicons/react/24/outline';
+import classNames from 'classnames';
 import { signOut } from 'firebase/auth';
 import { getPPDBStatus } from '../utils/ppdbStatus';
 import { compressFile } from '../utils/fileCompression';
@@ -22,6 +37,8 @@ import ParentInfoForm from '../components/ppdb/ParentInfoForm';
 import DocumentUploadForm from '../components/ppdb/DocumentUploadForm';
 import { generateRegistrationCard, generateGraduationLetter } from '../utils/pdfGenerator';
 import { generateAtomicRegistrationNumber } from '../utils/registrationNumber';
+import { syncDataToGoogleSheets } from '../services/googleSheetsSync';
+import { getKabupatenRegistrationCode } from '../services/wilayahApi';
 
 // Types
 export type JalurPeriod = {
@@ -57,10 +74,13 @@ type FormData = {
   anakKe: string;
   jumlahSaudara: string;
   alamat: string;
-  kecamatan: string;
+  provinsi?: string;
   kabupaten: string;
+  kecamatan: string;
+  desa?: string;
   asalSekolah: string;
   asalSekolahManual?: string;
+  alasanPilihan?: string;
   registrationNumber?: string;
   createdAt?: string;
 
@@ -93,6 +113,7 @@ type FormData = {
 
   // Files
   rekomendasi?: File | string;
+  sertifikat?: File | string;
   raport2?: File | string;
   raport3?: File | string;
   raport4?: File | string;
@@ -122,10 +143,13 @@ const INITIAL_FORM_DATA: FormData = {
   anakKe: '',
   jumlahSaudara: '',
   alamat: '',
-  kecamatan: '',
+  provinsi: 'ACEH',
   kabupaten: '',
+  kecamatan: '',
+  desa: '',
   asalSekolah: '',
   asalSekolahManual: '',
+  alasanPilihan: '',
   registrationNumber: '',
 
   nilaiAgama2: '',
@@ -153,6 +177,12 @@ const INITIAL_FORM_DATA: FormData = {
   instansiIbu: '',
   hpIbu: '',
 
+  rekomendasi: undefined,
+  sertifikat: undefined,
+  raport2: undefined,
+  raport3: undefined,
+  raport4: undefined,
+  photo: undefined,
   ijazah: undefined,
   kartuKeluarga: undefined,
   aktaKelahiran: undefined,
@@ -165,7 +195,10 @@ const INITIAL_FORM_DATA: FormData = {
 };
 
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h3 className="text-lg font-semibold text-gray-900 mb-4">{children}</h3>
+  <div className="flex items-center gap-2 pb-2.5 mb-4 border-b border-zinc-100">
+    <span className="w-1.5 h-3.5 bg-emerald-600 rounded-full shrink-0"></span>
+    <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-800">{children}</h3>
+  </div>
 );
 
 const getAcademicYear = () => {
@@ -192,10 +225,11 @@ const VALIDATION_CONFIG = {
     alamat: 'Alamat',
     kecamatan: 'Kecamatan',
     kabupaten: 'Kabupaten',
-    asalSekolah: 'Asal Sekolah'
+    asalSekolah: 'Asal Sekolah',
+    alasanPilihan: 'Alasan Memilih Sekolah'
   },
   SEMESTER_CONFIG: {
-    reguler: ['3', '4'],
+    reguler: ['2', '3', '4'],
     prestasi: ['2', '3', '4'],
     undangan: ['2', '3', '4'],
     pjj: []
@@ -205,7 +239,7 @@ const VALIDATION_CONFIG = {
     SISWA: [
       'namaSiswa', 'nik', 'nisn', 'jenisKelamin', 'tempatLahir', 'tanggalLahir',
       'anakKe', 'jumlahSaudara', 'alamat', 'kecamatan', 'kabupaten',
-      'asalSekolah'
+      'asalSekolah', 'alasanPilihan'
     ],
     ORANG_TUA: [
       'namaAyah', 'pekerjaanAyah', 'instansiAyah', 'hpAyah',
@@ -423,7 +457,7 @@ const PPDBFormPage: React.FC = () => {
     loadPPDBSettings();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     if (formStatus === 'submitted') return;
 
     const { name, value } = e.target;
@@ -601,6 +635,12 @@ const PPDBFormPage: React.FC = () => {
       return false;
     }
 
+    if (formData.alasanPilihan && formData.alasanPilihan.trim().length < 30) {
+      setError('Alasan memilih sekolah minimal 30 karakter. Mohon berikan penjelasan yang lebih lengkap.');
+      setCurrentStep(0);
+      return false;
+    }
+
     if (formData.nik !== '-' && formData.nik.length !== 16) {
       setError('NIK harus 16 digit');
       return false;
@@ -649,9 +689,12 @@ const PPDBFormPage: React.FC = () => {
 
     let requiredFiles: string[] = [];
     if (formData.jalur === 'pjj') {
-      requiredFiles = ['photo', 'ijazah', 'kartuKeluarga', 'aktaKelahiran'];
+      requiredFiles = ['photo', 'ijazah', 'kartuKeluarga', 'aktaKelahiran', 'lampiranA'];
     } else {
-      requiredFiles = ['photo', 'rekomendasi'];
+      requiredFiles = ['photo', 'kartuKeluarga', 'aktaKelahiran', 'ijazah', 'rekomendasi'];
+      if (formData.jalur === 'prestasi') {
+        requiredFiles.push('sertifikat');
+      }
       const semesters = getRequiredSemesters(formData.jalur);
       semesters.forEach(s => requiredFiles.push(`raport${s}`));
     }
@@ -712,8 +755,7 @@ const PPDBFormPage: React.FC = () => {
 
       await Promise.all(uploadPromises);
 
-      const kabupatenData = KABUPATEN_LIST.find(kab => kab.nama === formData.kabupaten);
-      const kabupatenKode = kabupatenData?.kode || '00';
+      const kabupatenKode = getKabupatenRegistrationCode(formData.kabupaten, formData.provinsi);
 
       // Atomic generate registration number only on first submission / reset
       let registrationNumber = formData.registrationNumber || '';
@@ -745,10 +787,13 @@ const PPDBFormPage: React.FC = () => {
         anakKe: String(formData.anakKe || ''),
         jumlahSaudara: String(formData.jumlahSaudara || ''),
         alamat: String(formData.alamat || ''),
-        kecamatan: String(formData.kecamatan || ''),
+        provinsi: String(formData.provinsi || 'ACEH'),
         kabupaten: String(formData.kabupaten || ''),
+        kecamatan: String(formData.kecamatan || ''),
+        desa: String(formData.desa || ''),
         asalSekolah: String(formData.asalSekolah || ''),
         asalSekolahManual: String(formData.asalSekolahManual || ''),
+        alasanPilihan: String(formData.alasanPilihan || ''),
 
         namaAyah: String(formData.namaAyah || ''),
         pekerjaanAyah: String(formData.pekerjaanAyah || ''),
@@ -786,7 +831,11 @@ const PPDBFormPage: React.FC = () => {
           });
         }
       } else {
+        dataToSave.kartuKeluarga = typeof formData.kartuKeluarga === 'string' ? formData.kartuKeluarga : (fileUrls.kartuKeluarga || null);
+        dataToSave.aktaKelahiran = typeof formData.aktaKelahiran === 'string' ? formData.aktaKelahiran : (fileUrls.aktaKelahiran || null);
+        dataToSave.ijazah = typeof formData.ijazah === 'string' ? formData.ijazah : (fileUrls.ijazah || null);
         dataToSave.rekomendasi = typeof formData.rekomendasi === 'string' ? formData.rekomendasi : (fileUrls.rekomendasi || null);
+        dataToSave.sertifikat = typeof formData.sertifikat === 'string' ? formData.sertifikat : (fileUrls.sertifikat || null);
         
         const semesters = getRequiredSemesters(formData.jalur);
         semesters.forEach(s => {
@@ -812,15 +861,20 @@ const PPDBFormPage: React.FC = () => {
           });
         });
  
-        dataToSave.ijazah = null;
-        dataToSave.kartuKeluarga = null;
-        dataToSave.aktaKelahiran = null;
         dataToSave.lampiranA = null;
         dataToSave.lampiranB = null;
         dataToSave.pjjSchool = null;
       }
 
       await update(userRef, dataToSave);
+
+      if (!isDraft) {
+        syncDataToGoogleSheets({
+          uid: user.uid,
+          school: formData.school,
+          ...dataToSave
+        } as any);
+      }
 
       if (isMounted.current) {
         setFormData(prev => ({
@@ -902,8 +956,6 @@ const PPDBFormPage: React.FC = () => {
       resetData.raport4 = undefined;
     } else {
       if (formData.jalur === 'pjj') {
-        resetData.ijazah = undefined;
-        resetData.kartuKeluarga = undefined;
         resetData.lampiranA = undefined;
         resetData.lampiranB = undefined;
       } else {
@@ -1045,129 +1097,158 @@ const PPDBFormPage: React.FC = () => {
     />
   );
 
-  const tabs = [
-    { label: "Siswa", mobileLabel: "Siswa", content: renderSiswaTab() },
-    ...(formData.jalur !== 'pjj' ? [{ label: "Akademik", mobileLabel: "Akademik", content: renderAkademikTab() }] : []),
-    { label: "Orang Tua", mobileLabel: "Orang Tua", content: renderOrangTuaTab() },
-    { label: "Dokumen", mobileLabel: "Dokumen", content: renderDokumenTab() }
+  const steps = [
+    { id: 0, label: "Data Siswa", shortLabel: "Siswa", icon: UserIcon, desc: "Identitas & Asal Sekolah", content: renderSiswaTab() },
+    ...(formData.jalur !== 'pjj' ? [{ id: 1, label: "Nilai Rapor", shortLabel: "Rapor", icon: AcademicCapIcon, desc: "Semester 2 - 4", content: renderAkademikTab() }] : []),
+    { id: formData.jalur !== 'pjj' ? 2 : 1, label: "Orang Tua & Wali", shortLabel: "Orang Tua", icon: UserGroupIcon, desc: "Data Ayah & Ibu", content: renderOrangTuaTab() },
+    { id: formData.jalur !== 'pjj' ? 3 : 2, label: "Berkas Dokumen", shortLabel: "Dokumen", icon: DocumentTextIcon, desc: "Upload Berkas PDF", content: renderDokumenTab() }
   ];
 
   if (loading && formData.namaSiswa === '') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-emerald-600 border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <Container className="max-w-full md:max-w-6xl px-4 md:px-6">
-      <div className="py-6 md:py-10">
+    <div className="min-h-screen bg-gradient-to-b from-zinc-100/70 via-zinc-50 to-white py-8 sm:py-12 px-4 sm:px-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Guide Modal */}
         <Modal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} size="md">
           <div className="p-6">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                <svg className="w-8 h-8 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <InformationCircleIcon className="w-7 h-7 text-emerald-700" />
               </div>
-              <h3 className="text-xl font-bold text-zinc-950 mb-2">Petunjuk Pengisian Formulir</h3>
-              <p className="text-sm text-zinc-500">Mohon perhatikan petunjuk berikut sebelum mengisi formulir</p>
+              <h3 className="text-lg font-extrabold text-zinc-900 mb-1">Petunjuk Pengisian Formulir</h3>
+              <p className="text-xs text-zinc-500">Mohon perhatikan alur pengisian berikut</p>
             </div>
 
-            <div className="space-y-4 mb-6 text-sm text-zinc-650 max-h-[350px] overflow-y-auto pr-1">
-              <div className="bg-emerald-50/50 border border-emerald-100/50 p-4 rounded-xl">
-                <p className="font-semibold text-emerald-800 mb-2">Langkah Pengisian:</p>
+            <div className="space-y-3 mb-6 text-xs text-zinc-600 max-h-[350px] overflow-y-auto pr-1">
+              <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-xl space-y-1.5">
+                <p className="font-bold text-emerald-900">Langkah Pengisian:</p>
                 <ol className="list-decimal ml-4 text-emerald-800 space-y-1">
-                  <li>Lengkapi data di tab Siswa terlebih dahulu</li>
-                  <li>Pilih jalur pendaftaran sesuai dengan periode yang aktif</li>
-                  <li>Isi nilai akademik di tab Akademik (jika memilih jalur non-PJJ)</li>
-                  <li>Lengkapi data orang tua di tab Orang Tua</li>
-                  <li>Upload berkas di tab Dokumen</li>
+                  <li>Lengkapi seluruh isian di tab <strong>Data Siswa</strong></li>
+                  <li>Pilih jalur pendaftaran yang sedang dibuka</li>
+                  <li>Isi nilai rapor di tab <strong>Nilai Rapor</strong> (khusus jalur reguler/prestasi)</li>
+                  <li>Lengkapi data orang tua di tab <strong>Orang Tua & Wali</strong></li>
+                  <li>Unggah berkas dokumen di tab <strong>Berkas Dokumen</strong></li>
                 </ol>
               </div>
 
-              <div className="bg-amber-50/50 border border-amber-100/50 p-4 rounded-xl">
-                <p className="font-semibold text-amber-800 mb-2">Hal Penting:</p>
-                <ul className="list-disc ml-4 text-amber-800 space-y-1">
-                  <li>Pastikan mengisi data dengan benar</li>
-                  <li>Simpan draft secara berkala</li>
-                  <li>Formulir yang sudah dikirim tidak dapat diubah</li>
+              <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-xl space-y-1">
+                <p className="font-bold text-amber-900">Ketentuan Penting:</p>
+                <ul className="list-disc ml-4 text-amber-800 space-y-0.5">
+                  <li>Pastikan mengisi data dengan teliti dan benar</li>
+                  <li>Simpan draft secara berkala agar progres tersimpan</li>
+                  <li>Formulir yang sudah dikirim tidak dapat diubah kembali</li>
                 </ul>
               </div>
 
-              <div className="bg-zinc-50 border border-zinc-200/60 p-4 rounded-xl">
-                <p className="font-semibold text-zinc-800 mb-2">Petunjuk Upload Dokumen:</p>
-                <ul className="list-disc ml-4 text-zinc-700 space-y-1">
-                  <li>Ukuran maksimal file Pas Foto & PDF: 4MB</li>
-                  <li>Format foto: JPG/PNG, Dokumen: PDF</li>
+              <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl space-y-1">
+                <p className="font-bold text-zinc-800">Petunjuk Upload Berkas:</p>
+                <ul className="list-disc ml-4 text-zinc-600 space-y-0.5">
+                  <li>Ukuran maksimal Pas Foto & PDF: 4MB</li>
+                  <li>Format pas foto: JPG/PNG (latar belakang biru)</li>
+                  <li>Format dokumen rapor & lampiran: PDF</li>
                 </ul>
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button onClick={() => setShowGuideModal(false)} className="bg-emerald-800 text-white hover:bg-emerald-900 border-0 rounded-xl px-6 py-2.5 font-semibold">
+              <Button onClick={() => setShowGuideModal(false)} className="bg-emerald-800 text-white hover:bg-emerald-900 border-0 rounded-xl px-5 py-2.5 font-bold text-xs shadow-2xs">
                 Saya Mengerti
               </Button>
             </div>
           </div>
         </Modal>
         
-        <Card className="max-w-full md:max-w-4xl mx-auto relative overflow-hidden border border-zinc-200/80 shadow-lg shadow-zinc-200/20 rounded-2xl">
-          <div className="p-4 md:p-8">
-            <div className="mb-6">
-              <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                <div className="flex-1 min-w-0 space-y-3">
-                  <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-                    Formulir Pendaftaran SPMB
-                  </h1>
-                  <h2 className="text-base text-zinc-500 font-medium">
-                    SMAN Modal Bangsa Tahun Ajaran {getAcademicYear()}
-                  </h2>
+        {/* Main Double-Bezel Form Container */}
+        <div className="rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-xl overflow-hidden">
+          <div className="p-6 sm:p-8 bg-white rounded-[calc(1.5rem-0.125rem)] space-y-8">
+            
+            {/* 1. Hero Header & Photo Container */}
+            <div className="pb-6 border-b border-zinc-150">
+              <div className="flex flex-col-reverse md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex-1 min-w-0 space-y-3.5">
+                  <div>
+                    <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 mb-2">
+                      Tahun Ajaran {getAcademicYear()}
+                    </span>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900">
+                      {formData.jalur === 'pjj' ? 'Formulir Pendaftaran SPMB PJJ' : 'Formulir Pendaftaran SPMB'}
+                    </h1>
+                    <h2 className="text-xs sm:text-sm text-zinc-500 font-medium mt-0.5">
+                      {formData.jalur === 'pjj' && formData.pjjSchool 
+                        ? `${formData.pjjSchool}`
+                        : `${formData.school === 'fajar' ? 'SMAN 10 Fajar Harapan' : 'SMAN Modal Bangsa'}`}
+                    </h2>
+                  </div>
 
-                  {/* Status badges */}
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                  {/* Status Badges Toolbar */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     {formData.jalur && (
-                      <span className="bg-emerald-50 text-emerald-800 border border-emerald-100 px-3 py-1 rounded-full">
+                      <span className={classNames(
+                        'px-2.5 py-1 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border shadow-2xs',
+                        formData.jalur === 'pjj' 
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      )}>
                         Jalur: {formData.jalur === 'prestasi' ? 'Prestasi' :
                                formData.jalur === 'reguler' ? 'Reguler' :
                                formData.jalur === 'undangan' ? 'Undangan' :
-                               formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : '-'}
+                               formData.jalur === 'pjj' ? 'PJJ' : '-'}
                       </span>
                     )}
-                    <span className={`border px-3 py-1 rounded-full ${
-                      formStatus === 'submitted' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}>
+
+                    <span className={classNames(
+                      'px-2.5 py-1 rounded-lg text-[11px] font-extrabold uppercase tracking-wide border shadow-2xs',
+                      formStatus === 'submitted' 
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    )}>
                       Status: {formStatus === 'submitted' ? 'Terkirim' : 'Draft'}
                     </span>
-                    <span className="bg-zinc-50 text-zinc-650 border border-zinc-200/60 px-3 py-1 rounded-full">
-                      Email: {user?.email}
+
+                    <span className="flex items-center gap-1.5 bg-zinc-50 text-zinc-700 border border-zinc-200/80 px-2.5 py-1 rounded-lg text-[11px] font-medium shadow-2xs">
+                      <EnvelopeIcon className="w-3.5 h-3.5 text-zinc-400" />
+                      <span>{user?.email}</span>
                     </span>
+
                     {lastUpdated && (
-                      <span className="bg-zinc-50 text-zinc-650 border border-zinc-200/60 px-3 py-1 rounded-full">
-                        Update: {formatDateTime(lastUpdated)}
+                      <span className="text-[11px] text-zinc-400 hidden sm:inline">
+                        • Update: {formatDateTime(lastUpdated)}
                       </span>
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-sm text-zinc-500">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Periode Pendaftaran:</p>
-                      <p className="font-medium text-zinc-700">
-                        {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
-                      </p>
+                  {/* Meta Period & Announcement Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                    <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200/60 flex items-start gap-2.5">
+                      <CalendarDaysIcon className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider font-extrabold text-zinc-400">Periode Pendaftaran</p>
+                        <p className="font-bold text-zinc-800 mt-0.5">
+                          {getRegistrationPeriod().start} - {getRegistrationPeriod().end}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider font-semibold text-zinc-400">Pengumuman:</p>
-                      <p className="font-medium text-zinc-700">
-                        {getAnnouncementDate()}
-                      </p>
+
+                    <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200/60 flex items-start gap-2.5">
+                      <BellAlertIcon className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider font-extrabold text-zinc-400">Pengumuman Hasil</p>
+                        <p className="font-bold text-zinc-800 mt-0.5">
+                          {getAnnouncementDate()}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Photo upload section */}
+                {/* Pas Foto Upload Frame */}
                 <div className="w-full md:w-auto flex justify-center md:justify-end shrink-0">
                   <div className="relative group">
                     <input
@@ -1179,9 +1260,9 @@ const PPDBFormPage: React.FC = () => {
                     />
                     <label 
                       htmlFor="photoUpload" 
-                      className={`cursor-pointer block ${formStatus === 'submitted' ? 'pointer-events-none opacity-75' : ''}`}
+                      className={`cursor-pointer block ${formStatus === 'submitted' ? 'pointer-events-none opacity-85' : ''}`}
                     >
-                      <div className="w-28 h-36 md:w-32 md:h-40 rounded-2xl overflow-hidden relative border border-zinc-200 shadow-sm bg-zinc-50">
+                      <div className="w-28 h-36 md:w-32 md:h-40 rounded-2xl overflow-hidden relative border border-zinc-200/90 shadow-sm bg-gradient-to-b from-blue-50/40 to-zinc-50 flex flex-col items-center justify-center transition-all hover:border-emerald-500">
                         {formData.photo ? (
                           <img 
                             src={formData.photo instanceof File ? URL.createObjectURL(formData.photo) : formData.photo}
@@ -1194,19 +1275,24 @@ const PPDBFormPage: React.FC = () => {
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center">
-                            <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-2">
-                              <span className="text-rose-500 font-bold text-sm">!</span>
+                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center space-y-2">
+                            <div className="w-9 h-9 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center shadow-2xs">
+                              <CameraIcon className="w-5 h-5" />
                             </div>
-                            <p className="text-xs text-rose-600 font-bold">Pas Foto Wajib</p>
-                            <p className="text-[10px] text-zinc-400 mt-1">Latar belakang biru</p>
+                            <div>
+                              <p className="text-[11px] font-bold text-zinc-800 leading-tight">Pas Foto 3x4</p>
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                                Wajib Biru
+                              </span>
+                            </div>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center text-center p-2">
-                          <span className="text-white text-xs font-semibold">
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center text-center p-2 backdrop-blur-xs">
+                          <CameraIcon className="w-5 h-5 text-white mb-1" />
+                          <span className="text-white text-xs font-bold">
                             {formData.photo ? 'Ganti Foto' : 'Upload Foto'}
                           </span>
-                          <span className="text-[10px] text-zinc-300 mt-0.5">Klik untuk memilih</span>
+                          <span className="text-[9px] text-zinc-300 mt-0.5">Maks. 4MB</span>
                         </div>
                       </div>
                     </label>
@@ -1215,28 +1301,29 @@ const PPDBFormPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Alert Reset Notif */}
             {isReset && formStatus !== 'submitted' && (
-              <div className="mb-6 bg-amber-50 border border-amber-100 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <ArrowPathIcon className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-amber-800">Formulir Anda telah di-reset oleh admin</p>
-                    <p className="text-sm text-amber-700 mt-0.5">Silakan periksa kembali data Anda, lakukan koreksi, lalu kirim ulang formulir.</p>
-                  </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                <ArrowPathIcon className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-xs text-amber-900">Formulir Anda telah di-reset oleh admin</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Silakan periksa kembali data Anda, lakukan perbaikan yang diperlukan, lalu kirim ulang formulir.</p>
                 </div>
               </div>
             )}
 
+            {/* Error Alert */}
             {error && (
               <Alert 
                 type="error" 
                 message={error} 
-                className="mb-6"
+                className="rounded-2xl"
                 onClose={() => setError('')}
               />
             )}
 
-            <form onSubmit={(e) => e.preventDefault()}>
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+              {/* Submission / Status Alert Banner */}
               {formStatus === 'submitted' && (() => {
                 const jalurName = formData.jalur;
                 const selectedJalur = ppdbSettings
@@ -1245,14 +1332,14 @@ const PPDBFormPage: React.FC = () => {
 
                 if (!selectedJalur || !selectedJalur.announcementDate) {
                   return (
-                    <div className="mb-6 bg-zinc-50 border border-zinc-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <p className="font-bold text-zinc-800">Formulir Telah Terkirim</p>
-                        <p className="text-sm text-zinc-500 mt-0.5">Data Anda telah tersimpan di sistem.</p>
+                        <p className="font-bold text-xs text-zinc-900">Formulir Telah Terkirim</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">Data pendaftaran Anda telah tersimpan dan terkunci di sistem.</p>
                       </div>
                       <Button
                         onClick={() => generateRegistrationCard(formData as any, showAlert)}
-                        className="bg-zinc-800 hover:bg-zinc-950 text-white font-semibold border-0 py-2.5 px-5 rounded-xl shadow-md"
+                        className="bg-zinc-900 hover:bg-black text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm"
                       >
                         Unduh Bukti Kartu
                       </Button>
@@ -1271,14 +1358,14 @@ const PPDBFormPage: React.FC = () => {
 
                 if (!isAnnouncementActive) {
                   return (
-                    <div className="mb-6 bg-emerald-50 border border-emerald-100/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <p className="font-bold text-emerald-800">Formulir Telah Terkirim</p>
-                        <p className="text-sm text-emerald-700 mt-0.5">Data sudah dikunci. Hasil seleksi diumumkan pada tanggal {getAnnouncementDate()}</p>
+                        <p className="font-bold text-xs text-emerald-900">Formulir Telah Terkirim</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">Data sudah dikunci. Hasil seleksi diumumkan pada tanggal <strong>{getAnnouncementDate()}</strong>.</p>
                       </div>
                       <Button
                         onClick={() => generateRegistrationCard(formData as any, showAlert)}
-                        className="bg-emerald-800 hover:bg-emerald-950 text-white font-semibold border-0 py-2.5 px-5 rounded-xl shadow-md shadow-emerald-800/10 self-start sm:self-center"
+                        className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-sm self-start sm:self-center"
                       >
                         Unduh Bukti Kartu
                       </Button>
@@ -1312,92 +1399,76 @@ const PPDBFormPage: React.FC = () => {
                   }
 
                   return (
-                    <div className="mb-8 space-y-4">
-                      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
-                        <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-1/4 translate-y-1/4">
-                          <svg className="w-64 h-64" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-                          </svg>
-                        </div>
-                        
+                    <div className="space-y-4">
+                      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                           <div>
-                            <span className="bg-emerald-400/30 text-white border border-emerald-300/40 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                            <span className="bg-emerald-500/40 text-white border border-emerald-400/40 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md">
                               Pengumuman Hasil Seleksi
                             </span>
-                            <h3 className="text-2xl md:text-3xl font-extrabold mt-3 tracking-tight">
+                            <h3 className="text-xl md:text-2xl font-black mt-2 tracking-tight">
                               Selamat! Anda Dinyatakan LULUS
                             </h3>
-                            <p className="text-sm md:text-base text-emerald-50 mt-2 max-w-2xl leading-relaxed">
-                              Selamat kepada <span className="font-bold text-white uppercase">{formData.namaSiswa}</span> (No. Registrasi: <span className="font-mono bg-emerald-700/40 px-2 py-0.5 rounded text-white">{formData.registrationNumber}</span>) yang telah dinyatakan lulus seleksi masuk SMAN Modal Bangsa Jalur {
-                                formData.jalur === 'prestasi' ? 'Prestasi' :
-                                formData.jalur === 'reguler' ? 'Reguler' :
-                                formData.jalur === 'undangan' ? 'Undangan' :
-                                formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : '-'
-                              }.
+                            <p className="text-xs md:text-sm text-emerald-50 mt-1 max-w-2xl leading-relaxed">
+                              Selamat kepada <strong className="text-white uppercase">{formData.namaSiswa}</strong> (No. Registrasi: <span className="font-mono bg-emerald-800/60 px-1.5 py-0.5 rounded text-white">{formData.registrationNumber}</span>) yang telah dinyatakan lulus seleksi masuk SMAN Modal Bangsa.
                             </p>
                           </div>
                           <Button
                             onClick={() => generateGraduationLetter(formData as any, showAlert, ppdbSettings)}
-                            className="bg-white hover:bg-emerald-50 text-emerald-800 font-bold border-0 py-3 px-6 rounded-xl shadow-lg shrink-0 self-start md:self-center"
+                            className="bg-white hover:bg-emerald-50 text-emerald-900 font-extrabold text-xs border-0 py-3 px-5 rounded-xl shadow-lg shrink-0 self-start md:self-center"
                           >
-                            Unduh Bukti Kelulusan
+                            Unduh Surat Kelulusan (PDF)
                           </Button>
                         </div>
                       </div>
 
-                      <div className="bg-white border border-emerald-100 rounded-2xl p-6 shadow-sm">
-                        <h4 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                      <div className="bg-white border border-emerald-100 rounded-2xl p-5 shadow-xs space-y-3">
+                        <h4 className="text-sm font-extrabold text-zinc-900 flex items-center gap-2">
                           <span className="flex h-2 w-2 relative">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                           </span>
-                          Tahap Daftar Ulang
+                          Konfirmasi Daftar Ulang
                         </h4>
                         
                         {formData.reRegistered ? (
-                          <div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                            <div className="flex items-start gap-3">
-                              <CheckCircleIcon className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                              <div>
-                                <p className="font-bold text-emerald-805">Daftar Ulang Selesai</p>
-                                <p className="text-sm text-emerald-700 mt-1">
-                                  Anda telah melakukan konfirmasi daftar ulang pada tanggal <span className="font-semibold">{formatDateTime(formData.reRegisteredAt || '')}</span>.
-                                </p>
-                                <p className="text-xs text-emerald-600 mt-2">
-                                  Silakan pantau informasi selanjutnya mengenai persiapan masuk sekolah melalui grup koordinasi atau website resmi sekolah.
-                                </p>
-                              </div>
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                            <CheckCircleIcon className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-extrabold text-xs text-emerald-900">Daftar Ulang Selesai</p>
+                              <p className="text-xs text-emerald-700 mt-0.5">
+                                Anda telah melakukan konfirmasi daftar ulang pada tanggal <span className="font-bold">{formatDateTime(formData.reRegisteredAt || '')}</span>.
+                              </p>
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-4 space-y-4">
-                            <p className="text-sm text-zinc-650 leading-relaxed">
+                          <div className="space-y-3">
+                            <p className="text-xs text-zinc-600 leading-relaxed">
                               Untuk mengonfirmasi kesediaan Anda belajar di SMAN Modal Bangsa, silakan lakukan daftar ulang dengan mengklik tombol konfirmasi di bawah ini.
                             </p>
                             
                             {reRegPeriodText && (
-                              <div className="bg-zinc-50 border border-zinc-150 p-3.5 rounded-xl text-sm flex flex-col sm:flex-row sm:justify-between gap-2">
+                              <div className="bg-zinc-50 border border-zinc-200/80 p-3 rounded-xl text-xs flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-zinc-500 font-medium">Periode Daftar Ulang:</span>
                                 <span className="font-bold text-zinc-800">{reRegPeriodText}</span>
                               </div>
                             )}
 
-                            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                            <div>
                               {reRegEnded ? (
-                                <div className="w-full bg-rose-50 border border-rose-100 text-rose-800 rounded-xl p-3.5 text-center text-sm font-semibold">
+                                <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-center text-xs font-bold">
                                   Maaf, periode daftar ulang telah berakhir.
                                 </div>
                               ) : !reRegStarted ? (
-                                <div className="w-full bg-amber-50 border border-amber-100 text-amber-800 rounded-xl p-3.5 text-center text-sm font-semibold">
+                                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-center text-xs font-bold">
                                   Pendaftaran ulang belum dimulai. Tombol konfirmasi akan aktif mulai tanggal {selectedJalur.reRegistrationStart ? new Date(selectedJalur.reRegistrationStart).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}.
                                 </div>
                               ) : (
                                 <Button
                                   onClick={() => setShowReRegisterConfirmModal(true)}
-                                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-md shadow-emerald-600/10 flex items-center justify-center gap-2"
+                                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-5 rounded-xl text-xs shadow-md shadow-emerald-700/10"
                                 >
-                                  Konfirmasi Daftar Ulang
+                                  Konfirmasi Daftar Ulang Sekarang
                                 </Button>
                               )}
                             </div>
@@ -1408,111 +1479,145 @@ const PPDBFormPage: React.FC = () => {
                   );
                 } else if (formData.adminStatus === 'ditolak') {
                   return (
-                    <div className="mb-8 bg-zinc-50 border border-zinc-200 rounded-2xl p-6 md:p-8 shadow-sm">
-                      <div className="max-w-2xl">
-                        <span className="bg-zinc-200 text-zinc-700 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                          Pengumuman Hasil Seleksi
-                        </span>
-                        <h3 className="text-xl md:text-2xl font-bold text-zinc-900 mt-4">
-                          Pengumuman Hasil Seleksi SPMB SMAN Modal Bangsa
-                        </h3>
-                        <p className="text-sm md:text-base text-zinc-600 mt-3 leading-relaxed">
-                          Terima kasih telah berpartisipasi dalam proses seleksi SPMB SMAN Modal Bangsa. 
-                          Setelah melakukan peninjauan berkas dan hasil tes secara saksama, kami menginformasikan bahwa nama pendaftar di bawah ini:
-                        </p>
-                        <div className="my-4 p-4 bg-white border border-zinc-200 rounded-xl text-sm space-y-2">
-                          <p className="text-zinc-500">Nama Siswa: <span className="font-bold text-zinc-800 uppercase ml-2">{formData.namaSiswa}</span></p>
-                          <p className="text-zinc-500">No. Registrasi: <span className="font-mono font-bold text-zinc-800 ml-2">{formData.registrationNumber}</span></p>
-                          <p className="text-zinc-500">Jalur: <span className="font-semibold text-zinc-800 ml-2">
-                            {formData.jalur === 'prestasi' ? 'Prestasi' :
-                             formData.jalur === 'reguler' ? 'Reguler' :
-                             formData.jalur === 'undangan' ? 'Undangan' :
-                             formData.jalur === 'pjj' ? 'Pendidikan Jarak Jauh (PJJ)' : '-'}
-                          </span></p>
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-3">
+                      <span className="bg-zinc-200 text-zinc-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md">
+                        Pengumuman Hasil Seleksi
+                      </span>
+                      <h3 className="text-lg font-bold text-zinc-900">
+                        Hasil Seleksi SPMB SMAN Modal Bangsa
+                      </h3>
+                      <p className="text-xs text-zinc-600 leading-relaxed">
+                        Terima kasih telah berpartisipasi dalam proses seleksi SPMB SMAN Modal Bangsa. 
+                        Setelah melakukan peninjauan berkas dan hasil tes secara saksama, Anda dinyatakan: <strong className="text-rose-600">TIDAK LULUS SELEKSI</strong>.
+                      </p>
+                      {formData.alasanPenolakan && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900">
+                          <span className="font-bold">Keterangan:</span> {formData.alasanPenolakan}
                         </div>
-                        <p className="text-sm md:text-base text-zinc-700 font-bold mt-2">
-                          Dinyatakan: TIDAK LULUS SELEKSI.
-                        </p>
-                        
-                        {formData.alasanPenolakan && (
-                          <div className="mt-4 p-4 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-900">
-                            <span className="font-bold">Alasan Penolakan/Keterangan:</span>
-                            <p className="mt-1 leading-relaxed">{formData.alasanPenolakan}</p>
-                          </div>
-                        )}
-
-                        <p className="text-xs text-zinc-400 mt-6 leading-relaxed">
-                          Kami sangat menghargai minat dan usaha Anda. Tetap semangat dan semoga sukses di jenjang pendidikan selanjutnya.
-                        </p>
-                      </div>
+                      )}
                     </div>
                   );
                 } else {
                   return (
-                    <div className="mb-6 bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm">
-                      <h3 className="text-lg font-bold text-blue-900">Pengumuman Hasil Seleksi</h3>
-                      <p className="text-sm text-blue-800 mt-2 leading-relaxed">
-                        Hasil seleksi pendaftaran Anda masih dalam tahap peninjauan oleh tim panitia seleksi. 
-                        Silakan periksa kembali halaman ini secara berkala.
-                      </p>
-                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                        <p className="text-xs text-blue-600">
-                          Terima kasih atas kesabaran Anda.
-                        </p>
-                        <Button
-                          onClick={() => generateRegistrationCard(formData as any, showAlert)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold border-0 py-2 px-4 rounded-lg self-start sm:self-center"
-                        >
-                          Unduh Bukti Kartu
-                        </Button>
+                    <div className="bg-blue-50 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-xs text-blue-900">Dalam Tahap Peninjauan</p>
+                        <p className="text-xs text-blue-700 mt-0.5">Hasil seleksi pendaftaran Anda sedang diproses oleh tim panitia seleksi.</p>
                       </div>
+                      <Button
+                        onClick={() => generateRegistrationCard(formData as any, showAlert)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 px-4 rounded-xl shadow-sm"
+                      >
+                        Unduh Bukti Kartu
+                      </Button>
                     </div>
                   );
                 }
               })()}
 
-              <div className="min-h-[400px]">
-                <Tabs 
-                  tabs={tabs} 
-                  activeTab={currentStep}
-                  onChange={handleTabChange}
-                  className="space-y-6"
-                />
+              {/* 2. Interactive Segmented Stepper Track */}
+              <div className="p-1 bg-zinc-100/90 rounded-2xl border border-zinc-200/80 grid grid-cols-2 md:grid-cols-4 gap-1">
+                {steps.map((step, idx) => {
+                  const isActive = currentStep === idx;
+                  const isAccessible = canAccessTab(idx);
+
+                  return (
+                    <button
+                      key={step.label}
+                      type="button"
+                      disabled={!isAccessible}
+                      onClick={() => handleTabChange(idx)}
+                      className={classNames(
+                        'flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-all',
+                        isActive
+                          ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200/80'
+                          : isAccessible
+                            ? 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/50 cursor-pointer'
+                            : 'text-zinc-400 opacity-60 cursor-not-allowed'
+                      )}
+                    >
+                      <div className={classNames(
+                        'w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors',
+                        isActive
+                          ? 'bg-emerald-700 text-white shadow-2xs'
+                          : isAccessible
+                            ? 'bg-zinc-200 text-zinc-700'
+                            : 'bg-zinc-100 text-zinc-400'
+                      )}>
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold truncate leading-tight">
+                          {step.label}
+                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate mt-0.5">{step.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-zinc-150">
-                {/* Petunjuk Kirim */}
-                <div className="mb-6 p-4 bg-zinc-50 border border-zinc-200/50 rounded-xl">
-                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Petunjuk Pengiriman Formulir:</p>
-                  <p className="text-xs text-zinc-500 leading-relaxed">
-                    Tombol "Kirim Formulir" akan aktif pada tab **Dokumen** setelah Anda melengkapi seluruh data di tab Siswa, Akademik (jika berlaku), Orang Tua, serta mengunggah berkas wajib.
-                  </p>
-                </div>
+              {/* 3. Form Step Content */}
+              <div className="min-h-[350px]">
+                {steps[currentStep]?.content}
+              </div>
 
-                <div className="flex flex-row gap-3">
-                  <Button
-                    onClick={() => setShowLogoutModal(true)}
-                    type="button"
-                    className="bg-red-600 hover:bg-red-700 text-white border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2"
-                  >
-                    Keluar
-                  </Button>
+              {/* 4. Bottom Action Toolbar */}
+              <div className="pt-6 border-t border-zinc-150 flex flex-col sm:flex-row items-center justify-between gap-3">
+                {/* Left: Logout */}
+                <Button
+                  onClick={() => setShowLogoutModal(true)}
+                  type="button"
+                  className="w-full sm:w-auto bg-zinc-100 hover:bg-rose-50 text-zinc-700 hover:text-rose-700 border border-zinc-200 hover:border-rose-200 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                  <span>Keluar Akun</span>
+                </Button>
 
+                {/* Right Action Buttons */}
+                <div className="w-full sm:w-auto flex flex-wrap items-center gap-2.5">
+                  {/* Previous Step Button */}
+                  {currentStep > 0 && (
+                    <Button
+                      type="button"
+                      onClick={() => setCurrentStep(prev => prev - 1)}
+                      className="flex-1 sm:flex-initial bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                    >
+                      <ArrowLeftIcon className="w-3.5 h-3.5" />
+                      <span>Sebelumnya</span>
+                    </Button>
+                  )}
+
+                  {/* Save Draft Button */}
                   {formStatus !== 'submitted' && (
                     <Button
                       type="button"
                       onClick={(e) => handleSubmit(e, true)}
-                      className="bg-amber-600 hover:bg-amber-700 text-white border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2"
+                      className="flex-1 sm:flex-initial bg-amber-500 hover:bg-amber-600 text-white border-0 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-amber-500/10"
                       disabled={loading}
                     >
-                      {loading ? 'Menyimpan...' : 'Simpan Draft'}
+                      <BookmarkSquareIcon className="w-4 h-4" />
+                      <span>{loading ? 'Menyimpan...' : 'Simpan Draft'}</span>
                     </Button>
                   )}
 
-                  {currentStep === tabs.length - 1 && formStatus !== 'submitted' && (
+                  {/* Next Step Button */}
+                  {currentStep < steps.length - 1 && (
                     <Button
                       type="button"
-                      className="bg-emerald-800 hover:bg-emerald-900 text-white border-0 py-3 px-5 rounded-xl font-semibold transition-all duration-300 flex-1 flex items-center justify-center gap-2 shadow-md shadow-emerald-800/10"
+                      onClick={() => handleTabChange(currentStep + 1)}
+                      className="flex-1 sm:flex-initial bg-emerald-800 hover:bg-emerald-900 text-white border-0 py-2.5 px-5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-800/10"
+                    >
+                      <span>Selanjutnya</span>
+                      <ArrowRightIcon className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+
+                  {/* Final Submit Button */}
+                  {currentStep === steps.length - 1 && formStatus !== 'submitted' && (
+                    <Button
+                      type="button"
+                      className="flex-1 sm:flex-initial bg-emerald-800 hover:bg-emerald-900 text-white border-0 py-2.5 px-5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md shadow-emerald-800/20"
                       disabled={loading || !canAccessTab(currentStep) || isDuplicateNIK}
                       onClick={async () => {
                         if (!isJalurPeriodOpen(formData.jalur, ppdbSettings)) {
@@ -1525,14 +1630,15 @@ const PPDBFormPage: React.FC = () => {
                         setShowConfirmModal(true);
                       }}
                     >
-                      {loading ? 'Mengirim...' : 'Kirim Formulir'}
+                      <CheckIcon className="w-4 h-4" />
+                      <span>{loading ? 'Mengirim...' : 'Kirim Formulir'}</span>
                     </Button>
                   )}
                 </div>
               </div>
             </form>
           </div>
-        </Card>
+        </div>
 
         {/* Modal Konfirmasi */}
         <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)}>
@@ -1684,7 +1790,7 @@ const PPDBFormPage: React.FC = () => {
           </div>
         </Modal>
       </div>
-    </Container>
+    </div>
   );
 };
 

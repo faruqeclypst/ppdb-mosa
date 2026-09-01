@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: true,
+    port: 5173,
+    proxy: {
+      '/api-wilayah': {
+        target: 'https://wilayah.id/api',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api-wilayah/, '')
+      }
+    }
+  },
   build: {
     target: 'es2020', // ensure modern semantics for large libs like @aws-sdk
     outDir: 'dist',
@@ -76,8 +87,4 @@ export default defineConfig({
       },
     },
   },
-  server: {
-    host: true,
-    port: 5173,
-  }
 })

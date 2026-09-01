@@ -4,7 +4,7 @@ import { db } from '../../../firebase/config';
 import { testR2Connection, deleteFromR2 } from '../../../services/cloudflareR2';
 import { showAlert } from '../../ui/Alert';
 import Modal from '../../ui/Modal';
-import Button from '../../ui/Button';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface DangerZoneSettingsProps {
   userRole: any;
@@ -124,38 +124,35 @@ const DangerZoneSettings: React.FC<DangerZoneSettingsProps> = ({ userRole }) => 
   };
 
   return (
-    <div className="bg-red-50 rounded-xl p-4 md:p-6 border-2 border-red-200 shadow-sm relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-red-100 rounded-full blur-3xl opacity-50 -mr-20 -mt-20 pointer-events-none" />
-      
-      <div className="relative">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-red-100 rounded-lg text-red-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+    <div className="rounded-3xl p-1 bg-gradient-to-b from-rose-50 to-rose-100/50 border border-rose-200 shadow-sm overflow-hidden space-y-4">
+      <div className="p-6 bg-white rounded-[calc(1.5rem-0.25rem)] space-y-6">
+        <div className="flex items-center gap-3 pb-4 border-b border-rose-100">
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center font-bold">
+            <ExclamationTriangleIcon className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base md:text-lg font-bold text-red-900">Zona Bahaya</h3>
-            <p className="text-xs md:text-sm text-red-700 mt-1">
-              Tindakan di bawah ini bersifat destruktif dan tidak dapat dibatalkan.
+            <h3 className="text-base font-extrabold text-rose-950">Zona Bahaya (Danger Zone)</h3>
+            <p className="text-xs text-rose-700 mt-0.5">
+              Tindakan di bawah ini bersifat destruktif dan menghapus data secara permanen tanpa pemulihan
             </p>
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-red-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-200/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h4 className="font-semibold text-red-800 text-sm md:text-base">Hapus Semua Data Pendaftaran</h4>
-            <p className="text-xs md:text-sm text-red-600 mt-0.5">
-              Menghapus seluruh berkas pendaftaran dari database serta menghapus berkas dokumen (PDF/Gambar) dari penyimpanan Cloudflare R2 secara permanen.
+            <h4 className="text-xs font-bold text-rose-900">Reset & Hapus Semua Data Pendaftar</h4>
+            <p className="text-[11px] text-rose-700/90 mt-0.5 max-w-xl leading-relaxed">
+              Menghapus seluruh rekaman siswa dari database Firebase Realtime Database dan memusnahkan seluruh berkas dokumen (PDF rapor, KK, foto, sertifikat) dari Cloudflare R2.
             </p>
           </div>
-          
-          <Button
+
+          <button
+            type="button"
             onClick={() => setShowDangerModal(true)}
-            className="bg-red-600 text-white hover:bg-red-700 font-medium px-6 py-2.5 rounded-lg shadow-sm w-full md:w-auto flex-shrink-0"
+            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm shadow-rose-600/20 active:scale-95 transition-all shrink-0"
           >
             Hapus Semua Data
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -171,30 +168,28 @@ const DangerZoneSettings: React.FC<DangerZoneSettingsProps> = ({ userRole }) => 
       >
         <div className="p-6">
           <div className="text-center mb-6">
-            <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-600">
-              <svg className="w-8 h-8 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+            <div className="mx-auto w-12 h-12 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-center mb-3 text-rose-600">
+              <ExclamationTriangleIcon className="w-6 h-6 animate-pulse" />
             </div>
-            <h3 className="text-lg font-bold text-red-900 mb-2">
-              Hapus Semua Data PPDB
+            <h3 className="text-base font-bold text-zinc-900 mb-1">
+              Hapus Semua Data Pendaftar?
             </h3>
-            <p className="text-sm text-red-700">
-              Anda akan menghapus seluruh data siswa pendaftar dan berkas terkait di penyimpanan R2. Tindakan ini <strong>tidak dapat dibatalkan</strong>!
+            <p className="text-xs text-zinc-500">
+              Tindakan ini akan menghapus database siswa dan berkas di Cloudflare R2 secara permanen.
             </p>
           </div>
 
           {userRole?.isMaster && !isDeletingAll && (
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Pilih Sekolah yang Ingin Dihapus:
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                Target Kampus yang Ingin Dihapus
               </label>
               <select
                 value={targetSchool}
                 onChange={(e) => setTargetSchool(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                className="w-full py-2.5 px-3.5 rounded-xl border border-zinc-200 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 text-xs font-medium outline-none"
               >
-                <option value="all">Semua Sekolah (MOSA & Fajar Harapan)</option>
+                <option value="all">Semua Kampus (MOSA & Fajar Harapan)</option>
                 <option value="mosa">SMAN Modal Bangsa</option>
                 <option value="fajar">SMAN 10 Fajar Harapan</option>
               </select>
@@ -202,49 +197,51 @@ const DangerZoneSettings: React.FC<DangerZoneSettingsProps> = ({ userRole }) => 
           )}
 
           {!userRole?.isMaster && !isDeletingAll && (
-            <div className="mb-4 bg-gray-50 border p-3 rounded-lg text-sm text-gray-700">
-              Sekolah yang akan dihapus: <span className="font-semibold text-gray-900">{userRole?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}</span>
+            <div className="mb-4 bg-zinc-50 border border-zinc-200 p-3 rounded-xl text-xs text-zinc-700">
+              Sekolah yang akan dihapus: <strong>{userRole?.school === 'mosa' ? 'SMAN Modal Bangsa' : 'SMAN 10 Fajar Harapan'}</strong>
             </div>
           )}
 
           {isDeletingAll ? (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-center space-y-3">
-              <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-red-800 font-semibold">{dangerProgress}</p>
+            <div className="mb-6 bg-rose-50 border border-rose-200 rounded-xl p-4 text-center space-y-2">
+              <div className="w-7 h-7 border-3 border-rose-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-rose-800 font-bold">{dangerProgress}</p>
             </div>
           ) : (
             <div className="mb-6">
-              <label className="block text-sm text-gray-700 mb-2">
-                Ketik <span className="font-semibold text-red-600">"HAPUS SEMUA DATA"</span> untuk melanjutkan:
+              <label className="block text-xs text-zinc-600 mb-2">
+                Ketik <span className="font-bold text-rose-600">"HAPUS SEMUA DATA"</span> untuk konfirmasi:
               </label>
               <input
                 type="text"
                 value={dangerConfirmation}
                 onChange={(e) => setDangerConfirmation(e.target.value)}
                 placeholder="HAPUS SEMUA DATA"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 uppercase font-medium text-center"
+                className="w-full py-2.5 px-3.5 rounded-xl border border-zinc-200 focus:border-rose-600 focus:ring-4 focus:ring-rose-500/10 text-xs font-mono font-bold text-center tracking-wider outline-none uppercase"
               />
             </div>
           )}
 
-          <div className="flex gap-3">
-            <Button
+          <div className="flex gap-2.5">
+            <button
+              type="button"
               onClick={() => {
                 setShowDangerModal(false);
                 setDangerConfirmation('');
               }}
-              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className="flex-1 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold"
               disabled={isDeletingAll}
             >
               Batal
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={handleResetAllData}
-              className="flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md disabled:opacity-50"
               disabled={isDeletingAll || dangerConfirmation !== 'HAPUS SEMUA DATA'}
             >
               Ya, Hapus Semua
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>

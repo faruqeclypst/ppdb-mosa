@@ -1,10 +1,12 @@
 import React from 'react';
-import Card from '../../ui/Card';
-import { AcademicCapIcon, FunnelIcon, ChevronDownIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
+import { 
+  TrophyIcon, 
+  ChevronDownIcon, 
+  ArrowTrendingUpIcon
+} from '@heroicons/react/24/outline';
 import classNames from 'classnames';
 import Pagination from '../../ui/Pagination';
 import { PPDBData, StudentWithAverage, SortConfig } from '../../../types/ppdb';
-import { StatusBadge, getJalurLabel } from '../AdminBadges';
 
 interface TopStudentsTableProps {
   data: PPDBData[];
@@ -14,8 +16,8 @@ interface TopStudentsTableProps {
   setSortConfig: (config: SortConfig) => void;
   currentPage: number;
   setCurrentPage: (page: number) => void;
-  expandedStudent: string | null;
-  setExpandedStudent: (uid: string | null) => void;
+  expandedStudent?: string | null;
+  setExpandedStudent?: (uid: string | null) => void;
 }
 
 const itemsPerPage = 10;
@@ -47,8 +49,6 @@ const TopStudentsTable: React.FC<TopStudentsTableProps> = ({
   setSortConfig,
   currentPage,
   setCurrentPage,
-  expandedStudent,
-  setExpandedStudent,
 }) => {
 
   const handleSort = (key: string) => {
@@ -101,320 +101,229 @@ const TopStudentsTable: React.FC<TopStudentsTableProps> = ({
     return sortedData.slice(startIndex, endIndex);
   };
 
-  const getTotalPages = () => {
-    const filteredTotal = data
-      .filter(student => selectedJalur === 'semua' ? true : student.jalur === selectedJalur)
-      .length;
-    return Math.ceil(filteredTotal / itemsPerPage);
-  };
+  const totalFilteredData = data.filter(student => 
+    selectedJalur === 'semua' ? true : student.jalur === selectedJalur
+  ).length;
 
-  const getFilteredTotal = () => {
-    return data
-      .filter(student => selectedJalur === 'semua' ? true : student.jalur === selectedJalur)
-      .length;
-  };
+  const totalPages = Math.ceil(totalFilteredData / itemsPerPage);
+
+  const filterButtons = [
+    { id: 'semua', label: 'Semua Jalur' },
+    { id: 'prestasi', label: 'Prestasi' },
+    { id: 'reguler', label: 'Reguler' },
+    { id: 'undangan', label: 'Undangan' }
+  ];
 
   return (
-    <Card className="p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <AcademicCapIcon className="w-5 h-5 text-blue-500" />
-          <h3 className="font-semibold text-gray-900">Nilai Rata-rata Tertinggi</h3>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {/* Filter Jalur */}
-          <div className="relative">
-            <select
-              value={selectedJalur}
-              onChange={(e) => setSelectedJalur(e.target.value as typeof selectedJalur)}
-              className="appearance-none pl-8 pr-10 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white hover:bg-gray-50 transition-colors"
-            >
-              <option value="semua">Semua Jalur</option>
-              <option value="prestasi">Jalur Prestasi</option>
-              <option value="reguler">Jalur Reguler</option>
-              <option value="undangan">Jalur Undangan</option>
-              <option value="pjj">Jalur PJJ</option>
-            </select>
-            <FunnelIcon className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-            <ChevronDownIcon className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+    <div className="rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-sm overflow-hidden">
+      <div className="p-5 bg-white rounded-[calc(1.5rem-0.25rem)] space-y-5">
+        {/* Table Header & Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-zinc-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-700 flex items-center justify-center font-bold shadow-xs">
+              <TrophyIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-zinc-900 tracking-tight">
+                Peringkat Nilai Rapor Tertinggi (Top Students)
+              </h3>
+              <p className="text-xs text-zinc-500 font-medium">
+                Akumulasi rata-rata nilai semester 2, 3, dan 4 lima mata pelajaran
+              </p>
+            </div>
           </div>
 
-          {/* Reset Sort Button */}
-          {sortConfig && (
-            <button
-              onClick={() => setSortConfig(null)}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-blue-600 transition-colors focus:ring-2 focus:ring-blue-500"
-            >
-              <ArrowTrendingUpIcon className="w-4 h-4 mr-1.5" />
-              Reset Urutan
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Pills */}
+            <div className="flex items-center p-1 bg-zinc-100/80 rounded-xl border border-zinc-200/60">
+              {filterButtons.map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setSelectedJalur(btn.id as any)}
+                  className={classNames(
+                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                    selectedJalur === btn.id
+                      ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200/60'
+                      : 'text-zinc-600 hover:text-zinc-900'
+                  )}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            {sortConfig && (
+              <button
+                onClick={() => setSortConfig(null)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl hover:bg-zinc-100 transition-colors"
+              >
+                <ArrowTrendingUpIcon className="w-3.5 h-3.5" />
+                <span>Reset Urutan</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">No</th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
-                onClick={() => handleSort('namaSiswa')}
-              >
-                <div className="flex items-center gap-1">
-                  Nama
-                  {sortConfig?.key === 'namaSiswa' && (
-                    <ChevronDownIcon
-                      className={`w-4 h-4 transition-transform ${
-                        sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </div>
-              </th>
-              <th
-                className={classNames(
-                  "px-4 py-3 text-left text-xs font-medium text-gray-500",
-                  selectedJalur === 'semua'
-                    ? "cursor-pointer hover:text-blue-600"
-                    : "opacity-50"
-                )}
-                onClick={() => selectedJalur === 'semua' && handleSort('jalur')}
-              >
-                <div className="flex items-center gap-1">
-                  Jalur
-                  {selectedJalur === 'semua' && sortConfig?.key === 'jalur' && (
-                    <ChevronDownIcon
-                      className={`w-4 h-4 transition-transform ${
-                        sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </div>
-              </th>
-              <th
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
-                onClick={() => handleSort('asalSekolah')}
-              >
-                <div className="flex items-center gap-1">
-                  Asal Sekolah
-                  {sortConfig?.key === 'asalSekolah' && (
-                    <ChevronDownIcon
-                      className={`w-4 h-4 transition-transform ${
-                        sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </div>
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Agama</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">B.Indo</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">B.Ing</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">MTK</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">IPA</th>
-              <th
-                className="px-4 py-3 text-center text-xs font-medium text-gray-500 cursor-pointer hover:text-blue-600"
-                onClick={() => handleSort('average')}
-              >
-                <div className="flex items-center justify-center gap-1">
-                  Rata-rata
-                  {sortConfig?.key === 'average' && (
-                    <ChevronDownIcon
-                      className={`w-4 h-4 transition-transform ${
-                        sortConfig.direction === 'desc' ? 'transform rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </div>
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Sekolah</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {getTopStudents().map((student, index) => {
-              const getSubjectAverage = (subject: string) => {
-                const fieldName = subject === 'B.Indo' ? 'nilaiBindo' :
-                                  subject === 'B.Ing' ? 'nilaiBing' :
-                                  subject === 'MTK' ? 'nilaiMtk' :
-                                  subject === 'IPA' ? 'nilaiIpa' : 'nilaiAgama';
-                  
-                const sem2 = parseFloat(student[`${fieldName}2` as keyof PPDBData] as string) || 0;
-                const sem3 = parseFloat(student[`${fieldName}3` as keyof PPDBData] as string) || 0;
-                const sem4 = parseFloat(student[`${fieldName}4` as keyof PPDBData] as string) || 0;
-                return ((sem2 + sem3 + sem4) / 3).toFixed(2);
-              };
+        {/* Table Area */}
+        <div className="hidden md:block overflow-x-auto rounded-2xl border border-zinc-100">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-zinc-50/80 text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100">
+                <th className="px-4 py-3 text-center w-12">Rank</th>
+                <th 
+                  className="px-4 py-3 cursor-pointer hover:text-emerald-700 transition-colors"
+                  onClick={() => handleSort('namaSiswa')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Nama Calon Siswa</span>
+                    {sortConfig?.key === 'namaSiswa' && <ChevronDownIcon className="w-3.5 h-3.5" />}
+                  </div>
+                </th>
+                <th className="px-4 py-3">Jalur</th>
+                <th className="px-4 py-3">Asal Sekolah</th>
+                <th className="px-3 py-3 text-center">Agama</th>
+                <th className="px-3 py-3 text-center">B.Indo</th>
+                <th className="px-3 py-3 text-center">B.Ing</th>
+                <th className="px-3 py-3 text-center">MTK</th>
+                <th className="px-3 py-3 text-center">IPA</th>
+                <th 
+                  className="px-4 py-3 text-center cursor-pointer hover:text-emerald-700 transition-colors"
+                  onClick={() => handleSort('average')}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Rata-Rata</span>
+                    {sortConfig?.key === 'average' && <ChevronDownIcon className="w-3.5 h-3.5" />}
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-center">Sekolah Pilihan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 text-xs">
+              {getTopStudents().map((student, index) => {
+                const rankNumber = ((currentPage - 1) * itemsPerPage) + index + 1;
+                
+                const getSubjectAverage = (subject: string) => {
+                  const fieldName = subject === 'B.Indo' ? 'nilaiBindo' :
+                                    subject === 'B.Ing' ? 'nilaiBing' :
+                                    subject === 'MTK' ? 'nilaiMtk' :
+                                    subject === 'IPA' ? 'nilaiIpa' : 'nilaiAgama';
+                    
+                  const sem2 = parseFloat(student[`${fieldName}2` as keyof PPDBData] as string) || 0;
+                  const sem3 = parseFloat(student[`${fieldName}3` as keyof PPDBData] as string) || 0;
+                  const sem4 = parseFloat(student[`${fieldName}4` as keyof PPDBData] as string) || 0;
+                  return ((sem2 + sem3 + sem4) / 3).toFixed(1);
+                };
 
-              return (
-                <tr key={student.uid} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm text-gray-500">{((currentPage - 1) * itemsPerPage) + index + 1}</td>
-                  <td className="px-4 py-3 max-w-[200px]">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {student.namaSiswa}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={classNames(
-                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                      student.jalur === 'prestasi' ? 'bg-blue-100 text-blue-800' :
-                      student.jalur === 'reguler' ? 'bg-green-100 text-green-800' :
-                      student.jalur === 'undangan' ? 'bg-purple-100 text-purple-800' :
-                      'bg-amber-100 text-amber-800'
-                    )}>
-                      {getJalurLabel(student.jalur)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 max-w-[200px]">
-                    <div className="text-sm text-gray-500 truncate">
-                      {student.asalSekolah === 'SEKOLAH LAIN' ? (student.asalSekolahManual ? `${student.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : student.asalSekolah}
-                    </div>
-                  </td>
-                  {['nilaiAgama', 'nilaiBindo', 'nilaiBing', 'nilaiMtk', 'nilaiIpa'].map((subject) => (
-                    <td key={subject} className="px-4 py-3">
-                      <div className="flex justify-center">
-                        <span className={classNames(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          parseFloat(getSubjectAverage(subject)) >= 85
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        )}>
-                          {getSubjectAverage(subject)}
+                const jalurClass = 
+                  student.jalur === 'prestasi' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                  student.jalur === 'reguler' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                  'bg-purple-50 text-purple-800 border-purple-200';
+
+                return (
+                  <tr key={student.uid} className="hover:bg-zinc-50/70 transition-colors">
+                    <td className="px-4 py-3.5 text-center font-black">
+                      {rankNumber === 1 ? (
+                        <span className="w-7 h-7 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-xs inline-flex items-center justify-center shadow-xs">
+                          🥇
                         </span>
-                      </div>
+                      ) : rankNumber === 2 ? (
+                        <span className="w-7 h-7 rounded-xl bg-slate-100 text-slate-800 border border-slate-300 font-extrabold text-xs inline-flex items-center justify-center shadow-xs">
+                          🥈
+                        </span>
+                      ) : rankNumber === 3 ? (
+                        <span className="w-7 h-7 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 font-extrabold text-xs inline-flex items-center justify-center shadow-xs">
+                          🥉
+                        </span>
+                      ) : (
+                        <span className="text-zinc-500 font-mono font-bold text-xs">
+                          #{rankNumber}
+                        </span>
+                      )}
                     </td>
-                  ))}
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+
+                    <td className="px-4 py-3.5">
+                      <div className="font-extrabold text-zinc-900">{student.namaSiswa}</div>
+                      <div className="text-[10px] text-zinc-400 font-medium">{student.nisn ? `NISN: ${student.nisn}` : '-'}</div>
+                    </td>
+
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border shadow-xs ${jalurClass}`}>
+                        {student.jalur ? student.jalur.toUpperCase() : '-'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-zinc-600 font-medium max-w-[180px] truncate">
+                      {student.asalSekolah || '-'}
+                    </td>
+
+                    <td className="px-3 py-3.5 text-center font-bold text-zinc-700">{getSubjectAverage('Agama')}</td>
+                    <td className="px-3 py-3.5 text-center font-bold text-zinc-700">{getSubjectAverage('B.Indo')}</td>
+                    <td className="px-3 py-3.5 text-center font-bold text-zinc-700">{getSubjectAverage('B.Ing')}</td>
+                    <td className="px-3 py-3.5 text-center font-bold text-zinc-700">{getSubjectAverage('MTK')}</td>
+                    <td className="px-3 py-3.5 text-center font-bold text-zinc-700">{getSubjectAverage('IPA')}</td>
+
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-black text-[11px] shadow-xs">
                         {student.average.toFixed(2)}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center">
-                      <StatusBadge 
-                        status={student.status}
-                        adminStatus={student.adminStatus}
-                        className="text-xs"
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={classNames(
-                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                      student.school === 'mosa' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                    )}>
-                      {student.school === 'mosa' ? 'MOSA' : 'FAJAR'}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
 
-      {/* Mobile Accordion List View */}
-      <div className="md:hidden">
-        <div className="space-y-3">
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="text-[11px] font-bold text-zinc-600">
+                        {student.school === 'fajar' ? 'SMAN 10 Fajar Harapan' : 'SMAN Modal Bangsa'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View Cards */}
+        <div className="md:hidden space-y-3">
           {getTopStudents().map((student, index) => {
-            const getSubjectAverage = (subject: string) => {
-              const fieldName = subject === 'B.Indo' ? 'nilaiBindo' :
-                               subject === 'B.Ing' ? 'nilaiBing' :
-                               subject === 'MTK' ? 'nilaiMtk' :
-                               subject === 'IPA' ? 'nilaiIpa' : 'nilaiAgama';
-                  
-              const sem2 = parseFloat(student[`${fieldName}2` as keyof PPDBData] as string) || 0;
-              const sem3 = parseFloat(student[`${fieldName}3` as keyof PPDBData] as string) || 0;
-              const sem4 = parseFloat(student[`${fieldName}4` as keyof PPDBData] as string) || 0;
-              return ((sem2 + sem3 + sem4) / 3).toFixed(2);
-            };
-
+            const rankNumber = ((currentPage - 1) * itemsPerPage) + index + 1;
             return (
-              <div key={student.uid} className="bg-white border rounded-lg shadow-sm">
-                <div 
-                  className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => setExpandedStudent(expandedStudent === student.uid ? null : student.uid)}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 truncate mb-1">
-                        {student.namaSiswa}
-                      </h3>
-                      <div className="flex flex-col gap-2">
-                        <span className="text-xs text-gray-500 line-clamp-1">
-                          {student.asalSekolah === 'SEKOLAH LAIN' ? (student.asalSekolahManual ? `${student.asalSekolahManual} (SEKOLAH LAIN)` : 'SEKOLAH LAIN') : student.asalSekolah}
-                        </span>
-                        <span className={classNames(
-                          "text-xs font-medium",
-                          student.jalur === 'prestasi' ? 'text-blue-600' :
-                          student.jalur === 'reguler' ? 'text-green-600' :
-                          student.jalur === 'undangan' ? 'text-purple-600' :
-                          'text-amber-600'
-                        )}>
-                          {getJalurLabel(student.jalur)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium self-center">
-                      {((currentPage - 1) * itemsPerPage) + index + 1}
-                    </div>
+              <div key={student.uid} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-zinc-200 text-zinc-800 font-black text-xs flex items-center justify-center">
+                      #{rankNumber}
+                    </span>
+                    <h4 className="text-xs font-bold text-zinc-900">{student.namaSiswa}</h4>
                   </div>
+                  <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                    {student.average.toFixed(2)}
+                  </span>
                 </div>
 
-                {expandedStudent === student.uid && (
-                  <div className="border-t">
-                    <div className="p-3 space-y-2">
-                      {['Agama', 'B.Indo', 'B.Ing', 'MTK', 'IPA'].map((subject, idx) => {
-                        const nilai = getSubjectAverage(subject);
-                        return (
-                          <div key={idx} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                              <span className="text-sm text-gray-700">{subject}</span>
-                            </div>
-                            <span className={classNames(
-                              "px-2 py-0.5 rounded-full text-xs font-medium",
-                              parseFloat(nilai) >= 85
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            )}>
-                              {nilai}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-gray-50 border-t">
-                      <span className="text-sm text-gray-700">Status</span>
-                      <StatusBadge 
-                        status={student.status}
-                        adminStatus={student.adminStatus}
-                        className="text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                  <span>Jalur: <strong>{student.jalur?.toUpperCase()}</strong></span>
+                  <span>{student.school === 'fajar' ? 'Fajar Harapan' : 'Modal Bangsa'}</span>
+                </div>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-4">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={getTotalPages()}
-            onPageChange={setCurrentPage}
-            totalItems={getFilteredTotal()}
-            itemsPerPage={itemsPerPage}
-          />
-        </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pt-3 border-t border-zinc-100 flex justify-between items-center">
+            <span className="text-xs text-zinc-500 font-medium">
+              Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, totalFilteredData)} dari {totalFilteredData} siswa
+            </span>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalFilteredData}
+              itemsPerPage={itemsPerPage}
+            />
+          </div>
+        )}
       </div>
-    </Card>
+    </div>
   );
 };
 

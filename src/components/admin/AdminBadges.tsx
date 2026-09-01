@@ -15,7 +15,7 @@ export const getJalurLabel = (jalur: PPDBData['jalur']) => {
 export const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, className }) => {
   const getStatusLabel = (status: PPDBData['status'], adminStatus?: PPDBData['adminStatus']) => {
     if (adminStatus) {
-      return adminStatus === 'diterima' ? 'Diterima' : 'Ditolak';
+      return adminStatus === 'diterima' ? 'Lulus' : 'Ditolak';
     }
 
     switch (status) {
@@ -24,7 +24,7 @@ export const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, classNa
       case 'submitted':
         return 'Pending';
       case 'draft':
-        return 'Reset'; // Ubah label draft menjadi reset
+        return 'Reset';
       default:
         return status;
     }
@@ -33,25 +33,25 @@ export const StatusBadge: React.FC<BadgeProps> = ({ status, adminStatus, classNa
   const getStatusColor = (status: PPDBData['status'], adminStatus?: PPDBData['adminStatus']) => {
     if (adminStatus) {
       return adminStatus === 'diterima' 
-        ? 'text-green-600 bg-green-50'
-        : 'text-red-600 bg-red-50';
+        ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+        : 'text-rose-800 bg-rose-50 border-rose-200';
     }
 
     switch (status) {
       case 'pending':
-        return 'text-gray-600 bg-gray-50';
+        return 'text-zinc-600 bg-zinc-100 border-zinc-200';
       case 'submitted':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'text-amber-800 bg-amber-50 border-amber-200';
       case 'draft':
-        return 'text-purple-600 bg-purple-50'; // Ubah warna untuk status reset
+        return 'text-purple-800 bg-purple-50 border-purple-200';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-zinc-600 bg-zinc-100 border-zinc-200';
     }
   };
 
   return (
     <span className={classNames(
-      'px-2 py-1 rounded-full text-sm font-medium',
+      'px-2 py-0.5 rounded-md text-[10px] font-extrabold border tracking-wide uppercase inline-flex items-center shadow-xs',
       getStatusColor(status, adminStatus),
       className
     )}>
@@ -64,21 +64,21 @@ export const JalurBadge: React.FC<{ jalur: PPDBData['jalur'] }> = ({ jalur }) =>
   const getJalurColor = (jalur: PPDBData['jalur']) => {
     switch (jalur) {
       case 'prestasi':
-        return 'text-blue-600 bg-blue-50';
+        return 'text-blue-800 bg-blue-50 border-blue-200';
       case 'reguler':
-        return 'text-green-600 bg-green-50';
+        return 'text-emerald-800 bg-emerald-50 border-emerald-200';
       case 'undangan':
-        return 'text-purple-600 bg-purple-50';
+        return 'text-purple-800 bg-purple-50 border-purple-200';
       case 'pjj':
-        return 'text-amber-600 bg-amber-50';
+        return 'text-amber-800 bg-amber-50 border-amber-200';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-zinc-700 bg-zinc-100 border-zinc-200';
     }
   };
 
   return (
     <span className={classNames(
-      'px-2 py-1 rounded-full text-sm font-medium',
+      'px-2 py-0.5 rounded-md text-[10px] font-extrabold border tracking-wide uppercase inline-flex items-center shadow-xs',
       getJalurColor(jalur)
     )}>
       {getJalurLabel(jalur)}
@@ -90,11 +90,11 @@ export const SchoolBadge: React.FC<{ school: PPDBData['school'] }> = ({ school }
   const getSchoolColor = (school: PPDBData['school']) => {
     switch (school) {
       case 'mosa':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-emerald-800 bg-emerald-50 border-emerald-200';
       case 'fajar':
-        return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-blue-800 bg-blue-50 border-blue-200';
       default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
+        return 'text-zinc-700 bg-zinc-100 border-zinc-200';
     }
   };
 
@@ -111,7 +111,7 @@ export const SchoolBadge: React.FC<{ school: PPDBData['school'] }> = ({ school }
 
   return (
     <span className={classNames(
-      'px-2 py-1 rounded-full text-xs font-medium border',
+      'px-2 py-0.5 rounded-md text-[10px] font-extrabold border tracking-wide inline-flex items-center shadow-xs',
       getSchoolColor(school)
     )}>
       {getSchoolLabel(school)}

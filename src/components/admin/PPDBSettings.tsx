@@ -2,19 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { ref, get, set } from 'firebase/database';
 import { db } from '../../firebase/config';
 import Input from '../ui/Input';
-import Button from '../ui/Button';
 import { showAlert } from '../ui/Alert';
 import type { PPDBSettings as PPDBSettingsType } from '../../types/settings';
 import Modal from '../ui/Modal';
 import { uploadToR2, deleteFromR2 } from '../../services/cloudflareR2';
 import { useAuth } from '../../contexts/AuthContext';
+import classNames from 'classnames';
+import {
+  Cog6ToothIcon,
+  CalendarDaysIcon,
+  SparklesIcon,
+  PencilSquareIcon,
+  TableCellsIcon,
+  PhoneIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  PlusIcon,
+  TrashIcon,
+  TrophyIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon
+} from '@heroicons/react/24/outline';
 
 // Shared Settings subcomponents
 import CustomHeroModalSettings from './settings/CustomHeroModalSettings';
-import JalurPeriodSettings from './settings/JalurPeriodSettings';
 import AdminContactSettings from './settings/AdminContactSettings';
 import DangerZoneSettings from './settings/DangerZoneSettings';
 import PrincipalSignatureSettings from './settings/PrincipalSignatureSettings';
+import GoogleSheetsSettings from './settings/GoogleSheetsSettings';
 
 const initialSettings: PPDBSettingsType = {
   academicYear: '',
@@ -74,11 +89,20 @@ const initialSettings: PPDBSettingsType = {
     linkUrl: ''
   },
   principalSignatureMosa: '',
-  principalSignatureFajar: ''
+  principalSignatureFajar: '',
+  googleSheets: {
+    isEnabled: false,
+    webhookUrl: '',
+    accountEmail: 'alfaruqasri@sman-modalbangsa.sch.id'
+  }
 };
+
+type SettingTab = 'general' | 'jalur' | 'hero' | 'signature' | 'sheets' | 'contact' | 'danger';
 
 const PPDBSettings: React.FC = () => {
   const { userRole } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingTab>('general');
+  const [activeJalurTab, setActiveJalurTab] = useState<'jalurPrestasi' | 'jalurReguler' | 'jalurUndangan' | 'jalurPjj'>('jalurPrestasi');
   const [settings, setSettings] = useState<PPDBSettingsType>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,6 +121,7 @@ const PPDBSettings: React.FC = () => {
 
   const loadSettings = async () => {
     try {
+      setLoading(true);
       const settingsRef = ref(db, 'settings/ppdb');
       const snapshot = await get(settingsRef);
       
@@ -174,10 +199,10 @@ const PPDBSettings: React.FC = () => {
       
       setSettings(updatedSettings);
       await set(ref(db, 'settings/ppdb'), updatedSettings);
-      showAlert('success', 'Gambar berhasil diupload dan pengaturan disimpan');
+      showAlert('success', 'Gambar berhasil diunggah dan disimpan');
     } catch (error) {
       console.error('Error uploading image:', error);
-      showAlert('error', 'Gagal mengupload gambar. Silakan coba lagi.');
+      showAlert('error', 'Gagal mengunggah gambar. Silakan coba lagi.');
     } finally {
       setUploadingImage(false);
     }
@@ -212,10 +237,10 @@ const PPDBSettings: React.FC = () => {
       
       setSettings(updatedSettings);
       await set(ref(db, 'settings/ppdb'), updatedSettings);
-      showAlert('success', 'Gambar berhasil dihapus dan pengaturan disimpan');
+      showAlert('success', 'Gambar berhasil dihapus');
     } catch (error) {
       console.error('Error deleting image:', error);
-      showAlert('error', 'Gagal menghapus gambar. Silakan coba lagi.');
+      showAlert('error', 'Gagal menghapus gambar');
     } finally {
       setDeletingImage(false);
     }
@@ -252,10 +277,10 @@ const PPDBSettings: React.FC = () => {
 
       setSettings(updatedSettings);
       await set(ref(db, 'settings/ppdb'), updatedSettings);
-      showAlert('success', 'Tanda tangan berhasil diupload dan pengaturan disimpan');
+      showAlert('success', 'Tanda tangan berhasil diunggah');
     } catch (error) {
       console.error('Error uploading signature:', error);
-      showAlert('error', 'Gagal mengupload tanda tangan. Silakan coba lagi.');
+      showAlert('error', 'Gagal mengunggah tanda tangan');
     } finally {
       if (school === 'mosa') setUploadingSigMosa(false);
       else setUploadingSigFajar(false);
@@ -284,10 +309,10 @@ const PPDBSettings: React.FC = () => {
 
       setSettings(updatedSettings);
       await set(ref(db, 'settings/ppdb'), updatedSettings);
-      showAlert('success', 'Tanda tangan berhasil dihapus dan pengaturan disimpan');
+      showAlert('success', 'Tanda tangan berhasil dihapus');
     } catch (error) {
       console.error('Error deleting signature:', error);
-      showAlert('error', 'Gagal menghapus tanda tangan. Silakan coba lagi.');
+      showAlert('error', 'Gagal menghapus tanda tangan');
     } finally {
       if (school === 'mosa') setDeletingSigMosa(false);
       else setDeletingSigFajar(false);
@@ -365,135 +390,366 @@ const PPDBSettings: React.FC = () => {
     }));
   };
 
+  const navTabs = [
+    { id: 'general', label: 'Umum & Status', icon: Cog6ToothIcon, desc: 'Tahun ajaran & status operasional' },
+    { id: 'jalur', label: 'Jalur & Jadwal', icon: CalendarDaysIcon, desc: 'Periode tes & persyaratan per jalur' },
+    { id: 'hero', label: 'Pop-up Modal Beranda', icon: SparklesIcon, desc: 'Banner pengumuman calon siswa' },
+    { id: 'signature', label: 'Tanda Tangan Digital', icon: PencilSquareIcon, desc: 'TTD Kepala Sekolah pada kartu' },
+    { id: 'sheets', label: 'Integrasi Google Sheets', icon: TableCellsIcon, desc: 'Webhook & live spreadsheet sync' },
+    { id: 'contact', label: 'Kontak Helpdesk WA', icon: PhoneIcon, desc: 'Nomor panitia & narahubung' },
+    { id: 'danger', label: 'Danger Zone', icon: ExclamationTriangleIcon, desc: 'Reset pendaftar & data darurat', isDanger: true }
+  ];
+
+  const jalurTabs = [
+    { id: 'jalurPrestasi', label: 'Prestasi', icon: TrophyIcon },
+    { id: 'jalurReguler', label: 'Reguler', icon: AcademicCapIcon },
+    { id: 'jalurUndangan', label: 'Undangan', icon: SparklesIcon },
+    { id: 'jalurPjj', label: 'PJJ (Mitra)', icon: BuildingOfficeIcon }
+  ];
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center h-80">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-600"></div>
+          <span className="text-xs font-semibold text-zinc-500">Memuat konfigurasi sistem...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* 1. Status SPMB Toggle */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-6 rounded-xl border border-blue-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base md:text-lg font-semibold text-blue-900">Status SPMB</h3>
-            <p className="text-xs md:text-sm text-blue-700 mt-1">
-              {settings.isActive ? 'SPMB sedang berlangsung' : 'SPMB belum dimulai'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 md:gap-3">
-            <span className={`px-3 py-1 rounded-full text-xs md:text-sm font-medium ${
-              settings.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {settings.isActive ? 'Aktif' : 'Nonaktif'}
-            </span>
-            <input
-              type="checkbox"
-              checked={settings.isActive}
-              onChange={(e) => setSettings(prev => ({ ...prev, isActive: e.target.checked }))}
-              className="w-10 h-5 rounded-full bg-gray-200 cursor-pointer appearance-none checked:bg-blue-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-sm before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-5"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Custom Hero Modal settings */}
-      <CustomHeroModalSettings
-        settings={settings}
-        setSettings={setSettings}
-        uploadingImage={uploadingImage}
-        deletingImage={deletingImage}
-        handleImageUpload={handleImageUpload}
-        handleImageDelete={handleImageDelete}
-      />
-
-      {/* 3. General settings */}
-      <div className="bg-white rounded-xl p-4 md:p-6 border shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Pengaturan Umum</h3>
+    <div className="space-y-6 w-full font-sans">
+      {/* Top Header & Save Trigger Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200">
         <div>
-          <Input
-            label="Tahun Ajaran"
-            value={settings.academicYear}
-            onChange={(e) => setSettings(prev => ({ ...prev, academicYear: e.target.value }))}
-            placeholder="Contoh: 2025/2026"
-            required
-          />
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
+              Pengaturan Sistem SPMB
+            </h1>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+              Settings Studio
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Konfigurasi jadwal pendaftaran, integrasi webhook, nomor kontak, dan keamanan sistem
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowConfirmModal(true)}
+          disabled={saving}
+          className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+        >
+          {saving ? (
+            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <CheckCircleIcon className="w-4 h-4" />
+          )}
+          <span>Simpan Semua Perubahan</span>
+        </button>
+      </div>
+
+      {/* Supabase-Style Layout: Left Navigation Rail & Right Content Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Settings Sidebar Navigation (3.5 Cols) */}
+        <div className="lg:col-span-4 space-y-1.5">
+          <div className="rounded-2xl bg-white border border-zinc-200/80 p-1.5 shadow-xs space-y-0.5">
+            {navTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as SettingTab)}
+                  className={classNames(
+                    'w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left transition-all duration-150',
+                    isActive
+                      ? tab.isDanger 
+                        ? 'bg-rose-50 text-rose-900 font-bold border border-rose-200 shadow-xs'
+                        : 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-200/80 shadow-xs'
+                      : tab.isDanger
+                        ? 'text-rose-600 hover:bg-rose-50/50 font-medium'
+                        : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 font-medium'
+                  )}
+                >
+                  <div className={classNames(
+                    'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+                    isActive
+                      ? tab.isDanger ? 'bg-rose-600 text-white' : 'bg-emerald-700 text-white'
+                      : 'bg-zinc-100 text-zinc-500'
+                  )}>
+                    <tab.icon className="w-3.5 h-3.5" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold leading-tight">{tab.label}</div>
+                    <div className="text-[10px] text-zinc-400 font-normal truncate mt-0.5">{tab.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="p-3 rounded-2xl bg-zinc-100/70 border border-zinc-200/60 text-[11px] text-zinc-500">
+            <span className="font-bold text-zinc-700">Tips:</span> Klik tombol <strong>Simpan</strong> di kanan atas setelah melakukan perubahan konfigurasi.
+          </div>
+        </div>
+
+        {/* Right Content Panel (8.5 Cols) */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* ================= 1. TAB: GENERAL & STATUS ================= */}
+          {activeTab === 'general' && (
+            <div className="space-y-5">
+              {/* Panel 1: Master Operation Status */}
+              <div className="rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="p-6 bg-white rounded-[calc(1.5rem-0.25rem)] space-y-4">
+                  <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-zinc-900">Status Operasional Portal SPMB</h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">Kontrol saklar utama pembukaan seluruh pendaftaran secara global</p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${
+                        settings.isActive ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                      }`}>
+                        {settings.isActive ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={settings.isActive}
+                        onChange={(e) => setSettings(prev => ({ ...prev, isActive: e.target.checked }))}
+                        className="w-9 h-5 rounded-full bg-zinc-200 cursor-pointer appearance-none checked:bg-emerald-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-xs before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-4"
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-600 leading-relaxed">
+                    Jika saklar dinonaktifkan, calon siswa yang mengakses halaman registrasi dan formulir akan dialihkan ke halaman pemberitahuan bahwa SPMB belum dibuka.
+                  </p>
+                </div>
+              </div>
+
+              {/* Panel 2: Academic Year Configuration */}
+              <div className="rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="p-6 bg-white rounded-[calc(1.5rem-0.25rem)] space-y-4">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-zinc-900">Tahun Ajaran Aktif</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">Format tahun ajaran yang akan tertera pada kartu bukti pendaftaran dan kop surat resmi</p>
+                  </div>
+
+                  <div className="max-w-md">
+                    <Input
+                      label="Tahun Ajaran (Academic Year)"
+                      value={settings.academicYear}
+                      onChange={(e) => setSettings(prev => ({ ...prev, academicYear: e.target.value }))}
+                      placeholder="Contoh: 2026/2027"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="px-6 py-3 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-400">
+                  <span>Label ini tampil di seluruh portal publik dan dashboard siswa</span>
+                  <span className="font-semibold text-zinc-700">{settings.academicYear || '-'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= 2. TAB: JALUR & PERIODS ================= */}
+          {activeTab === 'jalur' && (
+            <div className="space-y-5">
+              {/* Compact Segmented Track Switcher */}
+              <div className="p-1 bg-zinc-100 rounded-xl border border-zinc-200/80 grid grid-cols-2 sm:grid-cols-4 gap-1">
+                {jalurTabs.map((j) => {
+                  const isSelected = activeJalurTab === j.id;
+                  return (
+                    <button
+                      key={j.id}
+                      onClick={() => setActiveJalurTab(j.id as any)}
+                      className={classNames(
+                        'py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap',
+                        isSelected
+                          ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200/80'
+                          : 'text-zinc-500 hover:text-zinc-900'
+                      )}
+                    >
+                      <j.icon className={classNames('w-3.5 h-3.5', isSelected ? 'text-emerald-700' : 'text-zinc-400')} />
+                      <span>{j.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Focused Track Settings Panel */}
+              <div className="rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border border-zinc-200/80 shadow-sm overflow-hidden">
+                <div className="p-6 bg-white rounded-[calc(1.5rem-0.25rem)] space-y-6">
+                  {/* Track Status Header */}
+                  <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+                    <div>
+                      <h3 className="text-base font-extrabold text-zinc-900">
+                        Konfigurasi {activeJalurTab === 'jalurPrestasi' ? 'Jalur Prestasi' : activeJalurTab === 'jalurReguler' ? 'Jalur Reguler' : activeJalurTab === 'jalurUndangan' ? 'Jalur Undangan' : 'Jalur PJJ'}
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">Atur rentang tanggal pendaftaran, jadwal tes, dan pengumuman</p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${
+                        settings[activeJalurTab].isActive ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+                      }`}>
+                        {settings[activeJalurTab].isActive ? 'Jalur Aktif' : 'Jalur Nonaktif'}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={settings[activeJalurTab].isActive}
+                        onChange={(e) => handleUpdatePeriod(activeJalurTab, 'isActive', e.target.checked)}
+                        className="w-9 h-5 rounded-full bg-zinc-200 cursor-pointer appearance-none checked:bg-emerald-600 transition-colors duration-200 relative before:content-[''] before:w-4 before:h-4 before:bg-white before:shadow-xs before:rounded-full before:absolute before:top-0.5 before:left-0.5 before:transition-transform before:duration-200 checked:before:transform checked:before:translate-x-4"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dates Configuration Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Tanggal Mulai Pendaftaran"
+                      type="date"
+                      value={settings[activeJalurTab].start || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'start', e.target.value)}
+                      required
+                    />
+                    <Input
+                      label="Tanggal Selesai Pendaftaran"
+                      type="date"
+                      value={settings[activeJalurTab].end || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'end', e.target.value)}
+                      required
+                    />
+                    <Input
+                      label="Tanggal Pelaksanaan Tes (CBT)"
+                      type="date"
+                      value={settings[activeJalurTab].testDate || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'testDate', e.target.value)}
+                    />
+                    <Input
+                      label="Tanggal Pengumuman Hasil Seleksi"
+                      type="date"
+                      value={settings[activeJalurTab].announcementDate || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'announcementDate', e.target.value)}
+                    />
+                    <Input
+                      label="Mulai Daftar Ulang (Lulus)"
+                      type="date"
+                      value={settings[activeJalurTab].reRegistrationStart || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'reRegistrationStart', e.target.value)}
+                    />
+                    <Input
+                      label="Batas Akhir Daftar Ulang"
+                      type="date"
+                      value={settings[activeJalurTab].reRegistrationEnd || ''}
+                      onChange={(e) => handleUpdatePeriod(activeJalurTab, 'reRegistrationEnd', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Requirements List Editor */}
+                  <div className="pt-4 border-t border-zinc-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                          Daftar Persyaratan Berkas & Dokumen
+                        </h4>
+                        <p className="text-[11px] text-zinc-500">Poin persyaratan yang akan tampil pada kartu jalur di halaman depan</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddRequirement(activeJalurTab)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <PlusIcon className="w-3.5 h-3.5" />
+                        <span>Tambah Syarat</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(settings[activeJalurTab].requirements || []).length === 0 ? (
+                        <div className="p-4 rounded-2xl bg-zinc-50 text-center text-xs text-zinc-400">
+                          Belum ada poin persyaratan khusus. Klik "Tambah Syarat" di atas.
+                        </div>
+                      ) : (
+                        settings[activeJalurTab].requirements.map((req, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={req}
+                              onChange={(e) => handleUpdateRequirement(activeJalurTab, idx, e.target.value)}
+                              placeholder={`Poin persyaratan #${idx + 1}`}
+                              className="flex-1 py-2 px-3 rounded-xl border border-zinc-200 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/10 text-xs outline-none font-medium"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRequirement(activeJalurTab, idx)}
+                              className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= 3. TAB: HERO MODAL ================= */}
+          {activeTab === 'hero' && (
+            <CustomHeroModalSettings
+              settings={settings}
+              setSettings={setSettings}
+              uploadingImage={uploadingImage}
+              deletingImage={deletingImage}
+              handleImageUpload={handleImageUpload}
+              handleImageDelete={handleImageDelete}
+            />
+          )}
+
+          {/* ================= 4. TAB: PRINCIPAL SIGNATURES ================= */}
+          {activeTab === 'signature' && (
+            <PrincipalSignatureSettings
+              settings={settings}
+              uploadingSigMosa={uploadingSigMosa}
+              deletingSigMosa={deletingSigMosa}
+              uploadingSigFajar={uploadingSigFajar}
+              deletingSigFajar={deletingSigFajar}
+              handleSigUpload={handleSigUpload}
+              handleSigDelete={handleSigDelete}
+            />
+          )}
+
+          {/* ================= 5. TAB: GOOGLE SHEETS ================= */}
+          {activeTab === 'sheets' && (
+            <GoogleSheetsSettings
+              settings={settings.googleSheets || { isEnabled: false, accountEmail: 'alfaruqasri@sman-modalbangsa.sch.id', webhookUrl: '' }}
+              onChange={(updated) => setSettings(prev => ({ ...prev, googleSheets: updated }))}
+            />
+          )}
+
+          {/* ================= 6. TAB: CONTACT HELPDESK ================= */}
+          {activeTab === 'contact' && (
+            <AdminContactSettings
+              settings={settings}
+              onUpdateAdminContact={handleUpdateAdminContact}
+            />
+          )}
+
+          {/* ================= 7. TAB: DANGER ZONE ================= */}
+          {activeTab === 'danger' && (
+            <DangerZoneSettings userRole={userRole} />
+          )}
         </div>
       </div>
-
-      {/* 3.5. Principal Signature settings */}
-      <PrincipalSignatureSettings
-        settings={settings}
-        uploadingSigMosa={uploadingSigMosa}
-        deletingSigMosa={deletingSigMosa}
-        uploadingSigFajar={uploadingSigFajar}
-        deletingSigFajar={deletingSigFajar}
-        handleSigUpload={handleSigUpload}
-        handleSigDelete={handleSigDelete}
-      />
-
-      {/* 4. Pathways settings grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <JalurPeriodSettings
-          title="Jalur Prestasi"
-          jalurKey="jalurPrestasi"
-          period={settings.jalurPrestasi}
-          onUpdatePeriod={(f, v) => handleUpdatePeriod('jalurPrestasi', f, v)}
-          onAddRequirement={() => handleAddRequirement('jalurPrestasi')}
-          onRemoveRequirement={(i) => handleRemoveRequirement('jalurPrestasi', i)}
-          onUpdateRequirement={(i, v) => handleUpdateRequirement('jalurPrestasi', i, v)}
-        />
-        <JalurPeriodSettings
-          title="Jalur Reguler"
-          jalurKey="jalurReguler"
-          period={settings.jalurReguler}
-          onUpdatePeriod={(f, v) => handleUpdatePeriod('jalurReguler', f, v)}
-          onAddRequirement={() => handleAddRequirement('jalurReguler')}
-          onRemoveRequirement={(i) => handleRemoveRequirement('jalurReguler', i)}
-          onUpdateRequirement={(i, v) => handleUpdateRequirement('jalurReguler', i, v)}
-        />
-        <JalurPeriodSettings
-          title="Jalur Undangan"
-          jalurKey="jalurUndangan"
-          period={settings.jalurUndangan}
-          onUpdatePeriod={(f, v) => handleUpdatePeriod('jalurUndangan', f, v)}
-          onAddRequirement={() => handleAddRequirement('jalurUndangan')}
-          onRemoveRequirement={(i) => handleRemoveRequirement('jalurUndangan', i)}
-          onUpdateRequirement={(i, v) => handleUpdateRequirement('jalurUndangan', i, v)}
-        />
-        <JalurPeriodSettings
-          title="Jalur PJJ"
-          jalurKey="jalurPjj"
-          period={settings.jalurPjj}
-          onUpdatePeriod={(f, v) => handleUpdatePeriod('jalurPjj', f, v)}
-          onAddRequirement={() => handleAddRequirement('jalurPjj')}
-          onRemoveRequirement={(i) => handleRemoveRequirement('jalurPjj', i)}
-          onUpdateRequirement={(i, v) => handleUpdateRequirement('jalurPjj', i, v)}
-        />
-      </div>
-
-      {/* 5. Whatsapp Admin contact settings */}
-      <AdminContactSettings
-        settings={settings}
-        onUpdateAdminContact={handleUpdateAdminContact}
-      />
-
-      {/* Save Settings Trigger */}
-      <div className="flex justify-end pt-2">
-        <Button
-          onClick={() => setShowConfirmModal(true)}
-          className="w-full md:w-auto bg-blue-600 text-white hover:bg-blue-700 px-8 py-2.5"
-          disabled={saving}
-        >
-          {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
-        </Button>
-      </div>
-
-      {/* 6. Destructive cleanups Danger zone */}
-      <DangerZoneSettings userRole={userRole} />
 
       {/* Modal image deletion confirmation */}
       <Modal
@@ -501,40 +757,34 @@ const PPDBSettings: React.FC = () => {
         onClose={() => setShowDeleteConfirmModal(false)}
         className="z-50"
       >
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Konfirmasi Penghapusan Gambar
-            </h3>
-            <p className="text-sm text-gray-600">
-              Apakah Anda yakin ingin menghapus gambar ini?
-              <br />
-              <span className="text-red-600 mt-2 block">
-                Tindakan ini tidak dapat dibatalkan.
-              </span>
-            </p>
+        <div className="p-6 text-center">
+          <div className="mx-auto w-12 h-12 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-center mb-3">
+            <TrashIcon className="w-6 h-6 text-rose-600" />
           </div>
+          <h3 className="text-base font-bold text-zinc-900">
+            Konfirmasi Hapus Gambar
+          </h3>
+          <p className="text-xs text-zinc-500 mt-1 mb-5">
+            Apakah Anda yakin ingin menghapus gambar banner modal beranda ini?
+          </p>
 
-          <div className="flex gap-3">
-            <Button
+          <div className="flex gap-2.5">
+            <button
+              type="button"
               onClick={() => setShowDeleteConfirmModal(false)}
-              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className="flex-1 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold"
               disabled={deletingImage}
             >
               Batal
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={confirmImageDelete}
-              className="flex-1 bg-red-600 text-white hover:bg-red-700"
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md"
               disabled={deletingImage}
             >
               {deletingImage ? 'Menghapus...' : 'Ya, Hapus'}
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>
@@ -545,40 +795,34 @@ const PPDBSettings: React.FC = () => {
         onClose={() => setShowConfirmModal(false)}
         className="z-50"
       >
-        <div className="p-6">
-          <div className="text-center mb-6">
-            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Konfirmasi Simpan Pengaturan
-            </h3>
-            <p className="text-sm text-gray-600">
-              Apakah Anda yakin ingin menyimpan perubahan pengaturan SPMB?
-              <br />
-              <span className="text-yellow-600 mt-2 block">
-                Perubahan ini akan langsung mempengaruhi sistem SPMB.
-              </span>
-            </p>
+        <div className="p-6 text-center">
+          <div className="mx-auto w-12 h-12 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-center mb-3">
+            <CheckCircleIcon className="w-6 h-6 text-emerald-700" />
           </div>
+          <h3 className="text-base font-bold text-zinc-900">
+            Simpan Perubahan Pengaturan?
+          </h3>
+          <p className="text-xs text-zinc-500 mt-1 mb-5">
+            Perubahan pengaturan akan segera diterapkan pada sistem pendaftaran online dan formulir siswa.
+          </p>
 
-          <div className="flex gap-3">
-            <Button
+          <div className="flex gap-2.5">
+            <button
+              type="button"
               onClick={() => setShowConfirmModal(false)}
-              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className="flex-1 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold"
               disabled={saving}
             >
               Batal
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
               onClick={handleSave}
-              className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+              className="flex-1 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md"
               disabled={saving}
             >
               {saving ? 'Menyimpan...' : 'Ya, Simpan'}
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>

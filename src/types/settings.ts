@@ -40,4 +40,9 @@ export type PPDBSettings = {
   customModal: CustomModalContent;
   principalSignatureMosa?: string;
   principalSignatureFajar?: string;
+  googleSheets?: {
+    isEnabled: boolean;
+    webhookUrl?: string;
+    accountEmail?: string;
+  };
 }; 

@@ -71,6 +71,7 @@ export const uploadToR2 = async ({
       Body: arrayBuffer,
       ContentType: contentType || file.type,
       ContentLength: file.size,
+      CacheControl: 'public, max-age=86400, stale-while-revalidate=604800',
       // Add CORS headers for better compatibility
       Metadata: {
         'x-amz-meta-original-filename': file.name,
@@ -79,8 +80,9 @@ export const uploadToR2 = async ({
 
     await s3Client.send(command);
 
-    // Generate public URL (R2 doesn't support public URLs by default, so we use our own domain)
-    const publicUrl = `${r2Config.publicUrl}/${key}`;
+    // Generate public URL with cache-busting timestamp query parameter
+    const timestamp = Date.now();
+    const publicUrl = `${r2Config.publicUrl}/${key}?t=${timestamp}`;
 
     return {
       url: publicUrl,

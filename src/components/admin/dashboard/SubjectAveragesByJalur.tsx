@@ -1,8 +1,6 @@
 import React from 'react';
-import Card from '../../ui/Card';
-import { AcademicCapIcon, UserGroupIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { AcademicCapIcon, SparklesIcon, TrophyIcon } from '@heroicons/react/24/outline';
 import { PPDBData } from '../../../types/ppdb';
-import { JALUR_COLORS } from './SecondaryStats';
 import { calculateJalurAverage } from './AverageScores';
 
 interface SubjectAveragesByJalurProps {
@@ -14,99 +12,108 @@ const SubjectAveragesByJalur: React.FC<SubjectAveragesByJalurProps> = ({ data })
     { 
       label: 'Prestasi', 
       jalur: 'prestasi' as const,
-      colors: JALUR_COLORS.prestasi,
-      icon: <AcademicCapIcon className="w-4 h-4" />
+      icon: TrophyIcon,
+      accent: 'blue',
+      borderColor: 'border-blue-200/80',
+      badge: 'bg-blue-50 text-blue-800 border-blue-200',
+      barColor: 'bg-blue-600',
+      textColor: 'text-blue-700'
     },
     { 
       label: 'Reguler', 
       jalur: 'reguler' as const,
-      colors: JALUR_COLORS.reguler,
-      icon: <UserGroupIcon className="w-4 h-4" />
+      icon: AcademicCapIcon,
+      accent: 'emerald',
+      borderColor: 'border-emerald-200/80',
+      badge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      barColor: 'bg-emerald-600',
+      textColor: 'text-emerald-700'
     },
     { 
       label: 'Undangan', 
       jalur: 'undangan' as const,
-      colors: JALUR_COLORS.undangan,
-      icon: <DocumentTextIcon className="w-4 h-4" />
-    },
-    { 
-      label: 'PJJ', 
-      jalur: 'pjj' as const,
-      colors: JALUR_COLORS.pjj,
-      icon: <ChartBarIcon className="w-4 h-4" />
+      icon: SparklesIcon,
+      accent: 'purple',
+      borderColor: 'border-purple-200/80',
+      badge: 'bg-purple-50 text-purple-800 border-purple-200',
+      barColor: 'bg-purple-600',
+      textColor: 'text-purple-700'
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-6">
-      {jalurs.map((jalurItem, idx) => (
-        <Card key={idx} className="p-2 md:p-4 lg:p-6 h-full flex flex-col">
-          <div className="flex items-center gap-2 mb-3 md:mb-6">
-            <div className={`p-1.5 md:p-2 ${jalurItem.colors.bg} rounded-lg`}>
-              {React.cloneElement(jalurItem.icon as React.ReactElement, {
-                className: `w-4 h-4 md:w-5 md:h-5 ${jalurItem.colors.text}`
-              })}
-            </div>
-            <div>
-              <h3 className="text-sm md:text-base font-semibold text-gray-900">Jalur {jalurItem.label}</h3>
-              <p className="text-xs md:text-sm text-gray-600">
-                {data.filter(d => d.jalur === jalurItem.jalur).length} Pendaftar
-              </p>
-            </div>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {jalurs.map((jalurItem, idx) => {
+        const jalurData = data.filter(d => d.jalur === jalurItem.jalur);
+        const overallAvg = calculateJalurAverage(data, jalurItem.jalur);
 
-          <div className="space-y-2 md:space-y-4 flex-1">
-            {[
-              { label: 'Agama', field: 'nilaiAgama' },
-              { label: 'B. Indonesia', field: 'nilaiBindo' },
-              { label: 'B. Inggris', field: 'nilaiBing' },
-              { label: 'Matematika', field: 'nilaiMtk' },
-              { label: 'IPA', field: 'nilaiIpa' }
-            ].map((mapel, mapelIdx) => {
-              const jalurData = data.filter(d => d.jalur === jalurItem.jalur);
-              const mapelAvg = jalurData.length > 0 
-                ? jalurData.reduce((acc, item) => {
-                    const sem2 = parseFloat(item[`${mapel.field}2` as keyof PPDBData] as string) || 0;
-                    const sem3 = parseFloat(item[`${mapel.field}3` as keyof PPDBData] as string) || 0;
-                    const sem4 = parseFloat(item[`${mapel.field}4` as keyof PPDBData] as string) || 0;
-                    return acc + ((sem2 + sem3 + sem4) / 3);
-                  }, 0) / jalurData.length
-                : 0;
-
-              return (
-                <div key={mapelIdx} className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className={`w-1 h-1 md:w-2 md:h-2 rounded-full ${jalurItem.colors.accent}`} />
-                    <span className="text-xs md:text-sm font-medium text-gray-700">
-                      {mapel.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 md:w-32 bg-gray-100 rounded-full h-1">
-                      <div 
-                        className={`${jalurItem.colors.accent} h-1 rounded-full transition-all duration-500`}
-                        style={{ width: `${(mapelAvg / 100) * 100}%` }}
-                      />
+        return (
+          <div 
+            key={idx}
+            className={`rounded-3xl p-1 bg-gradient-to-b from-white to-zinc-50 border ${jalurItem.borderColor} shadow-sm hover:shadow-md transition-all flex flex-col justify-between`}
+          >
+            <div className="p-5 bg-white rounded-[calc(1.5rem-0.25rem)] h-full flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${jalurItem.badge}`}>
+                      <jalurItem.icon className="w-4 h-4" />
                     </div>
-                    <span className={`text-xs md:text-sm font-semibold ${jalurItem.colors.text} min-w-[32px] text-right`}>
-                      {mapelAvg.toFixed(1)}
-                    </span>
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-900">Jalur {jalurItem.label}</h4>
+                      <p className="text-[10px] text-zinc-500 font-medium">{jalurData.length} Pendaftar</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
 
-          <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t">
-            <div className="flex justify-between items-center">
-              <span className="text-xs md:text-sm text-gray-600">Rata-rata Keseluruhan</span>
-              <span className={`text-sm md:text-lg font-bold ${jalurItem.colors.text}`}>
-                {calculateJalurAverage(data, jalurItem.jalur).toFixed(1)}
-              </span>
+                  <span className={`text-base font-black ${jalurItem.textColor}`}>
+                    {overallAvg.toFixed(1)}
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 pt-2 border-t border-zinc-100">
+                  {[
+                    { label: 'Agama', field: 'nilaiAgama' },
+                    { label: 'B. Indonesia', field: 'nilaiBindo' },
+                    { label: 'B. Inggris', field: 'nilaiBing' },
+                    { label: 'Matematika', field: 'nilaiMtk' },
+                    { label: 'IPA', field: 'nilaiIpa' }
+                  ].map((mapel, mapelIdx) => {
+                    const mapelAvg = jalurData.length > 0 
+                      ? jalurData.reduce((acc, item) => {
+                          const sem2 = parseFloat(item[`${mapel.field}2` as keyof PPDBData] as string) || 0;
+                          const sem3 = parseFloat(item[`${mapel.field}3` as keyof PPDBData] as string) || 0;
+                          const sem4 = parseFloat(item[`${mapel.field}4` as keyof PPDBData] as string) || 0;
+                          return acc + ((sem2 + sem3 + sem4) / 3);
+                        }, 0) / jalurData.length
+                      : 0;
+
+                    return (
+                      <div key={mapelIdx} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-zinc-700">{mapel.label}</span>
+                          <span className={`font-bold ${jalurItem.textColor}`}>{mapelAvg.toFixed(1)}</span>
+                        </div>
+
+                        <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${jalurItem.barColor} rounded-full transition-all duration-700`}
+                            style={{ width: `${Math.min(100, (mapelAvg / 100) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-500">
+                <span className="font-medium">Rata-rata 5 Mapel</span>
+                <span className={`font-black ${jalurItem.textColor}`}>{overallAvg.toFixed(1)} / 100</span>
+              </div>
             </div>
           </div>
-        </Card>
-      ))}
+        );
+      })}
     </div>
   );
 };
